@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PlusCircle, FileText } from 'lucide-react';
+import { PlusCircle, FileText, Trash2 } from 'lucide-react';
 import ExportButton from './ui/ExportButton';
 import { exportToCSV } from '../utils/exportToCSV';
 
@@ -36,7 +36,7 @@ const CRITICALITY_COLORS = {
   }
 };
 
-const DefectRow = ({ defect, index, onEditDefect }) => {
+const DefectRow = ({ defect, index, onEditDefect, onDeleteDefect }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const toggleExpand = (e) => {
@@ -95,10 +95,26 @@ const DefectRow = ({ defect, index, onEditDefect }) => {
         <td className="px-3 py-1.5" onClick={() => onEditDefect(defect)}>
           {defect['Date Completed'] ? new Date(defect['Date Completed']).toLocaleDateString() : '-'}
         </td>
+        <td className="px-3 py-1.5">
+          <div className="flex items-center justify-center">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (window.confirm('Are you sure you want to delete this defect?')) {
+                  onDeleteDefect(defect.id);
+                }
+              }}
+              className="p-1 hover:bg-red-500/20 text-red-400 rounded-full transition-colors"
+              aria-label="Delete defect"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        </td>
       </tr>
       {isExpanded && (
         <tr className="bg-[#132337]/50">
-          <td colSpan="10" className="px-8 py-3 border-b border-white/10">
+          <td colSpan="11" className="px-8 py-3 border-b border-white/10">
             <div className="grid gap-3">
               <div>
                 <div className="text-xs font-medium text-white/80 mb-1">Description</div>
@@ -134,7 +150,8 @@ const DefectRow = ({ defect, index, onEditDefect }) => {
 const DefectsTable = ({ 
   data, 
   onAddDefect, 
-  onEditDefect, 
+  onEditDefect,
+  onDeleteDefect,
   loading,
   searchTerm = '',
   statusFilter = '',
@@ -178,16 +195,17 @@ const DefectsTable = ({
               <th className="px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90">Action Planned</th>
               <th className="px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 w-24">Reported</th>
               <th className="px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 w-24">Completed</th>
+              <th className="px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 w-16">Actions</th>
             </tr>
           </thead>
           <tbody className="text-[#f4f4f4]">
             {loading ? (
               <tr>
-                <td colSpan="10" className="px-3 py-2 text-center">Loading...</td>
+                <td colSpan="11" className="px-3 py-2 text-center">Loading...</td>
               </tr>
             ) : data.length === 0 ? (
               <tr>
-                <td colSpan="10" className="px-3 py-2 text-center">No defects found</td>
+                <td colSpan="11" className="px-3 py-2 text-center">No defects found</td>
               </tr>
             ) : (
               data.map((defect, index) => (
@@ -196,6 +214,7 @@ const DefectsTable = ({
                   defect={defect}
                   index={index}
                   onEditDefect={onEditDefect}
+                  onDeleteDefect={onDeleteDefect}
                 />
               ))
             )}

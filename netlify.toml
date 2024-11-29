@@ -1,7 +1,6 @@
 [build]
-  command = "npm install @babel/plugin-proposal-private-property-in-object --save-dev && npm install && npm install recharts && npm install pdf-lib && CI=false npm run build"
+  command = "npm install @babel/plugin-proposal-private-property-in-object --save-dev && npm install clsx tailwind-merge @radix-ui/react-slot @radix-ui/react-popover @radix-ui/react-checkbox react-day-picker && npm install && npm install recharts && npm install pdf-lib && CI=false npm run build"
   publish = "build"
-
 [[redirects]]
   from = "/*"
   to = "/index.html"
