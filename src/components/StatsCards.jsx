@@ -7,7 +7,7 @@ const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-[#132337] px-2.5 py-1.5 rounded-[4px] border border-[#3BADE5]/20 shadow-lg">
-        <p className="text-[10px] text-[#f4f4f4]">{`${payload[0].payload.name}: ${payload[0].value}`}</p>
+        <p className="text-[10px] text-[#f4f4f4]">{`${payload[0].payload.fullName}: ${payload[0].value}`}</p>
       </div>
     );
   }
@@ -23,9 +23,12 @@ const StatsCards = ({ data }) => {
     }, {});
 
     return Object.entries(counts)
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 8);
+      .map(([name, value]) => ({
+        name: name.length > 20 ? name.substring(0, 20) + '...' : name,
+        value,
+        fullName: name // Store full name for tooltip
+      }))
+      .sort((a, b) => b.value - a.value);
   }, [data]);
 
   // Status metrics calculation
@@ -73,27 +76,36 @@ const StatsCards = ({ data }) => {
               <BarChart
                 data={equipmentData}
                 layout="vertical"
-                margin={{ top: 10, right: 30, bottom: 10, left: 60 }}
+                margin={{ top: 5, right: 30, bottom: 5, left: 100 }}
+                barGap={0}
+                barCategoryGap={4}
               >
                 <XAxis
                   type="number"
-                  tick={{ fill: '#f4f4f4', fontSize: 10 }}
+                  tick={{ fill: '#f4f4f4', fontSize: 9 }}
                   axisLine={{ stroke: '#ffffff20' }}
                   tickLine={{ stroke: '#ffffff20' }}
+                  tickCount={5}
                 />
                 <YAxis
                   type="category"
                   dataKey="name"
-                  tick={{ fill: '#f4f4f4', fontSize: 10 }}
+                  tick={{
+                    fill: '#f4f4f4',
+                    fontSize: 9,
+                    width: 90,
+                    textAlign: 'right'
+                  }}
                   width={100}
                   axisLine={false}
                   tickLine={false}
+                  interval={0}
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Bar
                   dataKey="value"
                   radius={[0, 4, 4, 0]}
-                  barSize={12}
+                  barSize={8}
                 >
                   {equipmentData.map((entry, index) => (
                     <Cell
