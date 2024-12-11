@@ -223,8 +223,7 @@ const DefectsTable = ({
     { key: 'Description', label: 'Description' },
     { key: 'Action Planned', label: 'Action Planned' },
     { key: 'Date Reported', label: 'Reported' },
-    { key: 'Date Completed', label: 'Completed' },
-    { key: 'Comments', label: 'Comments' }
+    { key: 'Date Completed', label: 'Completed' }
   ];
 
   const sortedData = getSortedData();
