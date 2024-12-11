@@ -3,27 +3,27 @@ import { Card, CardContent } from './ui/card';
 import { ResponsiveContainer, Treemap, Tooltip } from 'recharts';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 
-const COLORS = [
-  '#3BADE5', '#5C6BC0', '#7E57C2', '#AB47BC',
-  '#EC407A', '#EF5350', '#FFA726', '#FFEE58',
-  '#66BB6A', '#26A69A', '#26C6DA', '#29B6F6',
-  '#5C6BC0', '#7986CB', '#9575CD', '#BA68C8'
-];
-
 const CustomTooltip = ({ active, payload }) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
       <div className="bg-[#132337] px-3 py-2 rounded-md border border-[#3BADE5]/20 shadow-lg">
-        <p className="text-xs text-[#f4f4f4] font-medium">{data.name}</p>
-        <p className="text-[10px] text-[#f4f4f4]/80 mt-1">Count: {data.value}</p>
+        <p className="text-xs text-[#f4f4f4] font-medium">{data.fullName}</p>
+        <p className="text-[10px] text-[#f4f4f4]/80 mt-1">
+          Count: {data.value} ({((data.value / data.totalCount) * 100).toFixed(1)}%)
+        </p>
       </div>
     );
   }
   return null;
 };
 
-const CustomizedContent = ({ root, depth, x, y, width, height, index, name, value }) => {
+const CustomizedContent = ({ x, y, width, height, index, name, value, depth, totalCount }) => {
+  // Calculate opacity based on value relative to total
+  const opacity = 0.3 + (value / totalCount) * 0.7; // Range from 0.3 to 1.0
+  const shouldShowText = width > 60 && height > 30;
+  const shouldShowOnlyValue = width > 40 && height > 25;
+
   return (
     <g>
       <rect
@@ -31,11 +31,13 @@ const CustomizedContent = ({ root, depth, x, y, width, height, index, name, valu
         y={y}
         width={width}
         height={height}
-        fill={COLORS[index % COLORS.length]}
-        opacity={0.8}
-        className="hover:opacity-100 transition-opacity duration-200"
+        fill="#3BADE5"
+        opacity={opacity}
+        stroke="#0B1623"
+        strokeWidth={1}
+        className="transition-all duration-200 hover:opacity-90"
       />
-      {width > 50 && height > 30 && (
+      {shouldShowText ? (
         <>
           <text
             x={x + width / 2}
@@ -43,7 +45,7 @@ const CustomizedContent = ({ root, depth, x, y, width, height, index, name, valu
             textAnchor="middle"
             fill="#fff"
             fontSize={10}
-            className="font-medium"
+            className="font-medium select-none pointer-events-none"
           >
             {name}
           </text>
@@ -54,43 +56,56 @@ const CustomizedContent = ({ root, depth, x, y, width, height, index, name, valu
             fill="#fff"
             fontSize={9}
             opacity={0.8}
+            className="select-none pointer-events-none"
           >
             {value}
           </text>
         </>
-      )}
+      ) : shouldShowOnlyValue ? (
+        <text
+          x={x + width / 2}
+          y={y + height / 2}
+          textAnchor="middle"
+          fill="#fff"
+          fontSize={9}
+          className="select-none pointer-events-none"
+        >
+          {value}
+        </text>
+      ) : null}
     </g>
   );
 };
 
 const StatsCards = ({ data }) => {
-  // Equipment data processing
   const equipmentData = useMemo(() => {
     const counts = data.reduce((acc, item) => {
       acc[item.Equipments] = (acc[item.Equipments] || 0) + 1;
       return acc;
     }, {});
 
+    const totalCount = Object.values(counts).reduce((sum, count) => sum + count, 0);
+
     return {
       name: 'Equipment',
       children: Object.entries(counts)
         .map(([name, value]) => ({
-          name,
+          name: name.length > 15 ? `${name.substring(0, 15)}...` : name,
+          fullName: name,
           value,
+          totalCount,
           size: value
         }))
         .sort((a, b) => b.value - a.value)
     };
   }, [data]);
 
-  // Status metrics calculation
   const statusMetrics = useMemo(() => {
     const total = data.length;
     const closed = data.filter(item => item['Status (Vessel)'] === 'CLOSED').length;
     const open = data.filter(item => item['Status (Vessel)'] === 'OPEN').length;
     const inProgress = data.filter(item => item['Status (Vessel)'] === 'IN PROGRESS').length;
 
-    // Calculate month-over-month change
     const lastMonth = new Date();
     lastMonth.setMonth(lastMonth.getMonth() - 1);
     const previousMonth = data.filter(item =>
@@ -115,27 +130,49 @@ const StatsCards = ({ data }) => {
     };
   }, [data]);
 
+  const renderLegend = () => {
+    const legendData = equipmentData.children.slice(0, 3);
+    return (
+      <div className="mt-4 flex flex-wrap gap-3">
+        {legendData.map((item, index) => (
+          <div key={index} className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-[#3BADE5]" style={{ opacity: 0.3 + ((item.value / item.totalCount) * 0.7) }} />
+            <span className="text-[10px] text-white/60">{item.fullName}</span>
+          </div>
+        ))}
+        <div className="text-[10px] text-white/40">and {equipmentData.children.length - 3} more...</div>
+      </div>
+    );
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
       {/* Equipment Distribution Card */}
       <Card className="bg-[#132337]/30 backdrop-blur-sm border border-white/10">
         <CardContent className="p-6">
-          <h3 className="text-sm font-medium text-[#f4f4f4]/90 mb-6">
-            Equipment Distribution
-          </h3>
-          <div className="h-[300px]">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-sm font-medium text-[#f4f4f4]/90">
+              Equipment Distribution
+            </h3>
+            <div className="text-[10px] text-white/40">
+              Total: {equipmentData.children[0].totalCount}
+            </div>
+          </div>
+          <div className="h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
               <Treemap
                 data={equipmentData.children}
                 dataKey="size"
-                aspectRatio={1}
+                aspectRatio={1.5}
                 stroke="#0B1623"
                 content={<CustomizedContent />}
+                animationDuration={500}
               >
                 <Tooltip content={<CustomTooltip />} />
               </Treemap>
             </ResponsiveContainer>
           </div>
+          {renderLegend()}
         </CardContent>
       </Card>
 
@@ -175,57 +212,27 @@ const StatsCards = ({ data }) => {
           </div>
 
           <div className="space-y-4">
-            {/* Closed Status */}
-            <div>
-              <div className="flex justify-between mb-2">
-                <span className="text-xs text-green-400">Closed</span>
-                <span className="text-xs text-green-400">
-                  {statusMetrics.closed} ({statusMetrics.closureRate.toFixed(1)}%)
-                </span>
-              </div>
-              <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-green-500/50 to-green-500 rounded-full transition-all duration-500"
-                  style={{ width: `${statusMetrics.closureRate}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Open Status */}
-            <div>
-              <div className="flex justify-between mb-2">
-                <span className="text-xs text-red-400">Open</span>
-                <span className="text-xs text-red-400">
-                  {statusMetrics.open} ({statusMetrics.openRate.toFixed(1)}%)
-                </span>
-              </div>
-              <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-red-500/50 to-red-500 rounded-full transition-all duration-500"
-                  style={{ width: `${statusMetrics.openRate}%` }}
-                />
-              </div>
-            </div>
-
-            {/* In Progress Status */}
-            <div>
-              <div className="flex justify-between mb-2">
-                <span className="text-xs text-yellow-400">In Progress</span>
-                <span className="text-xs text-yellow-400">
-                  {statusMetrics.inProgress} ({statusMetrics.inProgressRate.toFixed(1)}%)
-                </span>
-              </div>
-              <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                {statusMetrics.inProgressRate > 0 ? (
+            {/* Status bars */}
+            {[
+              { label: 'Closed', value: statusMetrics.closed, rate: statusMetrics.closureRate, color: 'from-green-500/30 to-green-500/60' },
+              { label: 'Open', value: statusMetrics.open, rate: statusMetrics.openRate, color: 'from-red-500/30 to-red-500/60' },
+              { label: 'In Progress', value: statusMetrics.inProgress, rate: statusMetrics.inProgressRate, color: 'from-yellow-500/30 to-yellow-500/60' }
+            ].map(status => (
+              <div key={status.label}>
+                <div className="flex justify-between mb-2">
+                  <span className="text-xs text-white/60">{status.label}</span>
+                  <span className="text-xs text-white/60">
+                    {status.value} ({status.rate.toFixed(1)}%)
+                  </span>
+                </div>
+                <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-yellow-500/50 to-yellow-500 rounded-full transition-all duration-500"
-                    style={{ width: `${statusMetrics.inProgressRate}%` }}
+                    className={`h-full bg-gradient-to-r ${status.color} rounded-full transition-all duration-500`}
+                    style={{ width: `${status.rate}%` }}
                   />
-                ) : (
-                  <div className="h-full w-full border border-dashed border-white/20 rounded-full" />
-                )}
+                </div>
               </div>
-            </div>
+            ))}
           </div>
         </CardContent>
       </Card>
