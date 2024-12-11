@@ -33,7 +33,8 @@ export const exportToCSV = (data, filters = {}) => {
       'Description': item.Description || '',
       'Action Planned': item['Action Planned'] || '',
       'Date Reported': item['Date Reported'] ? new Date(item['Date Reported']).toLocaleDateString() : '',
-      'Date Completed': item['Date Completed'] ? new Date(item['Date Completed']).toLocaleDateString() : ''
+      'Date Completed': item['Date Completed'] ? new Date(item['Date Completed']).toLocaleDateString() : '',
+      'Comments': item.Comments || ''
     }));
 
     // Convert to CSV string
