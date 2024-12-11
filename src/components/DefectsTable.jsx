@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PlusCircle, FileText, Trash2 } from 'lucide-react';
+import { PlusCircle, FileText, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import ExportButton from './ui/ExportButton';
 import { exportToCSV } from '../utils/exportToCSV';
 
@@ -157,13 +157,76 @@ const DefectsTable = ({
   statusFilter = '',
   criticalityFilter = '' 
 }) => {
+  const [sortConfig, setSortConfig] = useState({
+    key: 'Date Reported',
+    direction: 'desc'
+  });
+
+  const handleSort = (key) => {
+    setSortConfig(prevConfig => ({
+      key,
+      direction: prevConfig.key === key 
+        ? prevConfig.direction === 'asc' ? 'desc' : 'asc'
+        : 'asc'
+    }));
+  };
+
+  const getSortedData = () => {
+    const sortedData = [...data].sort((a, b) => {
+      const aValue = a[sortConfig.key];
+      const bValue = b[sortConfig.key];
+
+      // Handle null/undefined values
+      if (!aValue && !bValue) return 0;
+      if (!aValue) return 1;
+      if (!bValue) return -1;
+
+      let comparison = 0;
+
+      // Handle different types of values
+      if (sortConfig.key.includes('Date')) {
+        comparison = new Date(aValue) - new Date(bValue);
+      } else if (typeof aValue === 'string') {
+        comparison = aValue.localeCompare(bValue);
+      } else {
+        comparison = aValue - bValue;
+      }
+
+      return sortConfig.direction === 'asc' ? comparison : -comparison;
+    });
+
+    return sortedData;
+  };
+
   const handleExport = () => {
-    exportToCSV(data, {
+    exportToCSV(getSortedData(), {
       search: searchTerm,
       status: statusFilter,
       criticality: criticalityFilter
     });
   };
+
+  const renderSortIcon = (columnKey) => {
+    if (sortConfig.key !== columnKey) {
+      return <ChevronUp className="h-3 w-3 opacity-30" />;
+    }
+    return sortConfig.direction === 'asc' 
+      ? <ChevronUp className="h-3 w-3" />
+      : <ChevronDown className="h-3 w-3" />;
+  };
+
+  const columns = [
+    { key: 'vessel_name', label: 'Vessel' },
+    { key: 'Status (Vessel)', label: 'Status' },
+    { key: 'Criticality', label: 'Criticality' },
+    { key: 'Equipments', label: 'Equipment' },
+    { key: 'Description', label: 'Description' },
+    { key: 'Action Planned', label: 'Action Planned' },
+    { key: 'Date Reported', label: 'Reported' },
+    { key: 'Date Completed', label: 'Completed' }
+  ];
+
+  const sortedData = getSortedData();
 
   return (
     <div className="glass-card rounded-[4px]">
@@ -174,7 +237,7 @@ const DefectsTable = ({
           <button 
             onClick={onAddDefect} 
             className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-[4px] 
-            text-white bg-[#3BADE5] hover:bg-[#3BADE5]/80 transition-colors"
+              text-white bg-[#3BADE5] hover:bg-[#3BADE5]/80 transition-colors"
           >
             <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
             Add Defect
@@ -187,14 +250,18 @@ const DefectsTable = ({
             <tr className="bg-[#132337] border-b border-white/10">
               <th className="px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 w-8"></th>
               <th className="px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 w-12">#</th>
-              <th className="px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 w-28">Vessel</th>
-              <th className="px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 w-24">Status</th>
-              <th className="px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 w-24">Criticality</th>
-              <th className="px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 w-32">Equipment</th>
-              <th className="px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90">Description</th>
-              <th className="px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90">Action Planned</th>
-              <th className="px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 w-24">Reported</th>
-              <th className="px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 w-24">Completed</th>
+              {columns.map(column => (
+                <th 
+                  key={column.key}
+                  onClick={() => handleSort(column.key)}
+                  className="px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 cursor-pointer hover:bg-white/5"
+                >
+                  <div className="flex items-center gap-1">
+                    {column.label}
+                    {renderSortIcon(column.key)}
+                  </div>
+                </th>
+              ))}
               <th className="px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 w-16">Actions</th>
             </tr>
           </thead>
@@ -203,12 +270,12 @@ const DefectsTable = ({
               <tr>
                 <td colSpan="11" className="px-3 py-2 text-center">Loading...</td>
               </tr>
-            ) : data.length === 0 ? (
+            ) : sortedData.length === 0 ? (
               <tr>
                 <td colSpan="11" className="px-3 py-2 text-center">No defects found</td>
               </tr>
             ) : (
-              data.map((defect, index) => (
+              sortedData.map((defect, index) => (
                 <DefectRow
                   key={defect.id}
                   defect={defect}
