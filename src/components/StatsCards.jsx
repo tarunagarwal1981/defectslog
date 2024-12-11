@@ -10,7 +10,7 @@ const CustomTooltip = ({ active, payload }) => {
       <div className="bg-[#132337] px-3 py-2 rounded-md border border-[#3BADE5]/20 shadow-lg">
         <p className="text-xs text-[#f4f4f4] font-medium">{data.fullName}</p>
         <p className="text-[10px] text-[#f4f4f4]/80 mt-1">
-          Count: {data.value} ({((data.value / data.totalCount) * 100).toFixed(1)}%)
+          Count: {data.value} ({((data.value / data.parentTotal) * 100).toFixed(1)}%)
         </p>
       </div>
     );
@@ -18,9 +18,8 @@ const CustomTooltip = ({ active, payload }) => {
   return null;
 };
 
-const CustomizedContent = ({ x, y, width, height, index, name, value, depth, totalCount }) => {
-  // Calculate opacity based on value relative to total
-  const opacity = 0.3 + (value / totalCount) * 0.7; // Range from 0.3 to 1.0
+const CustomizedContent = ({ x, y, width, height, name, value, parentTotal }) => {
+  const opacity = parentTotal ? (0.3 + (value / parentTotal) * 0.7) : 0.5;
   const shouldShowText = width > 60 && height > 30;
   const shouldShowOnlyValue = width > 40 && height > 25;
 
@@ -77,29 +76,34 @@ const CustomizedContent = ({ x, y, width, height, index, name, value, depth, tot
   );
 };
 
-const StatsCards = ({ data }) => {
+const StatsCards = ({ data = [] }) => {
+  // Equipment data processing
   const equipmentData = useMemo(() => {
+    if (!data.length) return { children: [], totalCount: 0 };
+
     const counts = data.reduce((acc, item) => {
-      acc[item.Equipments] = (acc[item.Equipments] || 0) + 1;
+      if (item.Equipments) {
+        acc[item.Equipments] = (acc[item.Equipments] || 0) + 1;
+      }
       return acc;
     }, {});
 
     const totalCount = Object.values(counts).reduce((sum, count) => sum + count, 0);
 
-    return {
-      name: 'Equipment',
-      children: Object.entries(counts)
-        .map(([name, value]) => ({
-          name: name.length > 15 ? `${name.substring(0, 15)}...` : name,
-          fullName: name,
-          value,
-          totalCount,
-          size: value
-        }))
-        .sort((a, b) => b.value - a.value)
-    };
+    const children = Object.entries(counts)
+      .map(([name, value]) => ({
+        name: name.length > 15 ? `${name.substring(0, 15)}...` : name,
+        fullName: name,
+        value,
+        parentTotal: totalCount,
+        size: value
+      }))
+      .sort((a, b) => b.value - a.value);
+
+    return { children, totalCount };
   }, [data]);
 
+  // Status metrics calculation
   const statusMetrics = useMemo(() => {
     const total = data.length;
     const closed = data.filter(item => item['Status (Vessel)'] === 'CLOSED').length;
@@ -130,17 +134,27 @@ const StatsCards = ({ data }) => {
     };
   }, [data]);
 
+  // Legend rendering
   const renderLegend = () => {
+    if (!equipmentData.children.length) return null;
+
     const legendData = equipmentData.children.slice(0, 3);
     return (
       <div className="mt-4 flex flex-wrap gap-3">
         {legendData.map((item, index) => (
           <div key={index} className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-[#3BADE5]" style={{ opacity: 0.3 + ((item.value / item.totalCount) * 0.7) }} />
+            <div 
+              className="w-2 h-2 rounded-full bg-[#3BADE5]" 
+              style={{ opacity: 0.3 + ((item.value / item.parentTotal) * 0.7) }} 
+            />
             <span className="text-[10px] text-white/60">{item.fullName}</span>
           </div>
         ))}
-        <div className="text-[10px] text-white/40">and {equipmentData.children.length - 3} more...</div>
+        {equipmentData.children.length > 3 && (
+          <div className="text-[10px] text-white/40">
+            and {equipmentData.children.length - 3} more...
+          </div>
+        )}
       </div>
     );
   };
@@ -155,22 +169,28 @@ const StatsCards = ({ data }) => {
               Equipment Distribution
             </h3>
             <div className="text-[10px] text-white/40">
-              Total: {equipmentData.children[0].totalCount}
+              Total: {equipmentData.totalCount}
             </div>
           </div>
           <div className="h-[280px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <Treemap
-                data={equipmentData.children}
-                dataKey="size"
-                aspectRatio={1.5}
-                stroke="#0B1623"
-                content={<CustomizedContent />}
-                animationDuration={500}
-              >
-                <Tooltip content={<CustomTooltip />} />
-              </Treemap>
-            </ResponsiveContainer>
+            {equipmentData.children.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <Treemap
+                  data={equipmentData.children}
+                  dataKey="size"
+                  aspectRatio={1.5}
+                  stroke="#0B1623"
+                  content={<CustomizedContent />}
+                  animationDuration={500}
+                >
+                  <Tooltip content={<CustomTooltip />} />
+                </Treemap>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-white/40 text-sm">
+                No equipment data available
+              </div>
+            )}
           </div>
           {renderLegend()}
         </CardContent>
