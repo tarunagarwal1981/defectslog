@@ -1,18 +1,27 @@
 import React, { useMemo } from 'react';
 import { Card, CardContent } from './ui/card';
-import { BarChart, Bar, Cell, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 
-const CustomTooltip = ({ active, payload, label }) => {
+const CustomTooltip = ({ active, payload }) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-[#132337] px-2.5 py-1.5 rounded-[4px] border border-[#3BADE5]/20 shadow-lg">
-        <p className="text-[10px] text-[#f4f4f4]">{`${payload[0].payload.fullName}: ${payload[0].value}`}</p>
+        <p className="text-[10px] text-[#f4f4f4]">
+          {`${payload[0].name}: ${payload[0].value}`}
+        </p>
       </div>
     );
   }
   return null;
 };
+
+const COLORS = [
+  '#3BADE5', '#5C6BC0', '#7E57C2', '#AB47BC',
+  '#EC407A', '#EF5350', '#FFA726', '#FFEE58',
+  '#66BB6A', '#26A69A', '#26C6DA', '#29B6F6',
+  '#5C6BC0', '#7986CB', '#9575CD', '#BA68C8'
+];
 
 const StatsCards = ({ data }) => {
   // Equipment data processing
@@ -24,9 +33,8 @@ const StatsCards = ({ data }) => {
 
     return Object.entries(counts)
       .map(([name, value]) => ({
-        name: name.length > 20 ? name.substring(0, 20) + '...' : name,
-        value,
-        fullName: name // Store full name for tooltip
+        name,
+        value
       }))
       .sort((a, b) => b.value - a.value);
   }, [data]);
@@ -45,7 +53,7 @@ const StatsCards = ({ data }) => {
       new Date(item['Date Reported']) < lastMonth &&
       new Date(item['Date Reported']) > new Date(lastMonth.setMonth(lastMonth.getMonth() - 1))
     );
-    const previousTotal = previousMonth.length || 1; // Avoid division by zero
+    const previousTotal = previousMonth.length || 1;
     const previousClosed = previousMonth.filter(item => item['Status (Vessel)'] === 'CLOSED').length;
     const previousRate = (previousClosed / previousTotal) * 100;
     const currentRate = (closed / (total || 1)) * 100;
@@ -63,65 +71,81 @@ const StatsCards = ({ data }) => {
     };
   }, [data]);
 
+  // Split equipment data into two columns for better visualization
+  const { topEquipment, otherEquipment } = useMemo(() => {
+    const splitIndex = Math.ceil(equipmentData.length / 2);
+    return {
+      topEquipment: equipmentData.slice(0, splitIndex),
+      otherEquipment: equipmentData.slice(splitIndex)
+    };
+  }, [equipmentData]);
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
       {/* Equipment Distribution Card */}
       <Card className="bg-[#132337]/30 backdrop-blur-sm border border-white/10">
         <CardContent className="p-6">
-          <h3 className="text-sm font-medium text-[#f4f4f4]/90 mt-2 mb-6 ml-1">
+          <h3 className="text-sm font-medium text-[#f4f4f4]/90 mb-6">
             Equipment Distribution
           </h3>
-          <div className="h-[220px] w-full flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="95%">
-              <BarChart
-                data={equipmentData}
-                layout="vertical"
-                margin={{ top: 5, right: 30, bottom: 5, left: 100 }}
-                barGap={0}
-                barCategoryGap={4}
-              >
-                <XAxis
-                  type="number"
-                  tick={{ fill: '#f4f4f4', fontSize: 9 }}
-                  axisLine={{ stroke: '#ffffff20' }}
-                  tickLine={{ stroke: '#ffffff20' }}
-                  tickCount={5}
-                />
-                <YAxis
-                  type="category"
-                  dataKey="name"
-                  tick={{
-                    fill: '#f4f4f4',
-                    fontSize: 9,
-                    width: 90,
-                    textAlign: 'right'
-                  }}
-                  width={100}
-                  axisLine={false}
-                  tickLine={false}
-                  interval={0}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              {topEquipment.map((item, index) => (
+                <div key={item.name} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div 
+                      className="w-2 h-2 rounded-full" 
+                      style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                    />
+                    <span className="text-[10px] text-white/90 truncate max-w-[120px]" title={item.name}>
+                      {item.name}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-white/90 font-medium">
+                    {item.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="space-y-2">
+              {otherEquipment.map((item, index) => (
+                <div key={item.name} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div 
+                      className="w-2 h-2 rounded-full" 
+                      style={{ backgroundColor: COLORS[(index + topEquipment.length) % COLORS.length] }}
+                    />
+                    <span className="text-[10px] text-white/90 truncate max-w-[120px]" title={item.name}>
+                      {item.name}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-white/90 font-medium">
+                    {item.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="mt-6 h-[120px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={equipmentData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={30}
+                  outerRadius={50}
                   dataKey="value"
-                  radius={[0, 4, 4, 0]}
-                  barSize={8}
                 >
                   {equipmentData.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill="url(#equipmentGradient)"
-                      className="hover:brightness-110 transition-all cursor-pointer"
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={COLORS[index % COLORS.length]}
                     />
                   ))}
-                </Bar>
-                <defs>
-                  <linearGradient id="equipmentGradient" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor="#3BADE5" stopOpacity={0.8} />
-                    <stop offset="100%" stopColor="#3BADE5" stopOpacity={1} />
-                  </linearGradient>
-                </defs>
-              </BarChart>
+                </Pie>
+                <Tooltip content={<CustomTooltip />} />
+              </PieChart>
             </ResponsiveContainer>
           </div>
         </CardContent>
@@ -130,7 +154,7 @@ const StatsCards = ({ data }) => {
       {/* Status Overview Card */}
       <Card className="bg-[#132337]/30 backdrop-blur-sm border border-white/10">
         <CardContent className="p-6">
-          <h3 className="text-sm font-medium text-[#f4f4f4]/90 mt-2 mb-6 ml-1">
+          <h3 className="text-sm font-medium text-[#f4f4f4]/90 mb-6">
             Status Overview
           </h3>
 
