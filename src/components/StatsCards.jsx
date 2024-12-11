@@ -1,20 +1,7 @@
 import React, { useMemo } from 'react';
 import { Card, CardContent } from './ui/card';
-import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
+import { ResponsiveContainer, Treemap, Tooltip } from 'recharts';
 import { TrendingUp, TrendingDown } from 'lucide-react';
-
-const CustomTooltip = ({ active, payload }) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-[#132337] px-2.5 py-1.5 rounded-[4px] border border-[#3BADE5]/20 shadow-lg">
-        <p className="text-[10px] text-[#f4f4f4]">
-          {`${payload[0].name}: ${payload[0].value}`}
-        </p>
-      </div>
-    );
-  }
-  return null;
-};
 
 const COLORS = [
   '#3BADE5', '#5C6BC0', '#7E57C2', '#AB47BC',
@@ -22,6 +9,59 @@ const COLORS = [
   '#66BB6A', '#26A69A', '#26C6DA', '#29B6F6',
   '#5C6BC0', '#7986CB', '#9575CD', '#BA68C8'
 ];
+
+const CustomTooltip = ({ active, payload }) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="bg-[#132337] px-3 py-2 rounded-md border border-[#3BADE5]/20 shadow-lg">
+        <p className="text-xs text-[#f4f4f4] font-medium">{data.name}</p>
+        <p className="text-[10px] text-[#f4f4f4]/80 mt-1">Count: {data.value}</p>
+      </div>
+    );
+  }
+  return null;
+};
+
+const CustomizedContent = ({ root, depth, x, y, width, height, index, name, value }) => {
+  return (
+    <g>
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        fill={COLORS[index % COLORS.length]}
+        opacity={0.8}
+        className="hover:opacity-100 transition-opacity duration-200"
+      />
+      {width > 50 && height > 30 && (
+        <>
+          <text
+            x={x + width / 2}
+            y={y + height / 2 - 5}
+            textAnchor="middle"
+            fill="#fff"
+            fontSize={10}
+            className="font-medium"
+          >
+            {name}
+          </text>
+          <text
+            x={x + width / 2}
+            y={y + height / 2 + 10}
+            textAnchor="middle"
+            fill="#fff"
+            fontSize={9}
+            opacity={0.8}
+          >
+            {value}
+          </text>
+        </>
+      )}
+    </g>
+  );
+};
 
 const StatsCards = ({ data }) => {
   // Equipment data processing
@@ -31,12 +71,16 @@ const StatsCards = ({ data }) => {
       return acc;
     }, {});
 
-    return Object.entries(counts)
-      .map(([name, value]) => ({
-        name,
-        value
-      }))
-      .sort((a, b) => b.value - a.value);
+    return {
+      name: 'Equipment',
+      children: Object.entries(counts)
+        .map(([name, value]) => ({
+          name,
+          value,
+          size: value
+        }))
+        .sort((a, b) => b.value - a.value)
+    };
   }, [data]);
 
   // Status metrics calculation
@@ -71,15 +115,6 @@ const StatsCards = ({ data }) => {
     };
   }, [data]);
 
-  // Split equipment data into two columns for better visualization
-  const { topEquipment, otherEquipment } = useMemo(() => {
-    const splitIndex = Math.ceil(equipmentData.length / 2);
-    return {
-      topEquipment: equipmentData.slice(0, splitIndex),
-      otherEquipment: equipmentData.slice(splitIndex)
-    };
-  }, [equipmentData]);
-
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
       {/* Equipment Distribution Card */}
@@ -88,64 +123,17 @@ const StatsCards = ({ data }) => {
           <h3 className="text-sm font-medium text-[#f4f4f4]/90 mb-6">
             Equipment Distribution
           </h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              {topEquipment.map((item, index) => (
-                <div key={item.name} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div 
-                      className="w-2 h-2 rounded-full" 
-                      style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                    />
-                    <span className="text-[10px] text-white/90 truncate max-w-[120px]" title={item.name}>
-                      {item.name}
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-white/90 font-medium">
-                    {item.value}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <div className="space-y-2">
-              {otherEquipment.map((item, index) => (
-                <div key={item.name} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div 
-                      className="w-2 h-2 rounded-full" 
-                      style={{ backgroundColor: COLORS[(index + topEquipment.length) % COLORS.length] }}
-                    />
-                    <span className="text-[10px] text-white/90 truncate max-w-[120px]" title={item.name}>
-                      {item.name}
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-white/90 font-medium">
-                    {item.value}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="mt-6 h-[120px]">
+          <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={equipmentData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={30}
-                  outerRadius={50}
-                  dataKey="value"
-                >
-                  {equipmentData.map((entry, index) => (
-                    <Cell 
-                      key={`cell-${index}`} 
-                      fill={COLORS[index % COLORS.length]}
-                    />
-                  ))}
-                </Pie>
+              <Treemap
+                data={equipmentData.children}
+                dataKey="size"
+                aspectRatio={1}
+                stroke="#0B1623"
+                content={<CustomizedContent />}
+              >
                 <Tooltip content={<CustomTooltip />} />
-              </PieChart>
+              </Treemap>
             </ResponsiveContainer>
           </div>
         </CardContent>
