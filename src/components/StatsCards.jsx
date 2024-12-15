@@ -1,31 +1,56 @@
 import React, { useMemo } from 'react';
 import { Card, CardContent } from './ui/card';
-import { BarChart, Bar, Cell, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 
-const CustomTooltip = ({ active, payload, label }) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-[#132337] px-2.5 py-1.5 rounded-[4px] border border-[#3BADE5]/20 shadow-lg">
-        <p className="text-[10px] text-[#f4f4f4]">{`${payload[0].payload.name}: ${payload[0].value}`}</p>
+const EquipmentBar = ({ name, value, maxValue, isFirst }) => {
+  const percentage = (value / maxValue) * 100;
+  
+  return (
+    <div className={`relative ${isFirst ? '' : 'mt-2'}`}>
+      <div className="flex justify-between items-center mb-1">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-white/90">{name}</span>
+          <span className="text-[10px] text-white/60">({value})</span>
+        </div>
+        <span className="text-[10px] text-white/60">
+          {percentage.toFixed(1)}%
+        </span>
       </div>
-    );
-  }
-  return null;
+      <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-500 relative overflow-hidden"
+          style={{ width: `${percentage}%` }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-[#3BADE5]/50 to-[#3BADE5] animate-shimmer" />
+        </div>
+      </div>
+    </div>
+  );
 };
 
-const StatsCards = ({ data }) => {
+const StatsCards = ({ data = [] }) => {
   // Equipment data processing
   const equipmentData = useMemo(() => {
+    if (!data.length) return { items: [], totalCount: 0 };
+
     const counts = data.reduce((acc, item) => {
-      acc[item.Equipments] = (acc[item.Equipments] || 0) + 1;
+      if (item.Equipments) {
+        acc[item.Equipments] = (acc[item.Equipments] || 0) + 1;
+      }
       return acc;
     }, {});
 
-    return Object.entries(counts)
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 8);
+    const totalCount = Object.values(counts).reduce((sum, count) => sum + count, 0);
+
+    const items = Object.entries(counts)
+      .map(([name, value]) => ({
+        name,
+        value,
+        percentage: (value / totalCount) * 100
+      }))
+      .sort((a, b) => b.value - a.value);
+
+    return { items, totalCount };
   }, [data]);
 
   // Status metrics calculation
@@ -35,14 +60,13 @@ const StatsCards = ({ data }) => {
     const open = data.filter(item => item['Status (Vessel)'] === 'OPEN').length;
     const inProgress = data.filter(item => item['Status (Vessel)'] === 'IN PROGRESS').length;
 
-    // Calculate month-over-month change
     const lastMonth = new Date();
     lastMonth.setMonth(lastMonth.getMonth() - 1);
     const previousMonth = data.filter(item =>
       new Date(item['Date Reported']) < lastMonth &&
       new Date(item['Date Reported']) > new Date(lastMonth.setMonth(lastMonth.getMonth() - 1))
     );
-    const previousTotal = previousMonth.length || 1; // Avoid division by zero
+    const previousTotal = previousMonth.length || 1;
     const previousClosed = previousMonth.filter(item => item['Status (Vessel)'] === 'CLOSED').length;
     const previousRate = (previousClosed / previousTotal) * 100;
     const currentRate = (closed / (total || 1)) * 100;
@@ -65,52 +89,32 @@ const StatsCards = ({ data }) => {
       {/* Equipment Distribution Card */}
       <Card className="bg-[#132337]/30 backdrop-blur-sm border border-white/10">
         <CardContent className="p-6">
-          <h3 className="text-sm font-medium text-[#f4f4f4]/90 mt-2 mb-6 ml-1">
-            Equipment Distribution
-          </h3>
-          <div className="h-[220px] w-full flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="95%">
-              <BarChart
-                data={equipmentData}
-                layout="vertical"
-                margin={{ top: 10, right: 30, bottom: 10, left: 60 }}
-              >
-                <XAxis
-                  type="number"
-                  tick={{ fill: '#f4f4f4', fontSize: 10 }}
-                  axisLine={{ stroke: '#ffffff20' }}
-                  tickLine={{ stroke: '#ffffff20' }}
-                />
-                <YAxis
-                  type="category"
-                  dataKey="name"
-                  tick={{ fill: '#f4f4f4', fontSize: 10 }}
-                  width={100}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar
-                  dataKey="value"
-                  radius={[0, 4, 4, 0]}
-                  barSize={12}
-                >
-                  {equipmentData.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill="url(#equipmentGradient)"
-                      className="hover:brightness-110 transition-all cursor-pointer"
-                    />
-                  ))}
-                </Bar>
-                <defs>
-                  <linearGradient id="equipmentGradient" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor="#3BADE5" stopOpacity={0.8} />
-                    <stop offset="100%" stopColor="#3BADE5" stopOpacity={1} />
-                  </linearGradient>
-                </defs>
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-sm font-medium text-[#f4f4f4]/90">
+              Equipment Distribution
+            </h3>
+            <div className="text-[10px] text-white/40">
+              Total: {equipmentData.totalCount}
+            </div>
+          </div>
+          <div className="h-[280px] overflow-y-auto custom-scrollbar pr-2">
+            {equipmentData.items.length > 0 ? (
+              <div className="space-y-1">
+                {equipmentData.items.map((item, index) => (
+                  <EquipmentBar
+                    key={item.name}
+                    name={item.name}
+                    value={item.value}
+                    maxValue={equipmentData.totalCount}
+                    isFirst={index === 0}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="h-full flex items-center justify-center text-white/40 text-sm">
+                No equipment data available
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -118,7 +122,7 @@ const StatsCards = ({ data }) => {
       {/* Status Overview Card */}
       <Card className="bg-[#132337]/30 backdrop-blur-sm border border-white/10">
         <CardContent className="p-6">
-          <h3 className="text-sm font-medium text-[#f4f4f4]/90 mt-2 mb-6 ml-1">
+          <h3 className="text-sm font-medium text-[#f4f4f4]/90 mb-6">
             Status Overview
           </h3>
 
@@ -151,57 +155,26 @@ const StatsCards = ({ data }) => {
           </div>
 
           <div className="space-y-4">
-            {/* Closed Status */}
-            <div>
-              <div className="flex justify-between mb-2">
-                <span className="text-xs text-green-400">Closed</span>
-                <span className="text-xs text-green-400">
-                  {statusMetrics.closed} ({statusMetrics.closureRate.toFixed(1)}%)
-                </span>
-              </div>
-              <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-green-500/50 to-green-500 rounded-full transition-all duration-500"
-                  style={{ width: `${statusMetrics.closureRate}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Open Status */}
-            <div>
-              <div className="flex justify-between mb-2">
-                <span className="text-xs text-red-400">Open</span>
-                <span className="text-xs text-red-400">
-                  {statusMetrics.open} ({statusMetrics.openRate.toFixed(1)}%)
-                </span>
-              </div>
-              <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-red-500/50 to-red-500 rounded-full transition-all duration-500"
-                  style={{ width: `${statusMetrics.openRate}%` }}
-                />
-              </div>
-            </div>
-
-            {/* In Progress Status */}
-            <div>
-              <div className="flex justify-between mb-2">
-                <span className="text-xs text-yellow-400">In Progress</span>
-                <span className="text-xs text-yellow-400">
-                  {statusMetrics.inProgress} ({statusMetrics.inProgressRate.toFixed(1)}%)
-                </span>
-              </div>
-              <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                {statusMetrics.inProgressRate > 0 ? (
+            {[
+              { label: 'Closed', value: statusMetrics.closed, rate: statusMetrics.closureRate, color: 'from-green-500/30 to-green-500/60' },
+              { label: 'Open', value: statusMetrics.open, rate: statusMetrics.openRate, color: 'from-red-500/30 to-red-500/60' },
+              { label: 'In Progress', value: statusMetrics.inProgress, rate: statusMetrics.inProgressRate, color: 'from-yellow-500/30 to-yellow-500/60' }
+            ].map(status => (
+              <div key={status.label}>
+                <div className="flex justify-between mb-2">
+                  <span className="text-xs text-white/60">{status.label}</span>
+                  <span className="text-xs text-white/60">
+                    {status.value} ({status.rate.toFixed(1)}%)
+                  </span>
+                </div>
+                <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-yellow-500/50 to-yellow-500 rounded-full transition-all duration-500"
-                    style={{ width: `${statusMetrics.inProgressRate}%` }}
+                    className={`h-full bg-gradient-to-r ${status.color} rounded-full transition-all duration-500`}
+                    style={{ width: `${status.rate}%` }}
                   />
-                ) : (
-                  <div className="h-full w-full border border-dashed border-white/20 rounded-full" />
-                )}
+                </div>
               </div>
-            </div>
+            ))}
           </div>
         </CardContent>
       </Card>
