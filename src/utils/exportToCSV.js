@@ -1,4 +1,4 @@
-export const exportToCSV = (data, vesselNames, filters = {}) => {
+export const exportToCSV = (data, filters = {}) => {
   try {
     // Apply filters
     let filteredData = [...data];
@@ -27,7 +27,7 @@ export const exportToCSV = (data, vesselNames, filters = {}) => {
     // Format data for CSV
     const csvData = filteredData.map((item, index) => ({
       'No.': index + 1,
-      'Vessel Name': vesselNames[item.Vessel] ||'',
+      'Vessel Name': item.Vessel ||'',
       'Status': item['Status (Vessel)'],
       'Criticality': item.Criticality || '',
       'Equipment': item.Equipments || '',
