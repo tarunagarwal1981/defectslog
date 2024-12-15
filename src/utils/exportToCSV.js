@@ -27,7 +27,7 @@ export const exportToCSV = (data, filters = {}) => {
     // Format data for CSV
     const csvData = filteredData.map((item, index) => ({
       'No.': index + 1,
-      'Vessel Name': item.Vessel ||'',
+      'Vessel Name': vesselNames[item.vessel_id] ||'',
       'Status': item['Status (Vessel)'],
       'Criticality': item.Criticality || '',
       'Equipment': item.Equipments || '',
