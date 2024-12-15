@@ -1,4 +1,4 @@
-export const exportToCSV = (data, filters = {}) => {
+export const exportToCSV = (data, vesselNames, filters = {}) => {
   try {
     // Apply filters
     let filteredData = [...data];
