@@ -31,7 +31,7 @@ export const exportToCSV = (data, vesselNames, filters = {}) => {
       
       return {
         'No.': index + 1,
-        'Vessel Name': vesselName, // Now correctly gets the vessel name from the mapping
+        'Vessel Name': item.vessel_name || vesselName || '-', // Now correctly gets the vessel name from the mapping
         'Status': item['Status (Vessel)'],
         'Criticality': item.Criticality || '',
         'Equipment': item.Equipments || '',
