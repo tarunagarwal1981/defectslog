@@ -27,11 +27,11 @@ export const exportToCSV = (data, vesselNames, filters = {}) => {
     // Format data for CSV
     const csvData = filteredData.map((item, index) => {
       // Use the vesselNames mapping with vessel_id to get the vessel name
-      const vesselName = vesselNames[item.vessel_id] || '';
+      //const vesselName = vesselNames[item.vessel_id] || '';
       
       return {
         'No.': index + 1,
-        'Vessel Name': item.vessel_name || vesselName || '-', // Now correctly gets the vessel name from the mapping
+        'Vessel Name': vesselNames[item.vessel_id] || '-', // Now correctly gets the vessel name from the mapping
         'Status': item['Status (Vessel)'],
         'Criticality': item.Criticality || '',
         'Equipment': item.Equipments || '',
