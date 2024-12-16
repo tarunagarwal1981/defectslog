@@ -1,4 +1,4 @@
-export const exportToCSV = (data, filters = {}) => {
+export const exportToCSV = (data, vesselNames, filters = {}) => {
   try {
     // Apply filters
     let filteredData = [...data];
@@ -25,17 +25,23 @@ export const exportToCSV = (data, filters = {}) => {
     }
 
     // Format data for CSV
-    const csvData = filteredData.map((item, index) => ({
-      'No.': index + 1,
-      'Status': item['Status (Vessel)'],
-      'Criticality': item.Criticality || '',
-      'Equipment': item.Equipments || '',
-      'Description': item.Description || '',
-      'Action Planned': item['Action Planned'] || '',
-      'Date Reported': item['Date Reported'] ? new Date(item['Date Reported']).toLocaleDateString() : '',
-      'Date Completed': item['Date Completed'] ? new Date(item['Date Completed']).toLocaleDateString() : '',
-      'Comments': item.Comments || ''
-    }));
+    const csvData = filteredData.map((item, index) => {
+      // Use the vesselNames mapping with vessel_id to get the vessel name
+      //const vesselName = vesselNames[item.vessel_id] || '';
+      
+      return {
+        'No.': index + 1,
+        'Vessel Name': item.vessel_name || vesselNames[item.vessel_id] || '-', // Now correctly gets the vessel name from the mapping
+        'Status': item['Status (Vessel)'],
+        'Criticality': item.Criticality || '',
+        'Equipment': item.Equipments || '',
+        'Description': item.Description || '',
+        'Action Planned': item['Action Planned'] || '',
+        'Date Reported': item['Date Reported'] ? new Date(item['Date Reported']).toLocaleDateString() : '',
+        'Date Completed': item['Date Completed'] ? new Date(item['Date Completed']).toLocaleDateString() : '',
+        'Comments': item.Comments || ''
+      };
+    });
 
     // Convert to CSV string
     const headers = Object.keys(csvData[0]);
