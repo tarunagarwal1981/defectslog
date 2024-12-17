@@ -82,7 +82,7 @@ function App() {
 
       const { data: defects, error: defectsError } = await supabase
         .from('defects register')
-        .select('*')
+        .select('*, files')
         .eq('is_deleted', false)
         .in('vessel_id', vesselIds)
         .order('Date Reported', { ascending: false });
@@ -169,11 +169,12 @@ function App() {
       'Status (Vessel)': 'OPEN',
       'Date Reported': new Date().toISOString().split('T')[0],
       'Date Completed': '',
+      files: []
     });
     setIsDefectDialogOpen(true);
   };
 
-  const handleSaveDefect = async (updatedDefect) => {
+  const handleSaveDefect = async (updatedDefect, newFiles) => {
     try {
       if (!assignedVessels.includes(updatedDefect.vessel_id)) {
         throw new Error("Not authorized for this vessel");
@@ -181,6 +182,34 @@ function App() {
 
       const isNewDefect = updatedDefect.id?.startsWith('temp-');
       
+      // Upload files if any
+      let uploadedFiles = [];
+      if (newFiles && newFiles.length > 0) {
+        const filePromises = newFiles.map(async (file) => {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+          const filePath = `${updatedDefect.vessel_id}/${isNewDefect ? 'new' : updatedDefect.id}/${fileName}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('defect-files')
+            .upload(filePath, file);
+
+          if (uploadError) throw uploadError;
+
+          const { data: { publicUrl } } = supabase.storage
+            .from('defect-files')
+            .getPublicUrl(filePath);
+
+          return {
+            name: file.name,
+            url: publicUrl,
+            path: filePath
+          };
+        });
+
+        uploadedFiles = await Promise.all(filePromises);
+      }
+
       const defectData = {
         vessel_id: updatedDefect.vessel_id,
         vessel_name: vesselNames[updatedDefect.vessel_id],
@@ -191,7 +220,8 @@ function App() {
         Criticality: updatedDefect.Criticality,
         "Date Reported": updatedDefect['Date Reported'],
         "Date Completed": updatedDefect['Date Completed'] || null,
-        Comments: updatedDefect.Comments || ''
+        Comments: updatedDefect.Comments || '',
+        files: [...(updatedDefect.files || []), ...uploadedFiles]
       };
 
       let result;
