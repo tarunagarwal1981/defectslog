@@ -37,7 +37,6 @@ const CRITICALITY_COLORS = {
   }
 };
 
-// Update the FilePreviewDialog component's styling:
 const FilePreviewDialog = ({ file, isOpen, onClose }) => {
   const isImage = /\.(jpg|jpeg|png)$/i.test(file?.name || '');
   const isPDF = /\.pdf$/i.test(file?.name || '');
@@ -46,9 +45,11 @@ const FilePreviewDialog = ({ file, isOpen, onClose }) => {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="bg-[#0B1623] p-4 max-w-[90vw] max-h-[90vh] w-fit overflow-hidden">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-sm font-medium text-white truncate max-w-[60vh]">{file?.name}</h3>
+          <h3 className="text-sm font-medium text-white truncate max-w-[60vh]">
+            {file?.name}
+          </h3>
           <div className="flex gap-2 shrink-0">
-            
+            <a
               href={file?.url}
               download
               target="_blank"
@@ -85,7 +86,7 @@ const FilePreviewDialog = ({ file, isOpen, onClose }) => {
             <div className="p-4 text-center text-white/60">
               <FileText className="h-8 w-8 mx-auto mb-2" />
               <p>Preview not available</p>
-              
+              <a
                 href={file?.url}
                 target="_blank"
                 rel="noopener noreferrer"
