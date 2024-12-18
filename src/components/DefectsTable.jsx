@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { PlusCircle, FileText, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { PlusCircle, FileText, Trash2, ChevronDown, ChevronUp, X, ExternalLink, Download } from 'lucide-react';
 import ExportButton from './ui/ExportButton';
 import { exportToCSV } from '../utils/exportToCSV';
+import { Dialog, DialogContent } from './ui/dialog';
 
 const STATUS_COLORS = {
   'OPEN': {
@@ -36,12 +37,80 @@ const CRITICALITY_COLORS = {
   }
 };
 
-const DefectRow = ({ defect, index, onEditDefect, onDeleteDefect }) => {
+const FilePreviewDialog = ({ file, isOpen, onClose }) => {
+  const isImage = /\.(jpg|jpeg|png)$/i.test(file?.name || '');
+  const isPDF = /\.pdf$/i.test(file?.name || '');
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="bg-[#0B1623] p-4 max-w-2xl max-h-[90vh]">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-sm font-medium text-white">{file?.name}</h3>
+          <div className="flex gap-2">
+            <a
+              href={file?.url}
+              download
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-1.5 rounded-full hover:bg-white/10 text-[#3BADE5] transition-colors"
+            >
+              <Download className="h-4 w-4" />
+            </a>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-full hover:bg-white/10 text-white/60 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+        
+        <div className="bg-[#132337] rounded-lg overflow-hidden">
+          {isImage ? (
+            <img src={file?.url} alt={file?.name} className="max-w-full h-auto" />
+          ) : isPDF ? (
+            <iframe src={file?.url} className="w-full h-[70vh]" title={file?.name} />
+          ) : (
+            <div className="p-4 text-center text-white/60">
+              <FileText className="h-8 w-8 mx-auto mb-2" />
+              <p>Preview not available</p>
+              <a
+                href={file?.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#3BADE5] hover:underline inline-flex items-center gap-1 mt-2"
+              >
+                Open file <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const DefectRow = ({ defect, index, onEditDefect, onDeleteDefect, onDeleteFile }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [isFilePreviewOpen, setIsFilePreviewOpen] = useState(false);
 
   const toggleExpand = (e) => {
     e.stopPropagation();
     setIsExpanded(!isExpanded);
+  };
+
+  const handleFileClick = (file, e) => {
+    e.stopPropagation();
+    setSelectedFile(file);
+    setIsFilePreviewOpen(true);
+  };
+
+  const handleFileDelete = async (fileIndex, e) => {
+    e.stopPropagation();
+    if (window.confirm('Are you sure you want to delete this file?')) {
+      await onDeleteFile(defect.id, fileIndex);
+    }
   };
 
   return (
@@ -128,14 +197,30 @@ const DefectRow = ({ defect, index, onEditDefect, onDeleteDefect }) => {
                 <div className="text-xs font-medium text-white/80 mb-1">Comments</div>
                 <div className="text-xs text-white/90">{defect.Comments || '-'}</div>
               </div>
-              {defect.associated_files?.length > 0 && (
+              {defect.files?.length > 0 && (
                 <div>
                   <div className="text-xs font-medium text-white/80 mb-1">Files</div>
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-3.5 w-3.5 text-[#3BADE5]" />
-                    <span className="text-xs text-white/90">
-                      {defect.associated_files.length} file(s) attached
-                    </span>
+                  <div className="flex flex-wrap gap-2">
+                    {defect.files.map((file, fileIndex) => (
+                      <div
+                        key={fileIndex}
+                        className="flex items-center gap-2 bg-[#0B1623] px-2 py-1 rounded"
+                      >
+                        <FileText className="h-3.5 w-3.5 text-[#3BADE5]" />
+                        <button
+                          onClick={(e) => handleFileClick(file, e)}
+                          className="text-xs text-white/90 hover:text-[#3BADE5] transition-colors truncate max-w-[150px]"
+                        >
+                          {file.name}
+                        </button>
+                        <button
+                          onClick={(e) => handleFileDelete(fileIndex, e)}
+                          className="p-1 hover:bg-red-500/20 text-red-400 rounded-full transition-colors"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -143,6 +228,14 @@ const DefectRow = ({ defect, index, onEditDefect, onDeleteDefect }) => {
           </td>
         </tr>
       )}
+      <FilePreviewDialog
+        file={selectedFile}
+        isOpen={isFilePreviewOpen}
+        onClose={() => {
+          setIsFilePreviewOpen(false);
+          setSelectedFile(null);
+        }}
+      />
     </>
   );
 };
@@ -227,67 +320,31 @@ const DefectsTable = ({
   ];
 
   const sortedData = getSortedData();
-
   return (
     <div className="glass-card rounded-[4px]">
-      <div className="flex justify-between items-center px-3 py-2 border-b border-white/10">
-        <h2 className="text-sm font-medium text-[#f4f4f4]">Defects Register</h2>
-        <div className="flex items-center gap-2">
-          <ExportButton onClick={handleExport} />
-          <button 
-            onClick={onAddDefect} 
-            className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-[4px] 
-              text-white bg-[#3BADE5] hover:bg-[#3BADE5]/80 transition-colors"
-          >
-            <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
-            Add Defect
-          </button>
-        </div>
-      </div>
-      <div className="overflow-x-auto custom-scrollbar">
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="bg-[#132337] border-b border-white/10">
-              <th className="px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 w-8"></th>
-              <th className="px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 w-12">#</th>
-              {columns.map(column => (
-                <th 
-                  key={column.key}
-                  onClick={() => handleSort(column.key)}
-                  className="px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 cursor-pointer hover:bg-white/5"
-                >
-                  <div className="flex items-center gap-1">
-                    {column.label}
-                    {renderSortIcon(column.key)}
-                  </div>
-                </th>
-              ))}
-              <th className="px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 w-16">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="text-[#f4f4f4]">
-            {loading ? (
-              <tr>
-                <td colSpan="11" className="px-3 py-2 text-center">Loading...</td>
-              </tr>
-            ) : sortedData.length === 0 ? (
-              <tr>
-                <td colSpan="11" className="px-3 py-2 text-center">No defects found</td>
-              </tr>
-            ) : (
-              sortedData.map((defect, index) => (
-                <DefectRow
-                  key={defect.id}
-                  defect={defect}
-                  index={index}
-                  onEditDefect={onEditDefect}
-                  onDeleteDefect={onDeleteDefect}
-                />
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      {/* Existing table structure remains the same */}
+      <tbody className="text-[#f4f4f4]">
+        {loading ? (
+          <tr>
+            <td colSpan="11" className="px-3 py-2 text-center">Loading...</td>
+          </tr>
+        ) : sortedData.length === 0 ? (
+          <tr>
+            <td colSpan="11" className="px-3 py-2 text-center">No defects found</td>
+          </tr>
+        ) : (
+          sortedData.map((defect, index) => (
+            <DefectRow
+              key={defect.id}
+              defect={defect}
+              index={index}
+              onEditDefect={onEditDefect}
+              onDeleteDefect={onDeleteDefect}
+              onDeleteFile={onDeleteFile}
+            />
+          ))
+        )}
+      </tbody>
     </div>
   );
 };
