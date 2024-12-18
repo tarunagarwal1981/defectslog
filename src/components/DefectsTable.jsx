@@ -245,6 +245,7 @@ const DefectsTable = ({
   onAddDefect, 
   onEditDefect,
   onDeleteDefect,
+  onDeleteFile,
   loading,
   searchTerm = '',
   statusFilter = '',
@@ -269,14 +270,12 @@ const DefectsTable = ({
       const aValue = a[sortConfig.key];
       const bValue = b[sortConfig.key];
 
-      // Handle null/undefined values
       if (!aValue && !bValue) return 0;
       if (!aValue) return 1;
       if (!bValue) return -1;
 
       let comparison = 0;
 
-      // Handle different types of values
       if (sortConfig.key.includes('Date')) {
         comparison = new Date(aValue) - new Date(bValue);
       } else if (typeof aValue === 'string') {
@@ -320,31 +319,69 @@ const DefectsTable = ({
   ];
 
   const sortedData = getSortedData();
+
   return (
     <div className="glass-card rounded-[4px]">
-      {/* Existing table structure remains the same */}
-      <tbody className="text-[#f4f4f4]">
-        {loading ? (
-          <tr>
-            <td colSpan="11" className="px-3 py-2 text-center">Loading...</td>
-          </tr>
-        ) : sortedData.length === 0 ? (
-          <tr>
-            <td colSpan="11" className="px-3 py-2 text-center">No defects found</td>
-          </tr>
-        ) : (
-          sortedData.map((defect, index) => (
-            <DefectRow
-              key={defect.id}
-              defect={defect}
-              index={index}
-              onEditDefect={onEditDefect}
-              onDeleteDefect={onDeleteDefect}
-              onDeleteFile={onDeleteFile}
-            />
-          ))
-        )}
-      </tbody>
+      <div className="flex justify-between items-center px-3 py-2 border-b border-white/10">
+        <h2 className="text-sm font-medium text-[#f4f4f4]">Defects Register</h2>
+        <div className="flex items-center gap-2">
+          <ExportButton onClick={handleExport} />
+          <button 
+            onClick={onAddDefect} 
+            className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-[4px] 
+              text-white bg-[#3BADE5] hover:bg-[#3BADE5]/80 transition-colors"
+          >
+            <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
+            Add Defect
+          </button>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto custom-scrollbar">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="bg-[#132337] border-b border-white/10">
+              <th className="px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 w-8"></th>
+              <th className="px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 w-12">#</th>
+              {columns.map(column => (
+                <th 
+                  key={column.key}
+                  onClick={() => handleSort(column.key)}
+                  className="px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 cursor-pointer hover:bg-white/5"
+                >
+                  <div className="flex items-center gap-1">
+                    {column.label}
+                    {renderSortIcon(column.key)}
+                  </div>
+                </th>
+              ))}
+              <th className="px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 w-16">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="text-[#f4f4f4]">
+            {loading ? (
+              <tr>
+                <td colSpan="11" className="px-3 py-2 text-center">Loading...</td>
+              </tr>
+            ) : sortedData.length === 0 ? (
+              <tr>
+                <td colSpan="11" className="px-3 py-2 text-center">No defects found</td>
+              </tr>
+            ) : (
+              sortedData.map((defect, index) => (
+                <DefectRow
+                  key={defect.id}
+                  defect={defect}
+                  index={index}
+                  onEditDefect={onEditDefect}
+                  onDeleteDefect={onDeleteDefect}
+                  onDeleteFile={onDeleteFile}
+                />
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };
