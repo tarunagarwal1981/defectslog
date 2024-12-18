@@ -8,6 +8,90 @@ import {
 import { Upload, X, FileText, Loader2 } from 'lucide-react';
 import { toast } from './ui/use-toast';
 
+const FileUploadSection = ({ 
+  label, 
+  files, 
+  existingFiles, 
+  onFileChange, 
+  onFileRemove,
+  disabled = false 
+}) => (
+  <div className="grid gap-1.5">
+    <label className="text-xs font-medium text-white/80">
+      {label}
+    </label>
+    <div className="space-y-2">
+      <label 
+        className={`flex items-center gap-2 px-3 py-1.5 rounded-[4px] border 
+          border-[#3BADE5]/20 bg-[#132337] cursor-pointer hover:border-[#3BADE5]/40
+          ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+      >
+        <Upload className="h-4 w-4 text-white" />
+        <span className="text-xs text-white">Upload Files</span>
+        <input
+          type="file"
+          multiple
+          className="hidden"
+          onChange={onFileChange}
+          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+          disabled={disabled}
+        />
+      </label>
+
+      {/* Selected Files */}
+      {files?.length > 0 && (
+        <div className="space-y-1">
+          <p className="text-xs text-white/60">Selected Files:</p>
+          {files.map((file, index) => (
+            <div key={index} className="flex items-center justify-between text-xs text-white bg-[#132337] p-2 rounded">
+              <div className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                <span className="truncate max-w-[200px]">{file.name}</span>
+              </div>
+              <button
+                onClick={() => onFileRemove(index)}
+                className="text-white/60 hover:text-white"
+                aria-label={`Remove ${file.name}`}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Existing Files */}
+      {existingFiles?.length > 0 && (
+        <div className="space-y-1">
+          <p className="text-xs text-white/60">Uploaded Files:</p>
+          {existingFiles.map((file, index) => (
+            <div key={index} className="flex items-center justify-between text-xs text-white bg-[#132337] p-2 rounded">
+              <div className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                <a 
+                  href={file.url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="hover:text-[#3BADE5] truncate max-w-[200px]"
+                >
+                  {file.name}
+                </a>
+              </div>
+              <button
+                onClick={() => onFileRemove(index, true)}
+                className="text-white/60 hover:text-white"
+                aria-label={`Remove ${file.name}`}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+);
+
 const DefectDialog = ({ 
   isOpen, 
   onClose, 
@@ -17,7 +101,8 @@ const DefectDialog = ({
   vessels, 
   isNew 
 }) => {
-  const [files, setFiles] = useState([]);
+  const [beforeFiles, setBeforeFiles] = useState([]);
+  const [afterFiles, setAfterFiles] = useState([]);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
 
@@ -44,7 +129,7 @@ const DefectDialog = ({
     return true;
   };
 
-  const handleFileChange = (e) => {
+  const handleBeforeFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
     const validFiles = selectedFiles.filter(file => {
       const isValidSize = file.size <= 5 * 1024 * 1024; // 5MB limit
@@ -67,16 +152,48 @@ const DefectDialog = ({
       return isValidSize && isValidType;
     });
     
-    setFiles(prev => [...prev, ...validFiles]);
+    setBeforeFiles(prev => [...prev, ...validFiles]);
   };
 
-  const removeFile = (index, fileToRemove) => {
-    if (fileToRemove?.url) {
-      // For already uploaded files
-      onChange('files', (defect.files || []).filter((_, i) => i !== index));
+  const handleAfterFileChange = (e) => {
+    const selectedFiles = Array.from(e.target.files);
+    const validFiles = selectedFiles.filter(file => {
+      const isValidSize = file.size <= 5 * 1024 * 1024;
+      const isValidType = /\.(pdf|doc|docx|jpg|jpeg|png)$/i.test(file.name);
+      
+      if (!isValidSize) {
+        toast({
+          title: "File too large",
+          description: `${file.name} exceeds 5MB limit`,
+          variant: "destructive",
+        });
+      }
+      if (!isValidType) {
+        toast({
+          title: "Invalid file type",
+          description: `${file.name} is not a supported file type`,
+          variant: "destructive",
+        });
+      }
+      return isValidSize && isValidType;
+    });
+    
+    setAfterFiles(prev => [...prev, ...validFiles]);
+  };
+
+  const handleBeforeFileRemove = (index, isExisting = false) => {
+    if (isExisting) {
+      onChange('before_files', (defect.before_files || []).filter((_, i) => i !== index));
     } else {
-      // For newly selected files
-      setFiles(prev => prev.filter((_, i) => i !== index));
+      setBeforeFiles(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const handleAfterFileRemove = (index, isExisting = false) => {
+    if (isExisting) {
+      onChange('after_files', (defect.after_files || []).filter((_, i) => i !== index));
+    } else {
+      setAfterFiles(prev => prev.filter((_, i) => i !== index));
     }
   };
 
@@ -89,8 +206,13 @@ const DefectDialog = ({
         return;
       }
 
-      await onSave(defect, files);
-      setFiles([]);
+      await onSave(defect, {
+        beforeFiles,
+        afterFiles
+      });
+      
+      setBeforeFiles([]);
+      setAfterFiles([]);
       
     } catch (error) {
       console.error('Error in DefectDialog save:', error);
@@ -106,6 +228,7 @@ const DefectDialog = ({
 
   const dialogDescription = isNew ? 'Create a new defect record with the form below.' : 'Edit the defect record details with the form below.';
   const dialogDescriptionId = 'defect-dialog-description';
+  const isCompleted = defect?.['Status (Vessel)'] === 'CLOSED';
 
   return (
     <Dialog 
@@ -283,80 +406,26 @@ const DefectDialog = ({
             </div>
           </div>
           
-          {/* Updated Associated Files section */}
-          <div className="grid gap-1.5">
-            <label htmlFor="files" className="text-xs font-medium text-white/80">
-              Associated Files
-            </label>
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 px-3 py-1.5 rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] cursor-pointer hover:border-[#3BADE5]/40">
-                <Upload className="h-4 w-4 text-white" />
-                <span className="text-xs text-white">Upload Files</span>
-                <input
-                  id="files"
-                  type="file"
-                  multiple
-                  className="hidden"
-                  onChange={handleFileChange}
-                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                  aria-label="Upload files"
-                />
-              </label>
+          {/* Before Files Section */}
+          <FileUploadSection
+            label="Before Documentation"
+            files={beforeFiles}
+            existingFiles={defect?.before_files}
+            onFileChange={handleBeforeFileChange}
+            onFileRemove={handleBeforeFileRemove}
+          />
 
-              {/* Previously uploaded files */}
-              {defect?.files?.length > 0 && (
-                <div className="space-y-1">
-                  <p className="text-xs text-white/60">Uploaded Files:</p>
-                  {defect.files.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between text-xs text-white bg-[#132337] p-2 rounded">
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4" />
-                        <a 
-                          href={file.url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="hover:text-[#3BADE5] truncate max-w-[200px]"
-                        >
-                          {file.name}
-                        </a>
-                      </div>
-                      <button
-                        onClick={() => removeFile(index, file)}
-                        className="text-white/60 hover:text-white"
-                        aria-label={`Remove ${file.name}`}
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
+          {/* After Files Section */}
+          <FileUploadSection
+            label="After Documentation"
+            files={afterFiles}
+            existingFiles={defect?.after_files}
+            onFileChange={handleAfterFileChange}
+            onFileRemove={handleAfterFileRemove}
+            disabled={!isCompleted}
+          />
 
-              {/* Newly selected files */}
-              {files.length > 0 && (
-                <div className="space-y-1">
-                  <p className="text-xs text-white/60">Selected Files:</p>
-                  {files.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between text-xs text-white bg-[#132337] p-2 rounded">
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4" />
-                        <span className="truncate max-w-[200px]">{file.name}</span>
-                      </div>
-                      <button
-                        onClick={() => removeFile(index)}
-                        className="text-white/60 hover:text-white"
-                        aria-label={`Remove ${file.name}`}
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Comments section remains the same */}
+          {/* Comments */}
           <div className="grid gap-1.5">
             <label htmlFor="comments" className="text-xs font-medium text-white/80">
               Comments
