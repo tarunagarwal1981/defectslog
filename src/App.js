@@ -65,10 +65,14 @@ function App() {
   }, []);
 
   const fetchUserData = useCallback(async () => {
-  if (!session?.user?.id) return;
+  if (!session?.user?.id) {
+    console.log("No user session found");
+    return;
+  }
 
   try {
     setLoading(true);
+    console.log("Starting data fetch for user:", session.user.id);
     
     // First fetch - Get user vessels
     const { data: userVessels, error: vesselError } = await supabase
@@ -87,6 +91,8 @@ function App() {
       throw vesselError;
     }
 
+    console.log("Fetched user vessels:", userVessels);
+
     if (!userVessels?.length) {
       console.log("No vessels found for user");
       setData([]);
@@ -94,19 +100,38 @@ function App() {
     }
     
     const vesselIds = userVessels.map(v => v.vessel_id);
+    console.log("Found vessel IDs:", vesselIds);
+    
     const vesselsMap = userVessels.reduce((acc, v) => {
       if (v.vessels) {
         acc[v.vessel_id] = v.vessels.vessel_name;
       }
       return acc;
     }, {});
+    console.log("Created vessels map:", vesselsMap);
 
-    // Second fetch - Get defects
+    // Second fetch - Get defects with explicit column selection
     console.log("Fetching defects for vessels:", vesselIds);
     
     const { data: defects, error: defectsError } = await supabase
       .from('defects register')
-      .select('*')
+      .select(`
+        id,
+        SNo,
+        vessel_id,
+        vessel_name,
+        Equipments,
+        Description,
+        "Action Planned",
+        Criticality,
+        "Date Reported",
+        "Date Completed",
+        "Status (Vessel)",
+        Comments,
+        before_files,
+        after_files,
+        is_deleted
+      `)
       .eq('is_deleted', false)
       .in('vessel_id', vesselIds)
       .order('Date Reported', { ascending: false });
@@ -116,14 +141,16 @@ function App() {
       throw defectsError;
     }
 
-    console.log("Fetched defects:", defects);
+    console.log("Raw defects data:", defects);
 
-    // Ensure files arrays exist
+    // Process the defects
     const processedDefects = (defects || []).map(defect => ({
       ...defect,
       before_files: defect.before_files || [],
       after_files: defect.after_files || []
     }));
+
+    console.log("Processed defects:", processedDefects);
 
     setAssignedVessels(vesselIds);
     setVesselNames(vesselsMap);
