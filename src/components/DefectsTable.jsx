@@ -37,17 +37,18 @@ const CRITICALITY_COLORS = {
   }
 };
 
+// Update the FilePreviewDialog component's styling:
 const FilePreviewDialog = ({ file, isOpen, onClose }) => {
   const isImage = /\.(jpg|jpeg|png)$/i.test(file?.name || '');
   const isPDF = /\.pdf$/i.test(file?.name || '');
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-[#0B1623] p-4 max-w-2xl max-h-[90vh]">
+      <DialogContent className="bg-[#0B1623] p-4 max-w-[90vw] max-h-[90vh] w-fit overflow-hidden">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-sm font-medium text-white">{file?.name}</h3>
-          <div className="flex gap-2">
-            <a
+          <h3 className="text-sm font-medium text-white truncate max-w-[60vh]">{file?.name}</h3>
+          <div className="flex gap-2 shrink-0">
+            
               href={file?.url}
               download
               target="_blank"
@@ -67,14 +68,24 @@ const FilePreviewDialog = ({ file, isOpen, onClose }) => {
         
         <div className="bg-[#132337] rounded-lg overflow-hidden">
           {isImage ? (
-            <img src={file?.url} alt={file?.name} className="max-w-full h-auto" />
+            <div className="max-h-[70vh] overflow-auto">
+              <img 
+                src={file?.url} 
+                alt={file?.name} 
+                className="max-w-full h-auto object-contain"
+              />
+            </div>
           ) : isPDF ? (
-            <iframe src={file?.url} className="w-full h-[70vh]" title={file?.name} />
+            <iframe 
+              src={file?.url} 
+              className="w-full h-[70vh]" 
+              title={file?.name}
+            />
           ) : (
             <div className="p-4 text-center text-white/60">
               <FileText className="h-8 w-8 mx-auto mb-2" />
               <p>Preview not available</p>
-              <a
+              
                 href={file?.url}
                 target="_blank"
                 rel="noopener noreferrer"
