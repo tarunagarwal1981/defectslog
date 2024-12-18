@@ -201,7 +201,6 @@ const DefectDialog = ({
           </p>
         </DialogHeader>
         
-        {/* Existing form fields remain the same */}
         <div className="grid gap-3 py-3">
           {/* Vessel Selection */}
           <div className="grid gap-1.5">
@@ -360,48 +359,7 @@ const DefectDialog = ({
             </div>
           </div>
 
-          {/* Associated Files */}
-          <div className="grid gap-1.5">
-            <label htmlFor="files" className="text-xs font-medium text-white/80">
-              Associated Files
-            </label>
-            <div className="flex items-center gap-2">
-              <label className="flex items-center gap-2 px-3 py-1.5 rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] cursor-pointer hover:border-[#3BADE5]/40">
-                <Upload className="h-4 w-4 text-white" />
-                <span className="text-xs text-white">Upload Files</span>
-                <input
-                  id="files"
-                  type="file"
-                  multiple
-                  className="hidden"
-                  onChange={handleFileChange}
-                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                  aria-label="Upload files"
-                />
-              </label>
-              {files.length > 0 && (
-                <span className="text-xs text-white/60" role="status">
-                  {files.length} file(s) selected
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Comments */}
-          <div className="grid gap-1.5">
-            <label htmlFor="comments" className="text-xs font-medium text-white/80">
-              Comments
-            </label>
-            <textarea
-              id="comments"
-              className="flex h-16 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
-              value={defect?.Comments || ''}
-              onChange={(e) => onChange('Comments', e.target.value)}
-              placeholder="Add any additional comments"
-            />
-          </div>
-        </div>
-
+          {/* Initial Files Upload */}
           {/* Initial Files Upload */}
           <div className="grid gap-1.5">
             <label className="text-xs font-medium text-white/80">
@@ -410,7 +368,7 @@ const DefectDialog = ({
             <div className="space-y-2">
               <label className="flex items-center gap-2 px-3 py-1.5 rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] cursor-pointer hover:border-[#3BADE5]/40">
                 <Upload className="h-4 w-4 text-white" />
-                <span className="text-xs text-white">Upload Files</span>
+                <span className="text-xs text-white">Upload Initial Files</span>
                 <input
                   type="file"
                   multiple
@@ -435,6 +393,18 @@ const DefectDialog = ({
                   ))}
                 </div>
               )}
+              {/* Show existing files if any */}
+              {defect?.initial_files?.length > 0 && (
+                <div className="space-y-1 mt-2">
+                  <div className="text-xs text-white/60">Existing files:</div>
+                  {defect.initial_files.map((file, index) => (
+                    <div key={index} className="flex items-center gap-2 text-xs text-white/80">
+                      <FileText className="h-3.5 w-3.5" />
+                      <span className="truncate flex-1">{file.name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -447,7 +417,7 @@ const DefectDialog = ({
               <div className="space-y-2">
                 <label className="flex items-center gap-2 px-3 py-1.5 rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] cursor-pointer hover:border-[#3BADE5]/40">
                   <Upload className="h-4 w-4 text-white" />
-                  <span className="text-xs text-white">Upload Files</span>
+                  <span className="text-xs text-white">Upload Closure Files</span>
                   <input
                     type="file"
                     multiple
@@ -472,6 +442,18 @@ const DefectDialog = ({
                     ))}
                   </div>
                 )}
+                {/* Show existing closure files if any */}
+                {defect?.completion_files?.length > 0 && (
+                  <div className="space-y-1 mt-2">
+                    <div className="text-xs text-white/60">Existing closure files:</div>
+                    {defect.completion_files.map((file, index) => (
+                      <div key={index} className="flex items-center gap-2 text-xs text-white/80">
+                        <FileText className="h-3.5 w-3.5" />
+                        <span className="truncate flex-1">{file.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -485,6 +467,21 @@ const DefectDialog = ({
               />
             </div>
           )}
+
+          {/* Comments */}
+          <div className="grid gap-1.5">
+            <label htmlFor="comments" className="text-xs font-medium text-white/80">
+              Comments
+            </label>
+            <textarea
+              id="comments"
+              className="flex h-16 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
+              value={defect?.Comments || ''}
+              onChange={(e) => onChange('Comments', e.target.value)}
+              placeholder="Add any additional comments"
+            />
+          </div>
+
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
