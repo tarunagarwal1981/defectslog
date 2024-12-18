@@ -70,8 +70,28 @@ function App() {
   try {
     setLoading(true);
     
-    // Get user's vessels with names
-    const userVessels = await getUserVessels(session.user.id);
+    // First fetch - Get user vessels
+    const { data: userVessels, error: vesselError } = await supabase
+      .from('user_vessels')
+      .select(`
+        vessel_id,
+        vessels!inner (
+          vessel_id,
+          vessel_name
+        )
+      `)
+      .eq('user_id', session.user.id);
+
+    if (vesselError) {
+      console.error("Vessel fetch error:", vesselError);
+      throw vesselError;
+    }
+
+    if (!userVessels?.length) {
+      console.log("No vessels found for user");
+      setData([]);
+      return;
+    }
     
     const vesselIds = userVessels.map(v => v.vessel_id);
     const vesselsMap = userVessels.reduce((acc, v) => {
@@ -81,36 +101,39 @@ function App() {
       return acc;
     }, {});
 
-    // Update the select statement to include the new columns
+    // Second fetch - Get defects
+    console.log("Fetching defects for vessels:", vesselIds);
+    
     const { data: defects, error: defectsError } = await supabase
       .from('defects register')
-      .select(`
-        *,
-        before_files,
-        after_files
-      `)
+      .select('*')
       .eq('is_deleted', false)
       .in('vessel_id', vesselIds)
       .order('Date Reported', { ascending: false });
 
-    if (defectsError) throw defectsError;
+    if (defectsError) {
+      console.error("Defects fetch error:", defectsError);
+      throw defectsError;
+    }
 
-    // Ensure files arrays exist even if null in database
-    const processedDefects = defects?.map(defect => ({
+    console.log("Fetched defects:", defects);
+
+    // Ensure files arrays exist
+    const processedDefects = (defects || []).map(defect => ({
       ...defect,
       before_files: defect.before_files || [],
       after_files: defect.after_files || []
-    })) || [];
+    }));
 
     setAssignedVessels(vesselIds);
     setVesselNames(vesselsMap);
     setData(processedDefects);
     
   } catch (error) {
-    console.error("Error fetching data:", error);
+    console.error("Error in fetchUserData:", error);
     toast({
       title: "Error",
-      description: error.message,
+      description: error.message || "Failed to fetch data",
       variant: "destructive",
     });
   } finally {
