@@ -175,37 +175,41 @@ function App() {
   }, [toast]);
 
   const handleAddDefect = () => {
-    if (assignedVessels.length === 0) {
-      toast({
-        title: "Error",
-        description: "No vessels assigned to you. Contact administrator.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setCurrentDefect({
-      id: `temp-${Date.now()}`,
-      SNo: data.length + 1,
-      vessel_id: '',
-      Equipments: '',
-      Description: '',
-      'Action Planned': '',
-      Criticality: '',
-      'Status (Vessel)': 'OPEN',
-      'Date Reported': new Date().toISOString().split('T')[0],
-      'Date Completed': '',
-      files: []
+  if (assignedVessels.length === 0) {
+    toast({
+      title: "Error",
+      description: "No vessels assigned to you. Contact administrator.",
+      variant: "destructive",
     });
-    setIsDefectDialogOpen(true);
-  };
+    return;
+  }
 
-  const handleDeleteFile = async (defectId, fileIndex) => {
+  setCurrentDefect({
+    id: `temp-${Date.now()}`,
+    SNo: data.length + 1,
+    vessel_id: '',
+    Equipments: '',
+    Description: '',
+    'Action Planned': '',
+    Criticality: '',
+    'Status (Vessel)': 'OPEN',
+    'Date Reported': new Date().toISOString().split('T')[0],
+    'Date Completed': '',
+    before_files: [],
+    after_files: []
+  });
+  setIsDefectDialogOpen(true);
+};
+
+  const handleDeleteFile = async (defectId, fileIndex, fileType) => {
   try {
     const defect = data.find(d => d.id === defectId);
-    if (!defect || !defect.files?.[fileIndex]) return;
+    if (!defect) return;
 
-    const fileToDelete = defect.files[fileIndex];
+    const files = fileType === 'before' ? defect.before_files : defect.after_files;
+    const fileToDelete = files[fileIndex];
+
+    if (!fileToDelete) return;
 
     // Delete from storage
     const { error: storageError } = await supabase.storage
@@ -215,10 +219,12 @@ function App() {
     if (storageError) throw storageError;
 
     // Update defect record
-    const updatedFiles = defect.files.filter((_, index) => index !== fileIndex);
+    const updatedFiles = files.filter((_, index) => index !== fileIndex);
+    const updateField = fileType === 'before' ? 'before_files' : 'after_files';
+    
     const { error: updateError } = await supabase
       .from('defects register')
-      .update({ files: updatedFiles })
+      .update({ [updateField]: updatedFiles })
       .eq('id', defectId);
 
     if (updateError) throw updateError;
@@ -226,7 +232,10 @@ function App() {
     // Update local state
     setData(prevData => prevData.map(d => {
       if (d.id === defectId) {
-        return { ...d, files: updatedFiles };
+        return { 
+          ...d, 
+          [updateField]: updatedFiles
+        };
       }
       return d;
     }));
