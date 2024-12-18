@@ -65,55 +65,58 @@ function App() {
   }, []);
 
   const fetchUserData = useCallback(async () => {
-    if (!session?.user?.id) return;
+  if (!session?.user?.id) return;
 
-    try {
-      setLoading(true);
-      
-      const userVessels = await getUserVessels(session.user.id);
-      
-      const vesselIds = userVessels.map(v => v.vessel_id);
-      const vesselsMap = userVessels.reduce((acc, v) => {
-        if (v.vessels) {
-          acc[v.vessel_id] = v.vessels.vessel_name;
-        }
-        return acc;
-      }, {});
+  try {
+    setLoading(true);
+    
+    // Get user's vessels with names
+    const userVessels = await getUserVessels(session.user.id);
+    
+    const vesselIds = userVessels.map(v => v.vessel_id);
+    const vesselsMap = userVessels.reduce((acc, v) => {
+      if (v.vessels) {
+        acc[v.vessel_id] = v.vessels.vessel_name;
+      }
+      return acc;
+    }, {});
 
-      const { data: defects, error: defectsError } = await supabase
-        .from('defects register')
-        .select('*, files')
-        .eq('is_deleted', false)
-        .in('vessel_id', vesselIds)
-        .order('Date Reported', { ascending: false });
+    // Update the select statement to include the new columns
+    const { data: defects, error: defectsError } = await supabase
+      .from('defects register')
+      .select(`
+        *,
+        before_files,
+        after_files
+      `)
+      .eq('is_deleted', false)
+      .in('vessel_id', vesselIds)
+      .order('Date Reported', { ascending: false });
 
-      if (defectsError) throw defectsError;
+    if (defectsError) throw defectsError;
 
-      setAssignedVessels(vesselIds);
-      setVesselNames(vesselsMap);
-      setData(defects || []);
-      
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [session?.user?.id, toast]);
+    // Ensure files arrays exist even if null in database
+    const processedDefects = defects?.map(defect => ({
+      ...defect,
+      before_files: defect.before_files || [],
+      after_files: defect.after_files || []
+    })) || [];
 
-  useEffect(() => {
-    if (session?.user) {
-      fetchUserData();
-    } else {
-      setData([]);
-      setAssignedVessels([]);
-      setVesselNames({});
-    }
-  }, [session?.user, fetchUserData]);
+    setAssignedVessels(vesselIds);
+    setVesselNames(vesselsMap);
+    setData(processedDefects);
+    
+  } catch (error) {
+    console.error("Error fetching data:", error);
+    toast({
+      title: "Error",
+      description: error.message,
+      variant: "destructive",
+    });
+  } finally {
+    setLoading(false);
+  }
+}, [session?.user?.id, toast]);
 
   const filteredData = React.useMemo(() => {
     return data.filter(defect => {
