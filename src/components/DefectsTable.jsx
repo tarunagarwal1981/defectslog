@@ -1,8 +1,15 @@
 import React, { useState } from 'react';
-import { PlusCircle, FileText, Trash2, ChevronDown, ChevronUp, X, ExternalLink, Download } from 'lucide-react';
+import { PlusCircle, FileText, Trash2, ChevronDown, ChevronUp, X } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog';
 import ExportButton from './ui/ExportButton';
 import { exportToCSV } from '../utils/exportToCSV';
-import { Dialog, DialogContent } from './ui/dialog';
+import { supabase } from '../supabaseClient';
+import { toast } from './ui/use-toast';
 
 const STATUS_COLORS = {
   'OPEN': {
@@ -37,124 +44,137 @@ const CRITICALITY_COLORS = {
   }
 };
 
-const FilePreviewDialog = ({ file, isOpen, onClose }) => {
-  const isImage = /\.(jpg|jpeg|png)$/i.test(file?.name || '');
-  const isPDF = /\.pdf$/i.test(file?.name || '');
+// File Viewer Component
+const FileViewer = ({ url, filename, onClose }) => (
+  <Dialog open={true} onOpenChange={onClose}>
+    <DialogContent className="max-w-4xl max-h-[90vh] bg-[#0B1623]">
+      <DialogHeader>
+        <DialogTitle className="text-sm font-medium text-white flex justify-between items-center">
+          <span>{filename}</span>
+          <button onClick={onClose} className="text-white/60 hover:text-white">
+            <X className="h-4 w-4" />
+          </button>
+        </DialogTitle>
+      </DialogHeader>
+      <div className="mt-4">
+        {url.match(/\.(jpg|jpeg|png|gif)$/i) ? (
+          <img src={url} alt={filename} className="max-w-full h-auto" />
+        ) : (
+          <iframe src={url} className="w-full h-[70vh]" title={filename} />
+        )}
+      </div>
+    </DialogContent>
+  </Dialog>
+);
+
+// File List Component
+const FileList = ({ files, onDelete, title }) => {
+  const [selectedFile, setSelectedFile] = useState(null);
+
+  const handleFileClick = async (file) => {
+    try {
+      const { data: { signedUrl }, error } = await supabase.storage
+        .from('defect-files')
+        .createSignedUrl(file.path, 3600); // 1 hour expiry
+
+      if (error) throw error;
+
+      setSelectedFile({ url: signedUrl, name: file.name });
+    } catch (error) {
+      console.error('Error getting signed URL:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load file",
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (!files?.length) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-[#0B1623] p-4 max-w-[90vw] max-h-[90vh] w-fit overflow-hidden">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-sm font-medium text-white truncate max-w-[60vh]">
-            {file?.name}
-          </h3>
-          <div className="flex gap-2 shrink-0">
-            <a
-              href={file?.url}
-              download
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-1.5 rounded-full hover:bg-white/10 text-[#3BADE5] transition-colors"
-            >
-              <Download className="h-4 w-4" />
-            </a>
+    <div className="space-y-2">
+      <div className="text-xs font-medium text-white/80 mb-1">{title}</div>
+      {files.map((file, index) => (
+        <div key={index} className="flex items-center gap-2 text-xs">
+          <FileText className="h-3.5 w-3.5 text-[#3BADE5]" />
+          <button
+            onClick={() => handleFileClick(file)}
+            className="text-white/90 hover:text-white truncate flex-1"
+          >
+            {file.name}
+          </button>
+          {onDelete && (
             <button
-              onClick={onClose}
-              className="p-1.5 rounded-full hover:bg-white/10 text-white/60 transition-colors"
+              onClick={() => onDelete(file)}
+              className="text-red-400 hover:text-red-300 p-1 rounded-full hover:bg-red-500/20"
+              aria-label="Delete file"
             >
-              <X className="h-4 w-4" />
+              <Trash2 className="h-3.5 w-3.5" />
             </button>
-          </div>
-        </div>
-        
-        <div className="bg-[#132337] rounded-lg overflow-hidden">
-          {isImage ? (
-            <div className="max-h-[70vh] overflow-auto">
-              <img 
-                src={file?.url} 
-                alt={file?.name} 
-                className="max-w-full h-auto object-contain"
-              />
-            </div>
-          ) : isPDF ? (
-            <iframe 
-              src={file?.url} 
-              className="w-full h-[70vh]" 
-              title={file?.name}
-            />
-          ) : (
-            <div className="p-4 text-center text-white/60">
-              <FileText className="h-8 w-8 mx-auto mb-2" />
-              <p>Preview not available</p>
-              <a
-                href={file?.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[#3BADE5] hover:underline inline-flex items-center gap-1 mt-2"
-              >
-                Open file <ExternalLink className="h-3 w-3" />
-              </a>
-            </div>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+      ))}
+      {selectedFile && (
+        <FileViewer
+          url={selectedFile.url}
+          filename={selectedFile.name}
+          onClose={() => setSelectedFile(null)}
+        />
+      )}
+    </div>
   );
 };
 
-const DefectRow = ({ defect, index, onEditDefect, onDeleteDefect, onDeleteFile }) => {
+const DefectRow = ({ defect, index, onEditDefect, onDeleteDefect }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [isFilePreviewOpen, setIsFilePreviewOpen] = useState(false);
 
   const toggleExpand = (e) => {
     e.stopPropagation();
     setIsExpanded(!isExpanded);
   };
 
-  const handleFileClick = (file, e) => {
-    e.stopPropagation();
-    setSelectedFile(file);
-    setIsFilePreviewOpen(true);
-  };
+  const handleDeleteFile = async (file) => {
+    try {
+      // Delete from storage
+      const { error: storageError } = await supabase.storage
+        .from('defect-files')
+        .remove([file.path]);
 
-  const handleFileDelete = async (fileIndex, fileType, e) => {
-    e.stopPropagation();
-    if (window.confirm('Are you sure you want to delete this file?')) {
-      await onDeleteFile(defect.id, fileIndex, fileType);
+      if (storageError) throw storageError;
+
+      // Update defect record
+      const isInitialFile = defect.initial_files.some(f => f.path === file.path);
+      const updatedDefect = {
+        ...defect,
+        initial_files: isInitialFile 
+          ? defect.initial_files.filter(f => f.path !== file.path)
+          : defect.initial_files,
+        completion_files: !isInitialFile
+          ? defect.completion_files.filter(f => f.path !== file.path)
+          : defect.completion_files
+      };
+
+      const { error: updateError } = await supabase
+        .from('defects register')
+        .update(updatedDefect)
+        .eq('id', defect.id);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: "File Deleted",
+        description: "File was successfully removed",
+      });
+
+    } catch (error) {
+      console.error('Error deleting file:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete file",
+        variant: "destructive",
+      });
     }
-  };
-
-  const renderFileSection = (files, title, fileType) => {
-    if (!files?.length) return null;
-    
-    return (
-      <div>
-        <div className="text-xs font-medium text-white/80 mb-1">{title}</div>
-        <div className="flex flex-wrap gap-2">
-          {files.map((file, fileIndex) => (
-            <div
-              key={fileIndex}
-              className="flex items-center gap-2 bg-[#0B1623] px-2 py-1 rounded"
-            >
-              <FileText className="h-3.5 w-3.5 text-[#3BADE5]" />
-              <button
-                onClick={(e) => handleFileClick(file, e)}
-                className="text-xs text-white/90 hover:text-[#3BADE5] transition-colors truncate max-w-[150px]"
-              >
-                {file.name}
-              </button>
-              <button
-                onClick={(e) => handleFileDelete(fileIndex, fileType, e)}
-                className="p-1 hover:bg-red-500/20 text-red-400 rounded-full transition-colors"
-              >
-                <Trash2 className="h-3 w-3" />
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
   };
 
   return (
@@ -193,13 +213,13 @@ const DefectRow = ({ defect, index, onEditDefect, onDeleteDefect, onDeleteFile }
             {defect.Criticality || 'N/A'}
           </span>
         </td>
-        <td className="px-3 py-1.5 truncate max-w-[150px]" title={defect.Equipments} onClick={() => onEditDefect(defect)}>
+        <td className="px-3 py-1.5 truncate max-w-[150px]" onClick={() => onEditDefect(defect)}>
           {defect.Equipments}
         </td>
-        <td className="px-3 py-1.5 truncate max-w-[200px]" title={defect.Description} onClick={() => onEditDefect(defect)}>
+        <td className="px-3 py-1.5 truncate max-w-[200px]" onClick={() => onEditDefect(defect)}>
           {defect.Description}
         </td>
-        <td className="px-3 py-1.5 truncate max-w-[200px]" title={defect['Action Planned']} onClick={() => onEditDefect(defect)}>
+        <td className="px-3 py-1.5 truncate max-w-[200px]" onClick={() => onEditDefect(defect)}>
           {defect['Action Planned']}
         </td>
         <td className="px-3 py-1.5" onClick={() => onEditDefect(defect)}>
@@ -213,9 +233,7 @@ const DefectRow = ({ defect, index, onEditDefect, onDeleteDefect, onDeleteFile }
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                if (window.confirm('Are you sure you want to delete this defect?')) {
-                  onDeleteDefect(defect.id);
-                }
+                onDeleteDefect(defect.id);
               }}
               className="p-1 hover:bg-red-500/20 text-red-400 rounded-full transition-colors"
               aria-label="Delete defect"
@@ -241,25 +259,28 @@ const DefectRow = ({ defect, index, onEditDefect, onDeleteDefect, onDeleteFile }
                 <div className="text-xs font-medium text-white/80 mb-1">Comments</div>
                 <div className="text-xs text-white/90">{defect.Comments || '-'}</div>
               </div>
-              
-              {(defect.before_files?.length > 0 || defect.after_files?.length > 0) && (
-                <div className="space-y-3">
-                  {renderFileSection(defect.before_files, 'Before Documentation', 'before')}
-                  {renderFileSection(defect.after_files, 'After Documentation', 'after')}
-                </div>
+
+              {/* Initial Files Section */}
+              {defect.initial_files?.length > 0 && (
+                <FileList
+                  files={defect.initial_files}
+                  onDelete={handleDeleteFile}
+                  title="Initial Documentation"
+                />
+              )}
+
+              {/* Completion Files Section */}
+              {defect.completion_files?.length > 0 && (
+                <FileList
+                  files={defect.completion_files}
+                  onDelete={handleDeleteFile}
+                  title="Closure Documentation"
+                />
               )}
             </div>
           </td>
         </tr>
       )}
-      <FilePreviewDialog
-        file={selectedFile}
-        isOpen={isFilePreviewOpen}
-        onClose={() => {
-          setIsFilePreviewOpen(false);
-          setSelectedFile(null);
-        }}
-      />
     </>
   );
 };
@@ -269,7 +290,6 @@ const DefectsTable = ({
   onAddDefect, 
   onEditDefect,
   onDeleteDefect,
-  onDeleteFile,
   loading,
   searchTerm = '',
   statusFilter = '',
@@ -322,6 +342,8 @@ const DefectsTable = ({
     });
   };
 
+  const sortedData = getSortedData();
+
   const renderSortIcon = (columnKey) => {
     if (sortConfig.key !== columnKey) {
       return <ChevronUp className="h-3 w-3 opacity-30" />;
@@ -342,8 +364,6 @@ const DefectsTable = ({
     { key: 'Date Completed', label: 'Completed' }
   ];
 
-  const sortedData = getSortedData();
-
   return (
     <div className="glass-card rounded-[4px]">
       <div className="flex justify-between items-center px-3 py-2 border-b border-white/10">
@@ -351,7 +371,7 @@ const DefectsTable = ({
         <div className="flex items-center gap-2">
           <ExportButton onClick={handleExport} />
           <button 
-            onClick={onAddDefect} 
+            onClick={onAddDefect}
             className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-[4px] 
               text-white bg-[#3BADE5] hover:bg-[#3BADE5]/80 transition-colors"
           >
@@ -360,7 +380,6 @@ const DefectsTable = ({
           </button>
         </div>
       </div>
-
       <div className="overflow-x-auto custom-scrollbar">
         <table className="w-full text-xs">
           <thead>
@@ -399,7 +418,6 @@ const DefectsTable = ({
                   index={index}
                   onEditDefect={onEditDefect}
                   onDeleteDefect={onDeleteDefect}
-                  onDeleteFile={onDeleteFile}
                 />
               ))
             )}
