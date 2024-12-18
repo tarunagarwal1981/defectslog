@@ -174,6 +174,52 @@ function App() {
     setIsDefectDialogOpen(true);
   };
 
+  const handleDeleteFile = async (defectId, fileIndex) => {
+  try {
+    const defect = data.find(d => d.id === defectId);
+    if (!defect || !defect.files?.[fileIndex]) return;
+
+    const fileToDelete = defect.files[fileIndex];
+
+    // Delete from storage
+    const { error: storageError } = await supabase.storage
+      .from('defect-files')
+      .remove([fileToDelete.path]);
+
+    if (storageError) throw storageError;
+
+    // Update defect record
+    const updatedFiles = defect.files.filter((_, index) => index !== fileIndex);
+    const { error: updateError } = await supabase
+      .from('defects register')
+      .update({ files: updatedFiles })
+      .eq('id', defectId);
+
+    if (updateError) throw updateError;
+
+    // Update local state
+    setData(prevData => prevData.map(d => {
+      if (d.id === defectId) {
+        return { ...d, files: updatedFiles };
+      }
+      return d;
+    }));
+
+    toast({
+      title: "File Deleted",
+      description: "File has been successfully removed",
+    });
+
+  } catch (error) {
+    console.error("Error deleting file:", error);
+    toast({
+      title: "Error",
+      description: "Failed to delete file",
+      variant: "destructive",
+    });
+  }
+};
+  
   const handleSaveDefect = async (updatedDefect, newFiles) => {
     try {
       if (!assignedVessels.includes(updatedDefect.vessel_id)) {
