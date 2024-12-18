@@ -263,6 +263,7 @@ const DefectsTable = ({
   statusFilter = '',
   criticalityFilter = '' 
 }) => {
+  console.log("DefectsTable data:", data);
   const [sortConfig, setSortConfig] = useState({
     key: 'Date Reported',
     direction: 'desc'
