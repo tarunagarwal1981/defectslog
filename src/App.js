@@ -176,76 +176,83 @@ function App() {
   };
 
   const handleSaveDefect = async (updatedDefect) => {
-    try {
-      if (!assignedVessels.includes(updatedDefect.vessel_id)) {
-        throw new Error("Not authorized for this vessel");
+  try {
+    if (!assignedVessels.includes(updatedDefect.vessel_id)) {
+      throw new Error("Not authorized for this vessel");
+    }
+
+    const isNewDefect = updatedDefect.id?.startsWith('temp-');
+    
+    const defectData = {
+      vessel_id: updatedDefect.vessel_id,
+      vessel_name: vesselNames[updatedDefect.vessel_id],
+      "Status (Vessel)": updatedDefect['Status (Vessel)'],
+      Equipments: updatedDefect.Equipments,
+      Description: updatedDefect.Description,
+      "Action Planned": updatedDefect['Action Planned'],
+      Criticality: updatedDefect.Criticality,
+      "Date Reported": updatedDefect['Date Reported'],
+      "Date Completed": updatedDefect['Date Completed'] || null,
+      Comments: updatedDefect.Comments || '',
+      // Make sure these match exactly with your database column names
+      initial_files: updatedDefect.initial_files || [],
+      completion_files: updatedDefect.completion_files || []
+    };
+
+    let result;
+    if (isNewDefect) {
+      console.log('Saving new defect:', defectData); // Debug log
+      const { data: insertedData, error: insertError } = await supabase
+        .from('defects register')
+        .insert([defectData])
+        .select('*')
+        .single();
+
+      if (insertError) {
+        console.error('Insert error:', insertError); // Debug log
+        throw insertError;
       }
+      result = insertedData;
+      setData(prevData => [result, ...prevData]);
+    } else {
+      console.log('Updating defect:', defectData); // Debug log
+      const { data: updatedData, error: updateError } = await supabase
+        .from('defects register')
+        .update(defectData)
+        .eq('id', updatedDefect.id)
+        .select('*')
+        .single();
 
-      const isNewDefect = updatedDefect.id?.startsWith('temp-');
-      
-      const defectData = {
-        vessel_id: updatedDefect.vessel_id,
-        vessel_name: vesselNames[updatedDefect.vessel_id],
-        "Status (Vessel)": updatedDefect['Status (Vessel)'],
-        Equipments: updatedDefect.Equipments,
-        Description: updatedDefect.Description,
-        "Action Planned": updatedDefect['Action Planned'],
-        Criticality: updatedDefect.Criticality,
-        "Date Reported": updatedDefect['Date Reported'],
-        "Date Completed": updatedDefect['Date Completed'] || null,
-        Comments: updatedDefect.Comments || '',
-        initial_files: updatedDefect.initial_files || [],
-        completion_files: updatedDefect.completion_files || []
-      };
-
-      let result;
-      if (isNewDefect) {
-        const { data: insertedData, error: insertError } = await supabase
-          .from('defects register')
-          .insert([defectData])
-          .select('*')
-          .single();
-
-        if (insertError) throw insertError;
-        result = insertedData;
-        
-        setData(prevData => [result, ...prevData]);
-      } else {
-        const { data: updatedData, error: updateError } = await supabase
-          .from('defects register')
-          .update(defectData)
-          .eq('id', updatedDefect.id)
-          .select('*')
-          .single();
-
-        if (updateError) throw updateError;
-        result = updatedData;
-        
-        setData(prevData => {
-          const updatedData = prevData.map(d => d.id === result.id ? result : d);
-          return [...updatedData].sort((a, b) => 
-            new Date(b['Date Reported']) - new Date(a['Date Reported'])
-          );
-        });
+      if (updateError) {
+        console.error('Update error:', updateError); // Debug log
+        throw updateError;
       }
-
-      toast({
-        title: isNewDefect ? "Defect Added" : "Defect Updated",
-        description: "Successfully saved the defect",
-      });
-
-      setIsDefectDialogOpen(false);
-      setCurrentDefect(null);
-
-    } catch (error) {
-      console.error("Error saving defect:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to save defect",
-        variant: "destructive",
+      result = updatedData;
+      setData(prevData => {
+        const updatedData = prevData.map(d => d.id === result.id ? result : d);
+        return [...updatedData].sort((a, b) => 
+          new Date(b['Date Reported']) - new Date(a['Date Reported'])
+        );
       });
     }
-  };
+
+    toast({
+      title: isNewDefect ? "Defect Added" : "Defect Updated",
+      description: "Successfully saved the defect",
+    });
+
+    setIsDefectDialogOpen(false);
+    setCurrentDefect(null);
+
+  } catch (error) {
+    console.error("Error saving defect:", error);
+    toast({
+      title: "Error",
+      description: error.message || "Failed to save defect",
+      variant: "destructive",
+    });
+  }
+};
 
   const handleDeleteDefect = async (defectId) => {
     try {
