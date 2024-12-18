@@ -5,92 +5,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from './ui/dialog';
-import { Upload, X, FileText, Loader2 } from 'lucide-react';
+import { Upload, FileText, X } from 'lucide-react';
 import { toast } from './ui/use-toast';
+import { supabase } from '../supabaseClient';
 
-const FileUploadSection = ({ 
-  label, 
-  files, 
-  existingFiles, 
-  onFileChange, 
-  onFileRemove,
-  disabled = false 
-}) => (
-  <div className="grid gap-1.5">
-    <label className="text-xs font-medium text-white/80">
-      {label}
-    </label>
-    <div className="space-y-2">
-      <label 
-        className={`flex items-center gap-2 px-3 py-1.5 rounded-[4px] border 
-          border-[#3BADE5]/20 bg-[#132337] cursor-pointer hover:border-[#3BADE5]/40
-          ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-      >
-        <Upload className="h-4 w-4 text-white" />
-        <span className="text-xs text-white">Upload Files</span>
-        <input
-          type="file"
-          multiple
-          className="hidden"
-          onChange={onFileChange}
-          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-          disabled={disabled}
-        />
-      </label>
-
-      {/* Selected Files */}
-      {files?.length > 0 && (
-        <div className="space-y-1">
-          <p className="text-xs text-white/60">Selected Files:</p>
-          {files.map((file, index) => (
-            <div key={index} className="flex items-center justify-between text-xs text-white bg-[#132337] p-2 rounded">
-              <div className="flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                <span className="truncate max-w-[200px]">{file.name}</span>
-              </div>
-              <button
-                onClick={() => onFileRemove(index)}
-                className="text-white/60 hover:text-white"
-                aria-label={`Remove ${file.name}`}
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Existing Files */}
-      {existingFiles?.length > 0 && (
-        <div className="space-y-1">
-          <p className="text-xs text-white/60">Uploaded Files:</p>
-          {existingFiles.map((file, index) => (
-            <div key={index} className="flex items-center justify-between text-xs text-white bg-[#132337] p-2 rounded">
-              <div className="flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                <a 
-                  href={file.url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="hover:text-[#3BADE5] truncate max-w-[200px]"
-                >
-                  {file.name}
-                </a>
-              </div>
-              <button
-                onClick={() => onFileRemove(index, true)}
-                className="text-white/60 hover:text-white"
-                aria-label={`Remove ${file.name}`}
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  </div>
-);
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ALLOWED_FILE_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+];
 
 const DefectDialog = ({ 
   isOpen, 
@@ -101,10 +28,10 @@ const DefectDialog = ({
   vessels, 
   isNew 
 }) => {
-  const [beforeFiles, setBeforeFiles] = useState([]);
-  const [afterFiles, setAfterFiles] = useState([]);
+  const [initialFiles, setInitialFiles] = useState([]);
+  const [closureFiles, setClosureFiles] = useState([]);
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const validateDefect = (defectData) => {
     const required = [
@@ -129,90 +56,126 @@ const DefectDialog = ({
     return true;
   };
 
-  const handleBeforeFileChange = (e) => {
-    const selectedFiles = Array.from(e.target.files);
-    const validFiles = selectedFiles.filter(file => {
-      const isValidSize = file.size <= 5 * 1024 * 1024; // 5MB limit
-      const isValidType = /\.(pdf|doc|docx|jpg|jpeg|png)$/i.test(file.name);
-      
-      if (!isValidSize) {
-        toast({
-          title: "File too large",
-          description: `${file.name} exceeds 5MB limit`,
-          variant: "destructive",
-        });
-      }
-      if (!isValidType) {
-        toast({
-          title: "Invalid file type",
-          description: `${file.name} is not a supported file type`,
-          variant: "destructive",
-        });
-      }
-      return isValidSize && isValidType;
-    });
-    
-    setBeforeFiles(prev => [...prev, ...validFiles]);
-  };
-
-  const handleAfterFileChange = (e) => {
-    const selectedFiles = Array.from(e.target.files);
-    const validFiles = selectedFiles.filter(file => {
-      const isValidSize = file.size <= 5 * 1024 * 1024;
-      const isValidType = /\.(pdf|doc|docx|jpg|jpeg|png)$/i.test(file.name);
-      
-      if (!isValidSize) {
-        toast({
-          title: "File too large",
-          description: `${file.name} exceeds 5MB limit`,
-          variant: "destructive",
-        });
-      }
-      if (!isValidType) {
-        toast({
-          title: "Invalid file type",
-          description: `${file.name} is not a supported file type`,
-          variant: "destructive",
-        });
-      }
-      return isValidSize && isValidType;
-    });
-    
-    setAfterFiles(prev => [...prev, ...validFiles]);
-  };
-
-  const handleBeforeFileRemove = (index, isExisting = false) => {
-    if (isExisting) {
-      onChange('before_files', (defect.before_files || []).filter((_, i) => i !== index));
-    } else {
-      setBeforeFiles(prev => prev.filter((_, i) => i !== index));
+  const validateFile = (file) => {
+    if (file.size > MAX_FILE_SIZE) {
+      toast({
+        title: "File Too Large",
+        description: `${file.name} exceeds 5MB limit`,
+        variant: "destructive",
+      });
+      return false;
     }
+    
+    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+      toast({
+        title: "Invalid File Type",
+        description: `${file.name} is not a supported file type`,
+        variant: "destructive",
+      });
+      return false;
+    }
+    
+    return true;
   };
 
-  const handleAfterFileRemove = (index, isExisting = false) => {
-    if (isExisting) {
-      onChange('after_files', (defect.after_files || []).filter((_, i) => i !== index));
-    } else {
-      setAfterFiles(prev => prev.filter((_, i) => i !== index));
+  const uploadFiles = async (files, defectId, type = 'initial') => {
+    const uploadedFiles = [];
+    let progress = 0;
+    
+    for (const file of files) {
+      if (!validateFile(file)) continue;
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${defectId}/${type}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      
+      try {
+        const { error: uploadError } = await supabase.storage
+          .from('defect-files')
+          .upload(fileName, file);
+
+        if (uploadError) throw uploadError;
+
+        uploadedFiles.push({
+          name: file.name,
+          path: fileName,
+          type: file.type,
+          size: file.size,
+          uploadedAt: new Date().toISOString()
+        });
+
+        progress += (1 / files.length) * 100;
+        setUploadProgress(Math.round(progress));
+
+      } catch (error) {
+        console.error(`Error uploading ${file.name}:`, error);
+        toast({
+          title: "Upload Failed",
+          description: `Failed to upload ${file.name}`,
+          variant: "destructive",
+        });
+      }
     }
+
+    return uploadedFiles;
+  };
+
+  const handleInitialFileChange = (e) => {
+    const selectedFiles = Array.from(e.target.files);
+    setInitialFiles(prevFiles => [...prevFiles, ...selectedFiles]);
+  };
+
+  const handleClosureFileChange = (e) => {
+    const selectedFiles = Array.from(e.target.files);
+    setClosureFiles(prevFiles => [...prevFiles, ...selectedFiles]);
+  };
+
+  const removeInitialFile = (index) => {
+    setInitialFiles(prevFiles => prevFiles.filter((_, i) => i !== index));
+  };
+
+  const removeClosureFile = (index) => {
+    setClosureFiles(prevFiles => prevFiles.filter((_, i) => i !== index));
   };
 
   const handleSave = async () => {
     try {
       setSaving(true);
+      setUploadProgress(0);
 
       if (!validateDefect(defect)) {
         setSaving(false);
         return;
       }
 
-      await onSave(defect, {
-        beforeFiles,
-        afterFiles
-      });
-      
-      setBeforeFiles([]);
-      setAfterFiles([]);
+      // Upload files if any
+      let uploadedInitialFiles = [];
+      let uploadedClosureFiles = [];
+
+      if (initialFiles.length > 0) {
+        uploadedInitialFiles = await uploadFiles(initialFiles, defect.id || 'temp', 'initial');
+      }
+
+      if (closureFiles.length > 0 && defect['Status (Vessel)'] === 'CLOSED') {
+        uploadedClosureFiles = await uploadFiles(closureFiles, defect.id || 'temp', 'closure');
+      }
+
+      // Combine existing and new files
+      const updatedDefect = {
+        ...defect,
+        initial_files: [
+          ...(defect.initial_files || []),
+          ...uploadedInitialFiles
+        ],
+        completion_files: [
+          ...(defect.completion_files || []),
+          ...uploadedClosureFiles
+        ]
+      };
+
+      await onSave(updatedDefect);
+      setInitialFiles([]);
+      setClosureFiles([]);
+      setUploadProgress(0);
       
     } catch (error) {
       console.error('Error in DefectDialog save:', error);
@@ -226,28 +189,19 @@ const DefectDialog = ({
     }
   };
 
-  const dialogDescription = isNew ? 'Create a new defect record with the form below.' : 'Edit the defect record details with the form below.';
-  const dialogDescriptionId = 'defect-dialog-description';
-  const isCompleted = defect?.['Status (Vessel)'] === 'CLOSED';
-
   return (
-    <Dialog 
-      open={isOpen} 
-      onOpenChange={onClose}
-    >
-      <DialogContent 
-        className="max-w-md max-h-[90vh] overflow-y-auto bg-[#0B1623]"
-        aria-describedby={dialogDescriptionId}
-      >
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto bg-[#0B1623]">
         <DialogHeader>
           <DialogTitle className="text-sm font-medium text-white">
             {isNew ? 'Add New Defect' : 'Edit Defect'}
           </DialogTitle>
-          <p id={dialogDescriptionId} className="text-xs text-white/60">
-            {dialogDescription}
+          <p className="text-xs text-white/60">
+            {isNew ? 'Create a new defect record' : 'Edit existing defect details'}
           </p>
         </DialogHeader>
         
+        {/* Existing form fields remain the same */}
         <div className="grid gap-3 py-3">
           {/* Vessel Selection */}
           <div className="grid gap-1.5">
@@ -405,25 +359,33 @@ const DefectDialog = ({
               />
             </div>
           </div>
-          
-          {/* Before Files Section */}
-          <FileUploadSection
-            label="Before Documentation"
-            files={beforeFiles}
-            existingFiles={defect?.before_files}
-            onFileChange={handleBeforeFileChange}
-            onFileRemove={handleBeforeFileRemove}
-          />
 
-          {/* After Files Section */}
-          <FileUploadSection
-            label="After Documentation"
-            files={afterFiles}
-            existingFiles={defect?.after_files}
-            onFileChange={handleAfterFileChange}
-            onFileRemove={handleAfterFileRemove}
-            disabled={!isCompleted}
-          />
+          {/* Associated Files */}
+          <div className="grid gap-1.5">
+            <label htmlFor="files" className="text-xs font-medium text-white/80">
+              Associated Files
+            </label>
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-2 px-3 py-1.5 rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] cursor-pointer hover:border-[#3BADE5]/40">
+                <Upload className="h-4 w-4 text-white" />
+                <span className="text-xs text-white">Upload Files</span>
+                <input
+                  id="files"
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={handleFileChange}
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  aria-label="Upload files"
+                />
+              </label>
+              {files.length > 0 && (
+                <span className="text-xs text-white/60" role="status">
+                  {files.length} file(s) selected
+                </span>
+              )}
+            </div>
+          </div>
 
           {/* Comments */}
           <div className="grid gap-1.5">
@@ -440,23 +402,105 @@ const DefectDialog = ({
           </div>
         </div>
 
+          {/* Initial Files Upload */}
+          <div className="grid gap-1.5">
+            <label className="text-xs font-medium text-white/80">
+              Initial Documentation
+            </label>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 px-3 py-1.5 rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] cursor-pointer hover:border-[#3BADE5]/40">
+                <Upload className="h-4 w-4 text-white" />
+                <span className="text-xs text-white">Upload Files</span>
+                <input
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={handleInitialFileChange}
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                />
+              </label>
+              {initialFiles.length > 0 && (
+                <div className="space-y-1">
+                  {initialFiles.map((file, index) => (
+                    <div key={index} className="flex items-center gap-2 text-xs text-white/80">
+                      <FileText className="h-3.5 w-3.5" />
+                      <span className="truncate flex-1">{file.name}</span>
+                      <button
+                        onClick={() => removeInitialFile(index)}
+                        className="p-1 hover:bg-white/10 rounded-full"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Closure Files Upload - Only shown when status is CLOSED */}
+          {defect?.['Status (Vessel)'] === 'CLOSED' && (
+            <div className="grid gap-1.5">
+              <label className="text-xs font-medium text-white/80">
+                Closure Documentation
+              </label>
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 px-3 py-1.5 rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] cursor-pointer hover:border-[#3BADE5]/40">
+                  <Upload className="h-4 w-4 text-white" />
+                  <span className="text-xs text-white">Upload Files</span>
+                  <input
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={handleClosureFileChange}
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  />
+                </label>
+                {closureFiles.length > 0 && (
+                  <div className="space-y-1">
+                    {closureFiles.map((file, index) => (
+                      <div key={index} className="flex items-center gap-2 text-xs text-white/80">
+                        <FileText className="h-3.5 w-3.5" />
+                        <span className="truncate flex-1">{file.name}</span>
+                        <button
+                          onClick={() => removeClosureFile(index)}
+                          className="p-1 hover:bg-white/10 rounded-full"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Upload Progress */}
+          {uploadProgress > 0 && uploadProgress < 100 && (
+            <div className="w-full bg-[#132337] rounded-full h-1.5">
+              <div
+                className="bg-[#3BADE5] h-1.5 rounded-full transition-all duration-300"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+          )}
+        </div>
+
         <div className="flex justify-end gap-2 pt-2">
           <button
             onClick={onClose}
-            disabled={saving || uploading}
+            disabled={saving}
             className="h-7 px-3 text-xs font-medium rounded-[4px] border border-[#3BADE5]/20 hover:border-[#3BADE5]/40 text-white disabled:opacity-50"
-            aria-label="Cancel"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
-            disabled={saving || uploading}
-            className="h-7 px-3 text-xs font-medium rounded-[4px] bg-[#3BADE5] hover:bg-[#3BADE5]/90 text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            aria-label={isNew ? "Add new defect" : "Save changes"}
+            disabled={saving}
+            className="h-7 px-3 text-xs font-medium rounded-[4px] bg-[#3BADE5] hover:bg-[#3BADE5]/90 text-white disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {(saving || uploading) && <Loader2 className="h-3 w-3 animate-spin" />}
-            {saving ? 'Saving...' : uploading ? 'Uploading...' : (isNew ? 'Add Defect' : 'Save Changes')}
+            {saving ? 'Saving...' : (isNew ? 'Add Defect' : 'Save Changes')}
           </button>
         </div>
       </DialogContent>
