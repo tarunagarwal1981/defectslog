@@ -118,11 +118,43 @@ const DefectRow = ({ defect, index, onEditDefect, onDeleteDefect, onDeleteFile }
     setIsFilePreviewOpen(true);
   };
 
-  const handleFileDelete = async (fileIndex, e) => {
+  const handleFileDelete = async (fileIndex, fileType, e) => {
     e.stopPropagation();
     if (window.confirm('Are you sure you want to delete this file?')) {
-      await onDeleteFile(defect.id, fileIndex);
+      await onDeleteFile(defect.id, fileIndex, fileType);
     }
+  };
+
+  const renderFileSection = (files, title, fileType) => {
+    if (!files?.length) return null;
+    
+    return (
+      <div>
+        <div className="text-xs font-medium text-white/80 mb-1">{title}</div>
+        <div className="flex flex-wrap gap-2">
+          {files.map((file, fileIndex) => (
+            <div
+              key={fileIndex}
+              className="flex items-center gap-2 bg-[#0B1623] px-2 py-1 rounded"
+            >
+              <FileText className="h-3.5 w-3.5 text-[#3BADE5]" />
+              <button
+                onClick={(e) => handleFileClick(file, e)}
+                className="text-xs text-white/90 hover:text-[#3BADE5] transition-colors truncate max-w-[150px]"
+              >
+                {file.name}
+              </button>
+              <button
+                onClick={(e) => handleFileDelete(fileIndex, fileType, e)}
+                className="p-1 hover:bg-red-500/20 text-red-400 rounded-full transition-colors"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -209,31 +241,11 @@ const DefectRow = ({ defect, index, onEditDefect, onDeleteDefect, onDeleteFile }
                 <div className="text-xs font-medium text-white/80 mb-1">Comments</div>
                 <div className="text-xs text-white/90">{defect.Comments || '-'}</div>
               </div>
-              {defect.files?.length > 0 && (
-                <div>
-                  <div className="text-xs font-medium text-white/80 mb-1">Files</div>
-                  <div className="flex flex-wrap gap-2">
-                    {defect.files.map((file, fileIndex) => (
-                      <div
-                        key={fileIndex}
-                        className="flex items-center gap-2 bg-[#0B1623] px-2 py-1 rounded"
-                      >
-                        <FileText className="h-3.5 w-3.5 text-[#3BADE5]" />
-                        <button
-                          onClick={(e) => handleFileClick(file, e)}
-                          className="text-xs text-white/90 hover:text-[#3BADE5] transition-colors truncate max-w-[150px]"
-                        >
-                          {file.name}
-                        </button>
-                        <button
-                          onClick={(e) => handleFileDelete(fileIndex, e)}
-                          className="p-1 hover:bg-red-500/20 text-red-400 rounded-full transition-colors"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+              
+              {(defect.before_files?.length > 0 || defect.after_files?.length > 0) && (
+                <div className="space-y-3">
+                  {renderFileSection(defect.before_files, 'Before Documentation', 'before')}
+                  {renderFileSection(defect.after_files, 'After Documentation', 'after')}
                 </div>
               )}
             </div>
@@ -263,7 +275,6 @@ const DefectsTable = ({
   statusFilter = '',
   criticalityFilter = '' 
 }) => {
-  console.log("DefectsTable data:", data);
   const [sortConfig, setSortConfig] = useState({
     key: 'Date Reported',
     direction: 'desc'
