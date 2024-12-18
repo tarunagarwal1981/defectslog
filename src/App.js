@@ -65,108 +65,55 @@ function App() {
   }, []);
 
   const fetchUserData = useCallback(async () => {
-  if (!session?.user?.id) {
-    console.log("No user session found");
-    return;
-  }
+    if (!session?.user?.id) return;
 
-  try {
-    setLoading(true);
-    console.log("Starting data fetch for user:", session.user.id);
-    
-    // First fetch - Get user vessels
-    const { data: userVessels, error: vesselError } = await supabase
-      .from('user_vessels')
-      .select(`
-        vessel_id,
-        vessels!inner (
-          vessel_id,
-          vessel_name
-        )
-      `)
-      .eq('user_id', session.user.id);
+    try {
+      setLoading(true);
+      
+      const userVessels = await getUserVessels(session.user.id);
+      
+      const vesselIds = userVessels.map(v => v.vessel_id);
+      const vesselsMap = userVessels.reduce((acc, v) => {
+        if (v.vessels) {
+          acc[v.vessel_id] = v.vessels.vessel_name;
+        }
+        return acc;
+      }, {});
 
-    if (vesselError) {
-      console.error("Vessel fetch error:", vesselError);
-      throw vesselError;
+      const { data: defects, error: defectsError } = await supabase
+        .from('defects register')
+        .select('*')
+        .eq('is_deleted', false)
+        .in('vessel_id', vesselIds)
+        .order('Date Reported', { ascending: false });
+
+      if (defectsError) throw defectsError;
+
+      setAssignedVessels(vesselIds);
+      setVesselNames(vesselsMap);
+      setData(defects || []);
+      
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
+  }, [session?.user?.id, toast]);
 
-    console.log("Fetched user vessels:", userVessels);
-
-    if (!userVessels?.length) {
-      console.log("No vessels found for user");
+  useEffect(() => {
+    if (session?.user) {
+      fetchUserData();
+    } else {
       setData([]);
-      return;
+      setAssignedVessels([]);
+      setVesselNames({});
     }
-    
-    const vesselIds = userVessels.map(v => v.vessel_id);
-    console.log("Found vessel IDs:", vesselIds);
-    
-    const vesselsMap = userVessels.reduce((acc, v) => {
-      if (v.vessels) {
-        acc[v.vessel_id] = v.vessels.vessel_name;
-      }
-      return acc;
-    }, {});
-    console.log("Created vessels map:", vesselsMap);
-
-    // Second fetch - Get defects with explicit column selection
-    console.log("Fetching defects for vessels:", vesselIds);
-    
-    const { data: defects, error: defectsError } = await supabase
-      .from('defects register')
-      .select(`
-        id,
-        SNo,
-        vessel_id,
-        vessel_name,
-        Equipments,
-        Description,
-        "Action Planned",
-        Criticality,
-        "Date Reported",
-        "Date Completed",
-        "Status (Vessel)",
-        Comments,
-        before_files,
-        after_files,
-        is_deleted
-      `)
-      .eq('is_deleted', false)
-      .in('vessel_id', vesselIds)
-      .order('Date Reported', { ascending: false });
-
-    if (defectsError) {
-      console.error("Defects fetch error:", defectsError);
-      throw defectsError;
-    }
-
-    console.log("Raw defects data:", defects);
-
-    // Process the defects
-    const processedDefects = (defects || []).map(defect => ({
-      ...defect,
-      before_files: defect.before_files || [],
-      after_files: defect.after_files || []
-    }));
-
-    console.log("Processed defects:", processedDefects);
-
-    setAssignedVessels(vesselIds);
-    setVesselNames(vesselsMap);
-    setData(processedDefects);
-    
-  } catch (error) {
-    console.error("Error in fetchUserData:", error);
-    toast({
-      title: "Error",
-      description: error.message || "Failed to fetch data",
-      variant: "destructive",
-    });
-  } finally {
-    setLoading(false);
-  }
-}, [session?.user?.id, toast]);
+  }, [session?.user, fetchUserData]);
 
   const filteredData = React.useMemo(() => {
     return data.filter(defect => {
@@ -202,223 +149,135 @@ function App() {
   }, [toast]);
 
   const handleAddDefect = () => {
-  if (assignedVessels.length === 0) {
-    toast({
-      title: "Error",
-      description: "No vessels assigned to you. Contact administrator.",
-      variant: "destructive",
+    if (assignedVessels.length === 0) {
+      toast({
+        title: "Error",
+        description: "No vessels assigned to you. Contact administrator.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setCurrentDefect({
+      id: `temp-${Date.now()}`,
+      SNo: data.length + 1,
+      vessel_id: '',
+      Equipments: '',
+      Description: '',
+      'Action Planned': '',
+      Criticality: '',
+      'Status (Vessel)': 'OPEN',
+      'Date Reported': new Date().toISOString().split('T')[0],
+      'Date Completed': '',
+      initial_files: [],
+      completion_files: []
     });
-    return;
-  }
+    setIsDefectDialogOpen(true);
+  };
 
-  setCurrentDefect({
-    id: `temp-${Date.now()}`,
-    SNo: data.length + 1,
-    vessel_id: '',
-    Equipments: '',
-    Description: '',
-    'Action Planned': '',
-    Criticality: '',
-    'Status (Vessel)': 'OPEN',
-    'Date Reported': new Date().toISOString().split('T')[0],
-    'Date Completed': '',
-    before_files: [],
-    after_files: []
-  });
-  setIsDefectDialogOpen(true);
-};
-
-  const handleDeleteFile = async (defectId, fileIndex, fileType) => {
-  try {
-    const defect = data.find(d => d.id === defectId);
-    if (!defect) return;
-
-    const files = fileType === 'before' ? defect.before_files : defect.after_files;
-    const fileToDelete = files[fileIndex];
-
-    if (!fileToDelete) return;
-
-    // Delete from storage
-    const { error: storageError } = await supabase.storage
-      .from('defect-files')
-      .remove([fileToDelete.path]);
-
-    if (storageError) throw storageError;
-
-    // Update defect record
-    const updatedFiles = files.filter((_, index) => index !== fileIndex);
-    const updateField = fileType === 'before' ? 'before_files' : 'after_files';
-    
-    const { error: updateError } = await supabase
-      .from('defects register')
-      .update({ [updateField]: updatedFiles })
-      .eq('id', defectId);
-
-    if (updateError) throw updateError;
-
-    // Update local state
-    setData(prevData => prevData.map(d => {
-      if (d.id === defectId) {
-        return { 
-          ...d, 
-          [updateField]: updatedFiles
-        };
+  const handleSaveDefect = async (updatedDefect) => {
+    try {
+      if (!assignedVessels.includes(updatedDefect.vessel_id)) {
+        throw new Error("Not authorized for this vessel");
       }
-      return d;
-    }));
 
-    toast({
-      title: "File Deleted",
-      description: "File has been successfully removed",
-    });
-
-  } catch (error) {
-    console.error("Error deleting file:", error);
-    toast({
-      title: "Error",
-      description: "Failed to delete file",
-      variant: "destructive",
-    });
-  }
-};
-  
-  const handleSaveDefect = async (updatedDefect, { beforeFiles, afterFiles }) => {
-  try {
-    if (!assignedVessels.includes(updatedDefect.vessel_id)) {
-      throw new Error("Not authorized for this vessel");
-    }
-
-    const isNewDefect = updatedDefect.id?.startsWith('temp-');
-    
-    // Upload before files if any
-    let uploadedBeforeFiles = [];
-    if (beforeFiles && beforeFiles.length > 0) {
-      const filePromises = beforeFiles.map(async (file) => {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-        const filePath = `${updatedDefect.vessel_id}/${isNewDefect ? 'new' : updatedDefect.id}/before/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('defect-files')
-          .upload(filePath, file);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('defect-files')
-          .getPublicUrl(filePath);
-
-        return {
-          name: file.name,
-          url: publicUrl,
-          path: filePath
-        };
-      });
-
-      uploadedBeforeFiles = await Promise.all(filePromises);
-    }
-
-    // Upload after files if any
-    let uploadedAfterFiles = [];
-    if (afterFiles && afterFiles.length > 0) {
-      const filePromises = afterFiles.map(async (file) => {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-        const filePath = `${updatedDefect.vessel_id}/${isNewDefect ? 'new' : updatedDefect.id}/after/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('defect-files')
-          .upload(filePath, file);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('defect-files')
-          .getPublicUrl(filePath);
-
-        return {
-          name: file.name,
-          url: publicUrl,
-          path: filePath
-        };
-      });
-
-      uploadedAfterFiles = await Promise.all(filePromises);
-    }
-
-    const defectData = {
-      vessel_id: updatedDefect.vessel_id,
-      vessel_name: vesselNames[updatedDefect.vessel_id],
-      "Status (Vessel)": updatedDefect['Status (Vessel)'],
-      Equipments: updatedDefect.Equipments,
-      Description: updatedDefect.Description,
-      "Action Planned": updatedDefect['Action Planned'],
-      Criticality: updatedDefect.Criticality,
-      "Date Reported": updatedDefect['Date Reported'],
-      "Date Completed": updatedDefect['Date Completed'] || null,
-      Comments: updatedDefect.Comments || '',
-      before_files: [...(updatedDefect.before_files || []), ...uploadedBeforeFiles],
-      after_files: [...(updatedDefect.after_files || []), ...uploadedAfterFiles]
-    };
-
-    let result;
-    if (isNewDefect) {
-      const { data: insertedData, error: insertError } = await supabase
-        .from('defects register')
-        .insert([defectData])
-        .select('*')
-        .single();
-
-      if (insertError) throw insertError;
-      result = insertedData;
+      const isNewDefect = updatedDefect.id?.startsWith('temp-');
       
-      setData(prevData => [result, ...prevData]);
-    } else {
-      const { data: updatedData, error: updateError } = await supabase
-        .from('defects register')
-        .update(defectData)
-        .eq('id', updatedDefect.id)
-        .select('*')
-        .single();
+      const defectData = {
+        vessel_id: updatedDefect.vessel_id,
+        vessel_name: vesselNames[updatedDefect.vessel_id],
+        "Status (Vessel)": updatedDefect['Status (Vessel)'],
+        Equipments: updatedDefect.Equipments,
+        Description: updatedDefect.Description,
+        "Action Planned": updatedDefect['Action Planned'],
+        Criticality: updatedDefect.Criticality,
+        "Date Reported": updatedDefect['Date Reported'],
+        "Date Completed": updatedDefect['Date Completed'] || null,
+        Comments: updatedDefect.Comments || '',
+        initial_files: updatedDefect.initial_files || [],
+        completion_files: updatedDefect.completion_files || []
+      };
 
-      if (updateError) throw updateError;
-      result = updatedData;
-      
-      setData(prevData => {
-        const updatedData = prevData.map(d => d.id === result.id ? result : d);
-        return [...updatedData].sort((a, b) => 
-          new Date(b['Date Reported']) - new Date(a['Date Reported'])
-        );
+      let result;
+      if (isNewDefect) {
+        const { data: insertedData, error: insertError } = await supabase
+          .from('defects register')
+          .insert([defectData])
+          .select('*')
+          .single();
+
+        if (insertError) throw insertError;
+        result = insertedData;
+        
+        setData(prevData => [result, ...prevData]);
+      } else {
+        const { data: updatedData, error: updateError } = await supabase
+          .from('defects register')
+          .update(defectData)
+          .eq('id', updatedDefect.id)
+          .select('*')
+          .single();
+
+        if (updateError) throw updateError;
+        result = updatedData;
+        
+        setData(prevData => {
+          const updatedData = prevData.map(d => d.id === result.id ? result : d);
+          return [...updatedData].sort((a, b) => 
+            new Date(b['Date Reported']) - new Date(a['Date Reported'])
+          );
+        });
+      }
+
+      toast({
+        title: isNewDefect ? "Defect Added" : "Defect Updated",
+        description: "Successfully saved the defect",
+      });
+
+      setIsDefectDialogOpen(false);
+      setCurrentDefect(null);
+
+    } catch (error) {
+      console.error("Error saving defect:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save defect",
+        variant: "destructive",
       });
     }
+  };
 
-    toast({
-      title: isNewDefect ? "Defect Added" : "Defect Updated",
-      description: "Successfully saved the defect",
-    });
-
-    setIsDefectDialogOpen(false);
-    setCurrentDefect(null);
-
-  } catch (error) {
-    console.error("Error saving defect:", error);
-    toast({
-      title: "Error",
-      description: error.message || "Failed to save defect",
-      variant: "destructive",
-    });
-  }
-};
   const handleDeleteDefect = async (defectId) => {
     try {
       if (!session?.user?.id) {
         throw new Error("User not authenticated");
       }
 
-      const confirmed = window.confirm("Are you sure you want to delete this defect?");
+      const defect = data.find(d => d.id === defectId);
+      const hasFiles = (defect?.initial_files?.length || 0) + (defect?.completion_files?.length || 0) > 0;
+      
+      const confirmed = window.confirm(
+        hasFiles 
+          ? "Are you sure you want to delete this defect? This will also delete all associated files."
+          : "Are you sure you want to delete this defect?"
+      );
+      
       if (!confirmed) return;
 
       setLoading(true);
+
+      if (hasFiles) {
+        const allFiles = [
+          ...(defect.initial_files || []),
+          ...(defect.completion_files || [])
+        ];
+
+        const { error: storageError } = await supabase.storage
+          .from('defect-files')
+          .remove(allFiles.map(file => file.path));
+
+        if (storageError) throw storageError;
+      }
 
       const { error } = await supabase
         .from('defects register')
