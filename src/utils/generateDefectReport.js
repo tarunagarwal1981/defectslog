@@ -13,130 +13,123 @@ export const generateDefectReport = async (defect, signedUrls = {}) => {
     // Basic Information Table
     doc.autoTable({
       startY: 20,
-      theme: 'plain',
-      headStyles: {
-        fillColor: [44, 123, 229],
-        textColor: 255,
-        fontSize: 10,
-        fontStyle: 'bold',
-        cellPadding: 3,
-      },
-      head: [['Basic Information']],
-      body: [
-        ['Vessel:', defect.vessel_name || '-'],
-        ['Equipment:', defect.Equipments || '-'],
-        ['Status:', defect['Status (Vessel)'] || '-'],
-        ['Criticality:', defect.Criticality || '-'],
-        ['Date Reported:', defect['Date Reported'] ? new Date(defect['Date Reported']).toLocaleDateString() : '-'],
-        ['Date Completed:', defect['Date Completed'] ? new Date(defect['Date Completed']).toLocaleDateString() : '-']
-      ],
+      theme: 'striped',
       styles: {
         fontSize: 9,
-        cellPadding: 2,
+        cellPadding: { top: 2, right: 4, bottom: 2, left: 4 },
+        lineWidth: 0.1
       },
+      headStyles: {
+        fillColor: [44, 123, 229],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        lineColor: [44, 123, 229]
+      },
+      head: [['Basic Information', '']],
+      body: [
+        ['Vessel', `${defect.vessel_name}`],
+        ['Equipment', `${defect.Equipments}`],
+        ['Status', `${defect['Status (Vessel)']}`],
+        ['Criticality', `${defect.Criticality}`],
+        ['Date Reported', `${defect['Date Reported'] ? new Date(defect['Date Reported']).toLocaleDateString() : '-'}`],
+        ['Date Completed', `${defect['Date Completed'] ? new Date(defect['Date Completed']).toLocaleDateString() : '-'}`]
+      ],
       columnStyles: {
         0: { 
-          cellWidth: 30,
+          cellWidth: 35,
           fontStyle: 'bold',
+          fillColor: [240, 248, 255]
         },
-        1: { 
-          cellWidth: 'auto' 
-        }
-      },
-      margin: { left: 15 },
+        1: { cellWidth: 'auto' }
+      }
     });
 
-    // Initial Assessment
+    // Initial Assessment Table
     doc.autoTable({
-      startY: doc.lastAutoTable.finalY + 5,
-      theme: 'plain',
-      headStyles: {
-        fillColor: [44, 123, 229],
-        textColor: 255,
-        fontSize: 10,
-        fontStyle: 'bold',
-        cellPadding: 3,
-      },
-      head: [['Initial Assessment']],
-      body: [
-        ['Description:', defect.Description || '-'],
-        ['Action Planned:', defect['Action Planned'] || '-'],
-        ['Initial Comments:', defect.Comments || '-']
-      ],
+      startY: doc.lastAutoTable.finalY + 3,
+      theme: 'striped',
       styles: {
         fontSize: 9,
-        cellPadding: 2,
+        cellPadding: { top: 2, right: 4, bottom: 2, left: 4 },
+        lineWidth: 0.1
       },
+      headStyles: {
+        fillColor: [44, 123, 229],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        lineColor: [44, 123, 229]
+      },
+      head: [['Initial Assessment', '']],
+      body: [
+        ['Description', `${defect.Description || '-'}`],
+        ['Action Planned', `${defect['Action Planned'] || '-'}`],
+        ['Initial Comments', `${defect.Comments || '-'}`]
+      ],
       columnStyles: {
         0: { 
-          cellWidth: 30,
+          cellWidth: 35,
           fontStyle: 'bold',
+          fillColor: [240, 248, 255]
         },
-        1: { 
-          cellWidth: 'auto' 
-        }
-      },
-      margin: { left: 15 },
+        1: { cellWidth: 'auto' }
+      }
     });
 
     // Closure Information
     if (defect['Status (Vessel)'] === 'CLOSED') {
       doc.autoTable({
-        startY: doc.lastAutoTable.finalY + 5,
-        theme: 'plain',
-        headStyles: {
-          fillColor: [44, 123, 229],
-          textColor: 255,
-          fontSize: 10,
-          fontStyle: 'bold',
-          cellPadding: 3,
-        },
-        head: [['Closure Information']],
-        body: [
-          ['Closure Comments:', defect.closure_comments || '-']
-        ],
+        startY: doc.lastAutoTable.finalY + 3,
+        theme: 'striped',
         styles: {
           fontSize: 9,
-          cellPadding: 2,
+          cellPadding: { top: 2, right: 4, bottom: 2, left: 4 },
+          lineWidth: 0.1
         },
+        headStyles: {
+          fillColor: [44, 123, 229],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          lineColor: [44, 123, 229]
+        },
+        head: [['Closure Information', '']],
+        body: [
+          ['Closure Comments', `${defect.closure_comments || '-'}`]
+        ],
         columnStyles: {
           0: { 
-            cellWidth: 30,
+            cellWidth: 35,
             fontStyle: 'bold',
+            fillColor: [240, 248, 255]
           },
-          1: { 
-            cellWidth: 'auto' 
-          }
-        },
-        margin: { left: 15 },
+          1: { cellWidth: 'auto' }
+        }
       });
     }
 
-    // Function to add images section
+    // Function to add images
     const addImagesSection = async (title, files, startY) => {
       if (!files?.length) return startY;
 
       // Add section title
-      doc.setFontSize(10);
+      doc.setFontSize(11);
       doc.setTextColor(44, 123, 229);
-      doc.text(title, 15, startY + 10);
-      let currentY = startY + 15;
+      doc.text(title, 15, startY + 5);
+      let currentY = startY + 10;
 
       for (const file of files) {
         if (!file.type.startsWith('image/') || !signedUrls[file.path]) continue;
 
+        // Check if need new page
+        if (currentY > doc.internal.pageSize.height - 60) {
+          doc.addPage();
+          currentY = 15;
+        }
+
         try {
-          // Check if we need a new page
-          if (currentY > doc.internal.pageSize.height - 100) {
-            doc.addPage();
-            currentY = 15;
-          }
+          // Add image with fixed dimensions
+          const imgWidth = doc.internal.pageSize.width - 30; // 15mm margins
+          const imgHeight = 50; // Fixed height for consistency
 
-          // Calculate image dimensions
-          const imgWidth = doc.internal.pageSize.width - 30; // 15mm margins on each side
-          const imgHeight = 70;
-
-          // Add image
           doc.addImage(
             signedUrls[file.path],
             'JPEG',
@@ -148,39 +141,36 @@ export const generateDefectReport = async (defect, signedUrls = {}) => {
             'MEDIUM'
           );
 
-          // Add filename
+          // Add filename below image
           doc.setFontSize(8);
-          doc.setTextColor(60);
+          doc.setTextColor(100);
           doc.text(file.name, 15, currentY + imgHeight + 3);
 
-          currentY += imgHeight + 10;
+          currentY += imgHeight + 8; // Reduced spacing between images
         } catch (error) {
           console.error(`Error adding image ${file.name}:`, error);
         }
       }
-
       return currentY;
     };
 
-    // Add documentation images
-    let currentY = doc.lastAutoTable.finalY + 5;
-
+    // Add Initial Documentation
+    let currentY = doc.lastAutoTable.finalY + 3;
+    
     if (defect.initial_files?.length) {
       currentY = await addImagesSection('Initial Documentation:', defect.initial_files, currentY);
     }
 
+    // Add Closure Documentation
     if (defect.completion_files?.length) {
-      // Start on new page if less than 100mm space left
-      if (currentY > doc.internal.pageSize.height - 100) {
+      if (currentY > doc.internal.pageSize.height - 60) {
         doc.addPage();
         currentY = 15;
-      } else {
-        currentY += 5;
       }
       await addImagesSection('Closure Documentation:', defect.completion_files, currentY);
     }
 
-    // Save the PDF
+    // Save with vessel name included
     doc.save(`Defect_Report_${defect.vessel_name}_${defect.id}.pdf`);
 
   } catch (error) {
