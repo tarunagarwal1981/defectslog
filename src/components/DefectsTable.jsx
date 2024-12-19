@@ -261,6 +261,7 @@ const DefectRow = ({ defect, index, onEditDefect, onDeleteDefect }) => {
               </div>
 
               {/* Initial Files Section */}
+              {/* Initial Files Section */}
               {defect.initial_files?.length > 0 && (
                 <FileList
                   files={defect.initial_files}
@@ -277,6 +278,61 @@ const DefectRow = ({ defect, index, onEditDefect, onDeleteDefect }) => {
                   title="Closure Documentation"
                 />
               )}
+
+              {/* Add Report Generation Button */}
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    try {
+                      // Get signed URLs for images
+                      const getSignedUrls = async (files) => {
+                        const urls = {};
+                        for (const file of files) {
+                          if (file.type.startsWith('image/')) {
+                            try {
+                              const { data: { signedUrl } } = await supabase.storage
+                                .from('defect-files')
+                                .createSignedUrl(file.path, 3600);
+                              
+                              urls[file.path] = signedUrl;
+                            } catch (error) {
+                              console.error('Error getting signed URL:', error);
+                            }
+                          }
+                        }
+                        return urls;
+                      };
+
+                      const initialUrls = await getSignedUrls(defect.initial_files || []);
+                      const completionUrls = await getSignedUrls(defect.completion_files || []);
+                      
+                      const { generateDefectReport } = await import('../utils/generateDefectReport');
+                      await generateDefectReport(defect, {
+                        ...initialUrls,
+                        ...completionUrls
+                      });
+
+                      toast({
+                        title: "Success",
+                        description: "Report generated successfully",
+                      });
+                    } catch (error) {
+                      console.error('Error generating report:', error);
+                      toast({
+                        title: "Error",
+                        description: "Failed to generate report",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                  className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-[4px] 
+                    text-white bg-[#3BADE5] hover:bg-[#3BADE5]/80 transition-colors"
+                >
+                  <FileText className="h-3.5 w-3.5 mr-1.5" />
+                  Generate Report
+                </button>
+              </div>
             </div>
           </td>
         </tr>
