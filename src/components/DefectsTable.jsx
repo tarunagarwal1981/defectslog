@@ -245,61 +245,50 @@ const DefectRow = ({ defect, index, onEditDefect, onDeleteDefect }) => {
       </tr>
 
       {isExpanded && (
-        <tr className="bg-[#132337]/50">
-          <td colSpan="11" className="px-8 py-3 border-b border-white/10">
-            <div className="grid gap-4">
-              {/* Top section: Description, Action, Comments in 3 columns */}
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <div className="text-xs font-medium text-white/80 mb-1">Description</div>
-                  <div className="text-xs text-white/90 bg-[#0B1623]/50 p-2 rounded-md min-h-[80px]">
-                    {defect.Description || '-'}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs font-medium text-white/80 mb-1">Action Planned</div>
-                  <div className="text-xs text-white/90 bg-[#0B1623]/50 p-2 rounded-md min-h-[80px]">
-                    {defect['Action Planned'] || '-'}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs font-medium text-white/80 mb-1">Comments</div>
-                  <div className="text-xs text-white/90 bg-[#0B1623]/50 p-2 rounded-md min-h-[80px]">
-                    {defect.Comments || '-'}
-                  </div>
-                </div>
-              </div>
+  <tr className="bg-[#132337]/50">
+    <td colSpan="11" className="px-8 py-4 border-b border-white/10">
+      <div className="space-y-6">
+        {/* Top section: Text content */}
+        <div className="grid grid-cols-3 gap-8">
+          <div>
+            <h4 className="text-xs font-medium text-white/80 mb-2">Description</h4>
+            <p className="text-xs text-white/90">{defect.Description || '-'}</p>
+          </div>
+          <div>
+            <h4 className="text-xs font-medium text-white/80 mb-2">Action Planned</h4>
+            <p className="text-xs text-white/90">{defect['Action Planned'] || '-'}</p>
+          </div>
+          <div>
+            <h4 className="text-xs font-medium text-white/80 mb-2">Comments</h4>
+            <p className="text-xs text-white/90">{defect.Comments || '-'}</p>
+          </div>
+        </div>
 
-              {/* Documentation section: Initial and Closure files side by side */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-[#0B1623]/50 p-4 rounded-md">
-                  {defect.initial_files?.length > 0 ? (
-                    <FileList
-                      files={defect.initial_files}
-                      onDelete={handleDeleteFile}
-                      title="Initial Documentation"
-                    />
-                  ) : (
-                    <div className="text-xs text-white/60">No initial documentation</div>
-                  )}
-                </div>
-                <div className="bg-[#0B1623]/50 p-4 rounded-md">
-                  {defect.completion_files?.length > 0 ? (
-                    <FileList
-                      files={defect.completion_files}
-                      onDelete={handleDeleteFile}
-                      title="Closure Documentation"
-                    />
-                  ) : (
-                    <div className="text-xs text-white/60">No closure documentation</div>
-                  )}
-                </div>
-              </div>
+        {/* Files section */}
+        <div className="flex gap-8">
+          <div className="flex-1">
+            {defect.initial_files?.length > 0 && (
+              <FileList
+                files={defect.initial_files}
+                onDelete={handleDeleteFile}
+                title="Initial Documentation"
+              />
+            )}
+          </div>
+          <div className="flex-1">
+            {defect.completion_files?.length > 0 && (
+              <FileList
+                files={defect.completion_files}
+                onDelete={handleDeleteFile}
+                title="Closure Documentation"
+              />
+            )}
+          </div>
+        </div>
 
-              {/* Report generation button */}
-              <div className="flex justify-end mt-2">
-                <button
-                  onClick={async (e) => {
+        <div className="flex justify-end">
+          <button
+            onClick={async (e) => {
                     e.stopPropagation();
                     try {
                       const getSignedUrls = async (files) => {
@@ -342,20 +331,17 @@ const DefectRow = ({ defect, index, onEditDefect, onDeleteDefect }) => {
                       });
                     }
                   }}
-                  className="inline-flex items-center px-4 py-2 text-xs font-medium rounded-md 
-                    text-white bg-[#3BADE5] hover:bg-[#3BADE5]/80 transition-colors"
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  Generate Report
-                </button>
-              </div>
-            </div>
-          </td>
-        </tr>
-      )}
-    </>
-  );
-};
+            className="inline-flex items-center px-4 py-2 text-xs font-medium rounded-md 
+              text-white bg-[#3BADE5] hover:bg-[#3BADE5]/80 transition-colors shadow-sm"
+          >
+            <FileText className="h-4 w-4 mr-2" />
+            Generate Report
+          </button>
+        </div>
+      </div>
+    </td>
+  </tr>
+)}
 
 const DefectsTable = ({ 
   data, 
