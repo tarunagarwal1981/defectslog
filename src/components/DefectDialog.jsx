@@ -42,6 +42,20 @@ const DefectDialog = ({
       'Criticality',
       'Date Reported'
     ];
+
+    // Add closure_comments requirement for CLOSED status
+    if (defectData['Status (Vessel)'] === 'CLOSED') {
+      required.push('closure_comments');
+
+      if (!defectData['Date Completed']) {
+        toast({
+          title: "Required Field Missing",
+          description: "Please enter Date Completed for closed defects",
+          variant: "destructive",
+        });
+        return false;
+      }
+    }
     
     const missing = required.filter(field => !defectData[field]);
     
@@ -169,7 +183,8 @@ const DefectDialog = ({
         completion_files: [
           ...(defect.completion_files || []),
           ...uploadedClosureFiles
-        ]
+        ],
+        closure_comments: defect.closure_comments
       };
 
       await onSave(updatedDefect);
@@ -292,6 +307,20 @@ const DefectDialog = ({
             />
           </div>
 
+          {/* Comments */}
+          <div className="grid gap-1.5">
+            <label htmlFor="comments" className="text-xs font-medium text-white/80">
+              Comments
+            </label>
+            <textarea
+              id="comments"
+              className="flex h-16 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
+              value={defect?.Comments || ''}
+              onChange={(e) => onChange('Comments', e.target.value)}
+              placeholder="Add any additional comments"
+            />
+          </div>
+
           {/* Status */}
           <div className="grid gap-1.5">
             <label htmlFor="status" className="text-xs font-medium text-white/80">
@@ -350,7 +379,7 @@ const DefectDialog = ({
             </div>
             <div className="grid gap-1.5">
               <label htmlFor="dateCompleted" className="text-xs font-medium text-white/80">
-                Date Completed
+                Date Completed {defect?.['Status (Vessel)'] === 'CLOSED' && <span className="text-red-400">*</span>}
               </label>
               <input
                 id="dateCompleted"
@@ -358,11 +387,12 @@ const DefectDialog = ({
                 className="flex h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
                 value={defect?.['Date Completed'] || ''}
                 onChange={(e) => onChange('Date Completed', e.target.value)}
+                required={defect?.['Status (Vessel)'] === 'CLOSED'}
+                aria-required={defect?.['Status (Vessel)'] === 'CLOSED'}
               />
             </div>
           </div>
 
-          {/* Initial Files Upload */}
           {/* Initial Files Upload */}
           <div className="grid gap-1.5">
             <label className="text-xs font-medium text-white/80">
@@ -396,7 +426,6 @@ const DefectDialog = ({
                   ))}
                 </div>
               )}
-              {/* Show existing files if any */}
               {defect?.initial_files?.length > 0 && (
                 <div className="space-y-1 mt-2">
                   <div className="text-xs text-white/60">Existing files:</div>
@@ -411,11 +440,10 @@ const DefectDialog = ({
             </div>
           </div>
 
-          
-          
-          {/* Closure Files Upload - Only shown when status is CLOSED */}
+          {/* Closure section only shown when status is CLOSED */}
           {defect?.['Status (Vessel)'] === 'CLOSED' && (
             <>
+              {/* Closure Comments */}
               <div className="grid gap-1.5">
                 <label htmlFor="closureComments" className="text-xs font-medium text-white/80">
                   Closure Comments <span className="text-red-400">*</span>
@@ -426,55 +454,58 @@ const DefectDialog = ({
                   value={defect?.closure_comments || ''}
                   onChange={(e) => onChange('closure_comments', e.target.value)}
                   placeholder="Enter closure comments and findings"
-                  required={defect?.['Status (Vessel)'] === 'CLOSED'}
+                  required
+                  aria-required="true"
                 />
-              </div>         
-            <div className="grid gap-1.5">
-              <label className="text-xs font-medium text-white/80">
-                Closure Documentation
-              </label>
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 px-3 py-1.5 rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] cursor-pointer hover:border-[#3BADE5]/40">
-                  <Upload className="h-4 w-4 text-white" />
-                  <span className="text-xs text-white">Upload Closure Files</span>
-                  <input
-                    type="file"
-                    multiple
-                    className="hidden"
-                    onChange={handleClosureFileChange}
-                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                  />
-                </label>
-                {closureFiles.length > 0 && (
-                  <div className="space-y-1">
-                    {closureFiles.map((file, index) => (
-                      <div key={index} className="flex items-center gap-2 text-xs text-white/80">
-                        <FileText className="h-3.5 w-3.5" />
-                        <span className="truncate flex-1">{file.name}</span>
-                        <button
-                          onClick={() => removeClosureFile(index)}
-                          className="p-1 hover:bg-white/10 rounded-full"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {/* Show existing closure files if any */}
-                {defect?.completion_files?.length > 0 && (
-                  <div className="space-y-1 mt-2">
-                    <div className="text-xs text-white/60">Existing closure files:</div>
-                    {defect.completion_files.map((file, index) => (
-                      <div key={index} className="flex items-center gap-2 text-xs text-white/80">
-                        <FileText className="h-3.5 w-3.5" />
-                        <span className="truncate flex-1">{file.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
-            </div>
+
+              {/* Closure Files Upload */}
+              <div className="grid gap-1.5">
+                <label className="text-xs font-medium text-white/80">
+                  Closure Documentation
+                </label>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 px-3 py-1.5 rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] cursor-pointer hover:border-[#3BADE5]/40">
+                    <Upload className="h-4 w-4 text-white" />
+                    <span className="text-xs text-white">Upload Closure Files</span>
+                    <input
+                      type="file"
+                      multiple
+                      className="hidden"
+                      onChange={handleClosureFileChange}
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    />
+                  </label>
+                  {closureFiles.length > 0 && (
+                    <div className="space-y-1">
+                      {closureFiles.map((file, index) => (
+                        <div key={index} className="flex items-center gap-2 text-xs text-white/80">
+                          <FileText className="h-3.5 w-3.5" />
+                          <span className="truncate flex-1">{file.name}</span>
+                          <button
+                            onClick={() => removeClosureFile(index)}
+                            className="p-1 hover:bg-white/10 rounded-full"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {defect?.completion_files?.length > 0 && (
+                    <div className="space-y-1 mt-2">
+                      <div className="text-xs text-white/60">Existing closure files:</div>
+                      {defect.completion_files.map((file, index) => (
+                        <div key={index} className="flex items-center gap-2 text-xs text-white/80">
+                          <FileText className="h-3.5 w-3.5" />
+                          <span className="truncate flex-1">{file.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
           )}
 
           {/* Upload Progress */}
@@ -486,21 +517,6 @@ const DefectDialog = ({
               />
             </div>
           )}
-
-          {/* Comments */}
-          <div className="grid gap-1.5">
-            <label htmlFor="comments" className="text-xs font-medium text-white/80">
-              Comments
-            </label>
-            <textarea
-              id="comments"
-              className="flex h-16 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
-              value={defect?.Comments || ''}
-              onChange={(e) => onChange('Comments', e.target.value)}
-              placeholder="Add any additional comments"
-            />
-          </div>
-
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
