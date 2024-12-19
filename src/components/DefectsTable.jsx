@@ -246,47 +246,35 @@ const DefectRow = ({ defect, index, onEditDefect, onDeleteDefect }) => {
 
       {isExpanded && (
         <tr className="bg-[#132337]/50">
-          <td colSpan="11" className="px-8 py-4 border-b border-white/10">
-            <div className="space-y-6">
-              {/* Top section: Text content */}
-              <div className="grid grid-cols-3 gap-8">
-                <div>
-                  <h4 className="text-xs font-medium text-white/80 mb-2">Description</h4>
-                  <p className="text-xs text-white/90">{defect.Description || '-'}</p>
+          <td colSpan="11" className="p-6 border-b border-white/10">
+            <div className="space-y-8">
+              {/* Status Bar */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2">
+                    <div className="text-xs text-white/60">Status:</div>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] 
+                      ${STATUS_COLORS[defect['Status (Vessel)']].bg} 
+                      ${STATUS_COLORS[defect['Status (Vessel)']].text}
+                      ${STATUS_COLORS[defect['Status (Vessel)']].glow}`}>
+                      {defect['Status (Vessel)']}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="text-xs text-white/60">Criticality:</div>
+                    <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] 
+                      ${CRITICALITY_COLORS[defect.Criticality]?.bg || 'bg-gray-500/20'} 
+                      ${CRITICALITY_COLORS[defect.Criticality]?.text || 'text-gray-300'}`}>
+                      {defect.Criticality || 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="text-xs text-white/60">Created:</div>
+                    <div className="text-xs text-white">
+                      {defect['Date Reported'] ? new Date(defect['Date Reported']).toLocaleDateString() : '-'}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-xs font-medium text-white/80 mb-2">Action Planned</h4>
-                  <p className="text-xs text-white/90">{defect['Action Planned'] || '-'}</p>
-                </div>
-                <div>
-                  <h4 className="text-xs font-medium text-white/80 mb-2">Comments</h4>
-                  <p className="text-xs text-white/90">{defect.Comments || '-'}</p>
-                </div>
-              </div>
-
-              {/* Files section */}
-              <div className="flex gap-8">
-                <div className="flex-1">
-                  {defect.initial_files?.length > 0 && (
-                    <FileList
-                      files={defect.initial_files}
-                      onDelete={handleDeleteFile}
-                      title="Initial Documentation"
-                    />
-                  )}
-                </div>
-                <div className="flex-1">
-                  {defect.completion_files?.length > 0 && (
-                    <FileList
-                      files={defect.completion_files}
-                      onDelete={handleDeleteFile}
-                      title="Closure Documentation"
-                    />
-                  )}
-                </div>
-              </div>
-
-              <div className="flex justify-end">
                 <button
                   onClick={async (e) => {
                     e.stopPropagation();
@@ -337,6 +325,60 @@ const DefectRow = ({ defect, index, onEditDefect, onDeleteDefect }) => {
                   <FileText className="h-4 w-4 mr-2" />
                   Generate Report
                 </button>
+              </div>
+      
+              {/* Main Content */}
+              <div className="grid grid-cols-3 gap-6">
+                <div className="bg-[#0B1623] rounded-lg p-4">
+                  <h4 className="text-xs font-medium text-[#3BADE5] mb-3">Description</h4>
+                  <div className="text-xs leading-relaxed text-white/90">{defect.Description || '-'}</div>
+                </div>
+                <div className="bg-[#0B1623] rounded-lg p-4">
+                  <h4 className="text-xs font-medium text-[#3BADE5] mb-3">Action Planned</h4>
+                  <div className="text-xs leading-relaxed text-white/90">{defect['Action Planned'] || '-'}</div>
+                </div>
+                <div className="bg-[#0B1623] rounded-lg p-4">
+                  <h4 className="text-xs font-medium text-[#3BADE5] mb-3">Comments</h4>
+                  <div className="text-xs leading-relaxed text-white/90">{defect.Comments || '-'}</div>
+                </div>
+              </div>
+      
+              {/* Documentation Section */}
+              <div className="grid grid-cols-2 gap-6">
+                <div className="bg-[#0B1623] rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-xs font-medium text-[#3BADE5]">Initial Documentation</h4>
+                    <div className="text-xs text-white/60">
+                      {defect.initial_files?.length || 0} files
+                    </div>
+                  </div>
+                  {defect.initial_files?.length > 0 ? (
+                    <FileList
+                      files={defect.initial_files}
+                      onDelete={handleDeleteFile}
+                      title=""
+                    />
+                  ) : (
+                    <div className="text-xs text-white/40 italic">No initial documentation</div>
+                  )}
+                </div>
+                <div className="bg-[#0B1623] rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-xs font-medium text-[#3BADE5]">Closure Documentation</h4>
+                    <div className="text-xs text-white/60">
+                      {defect.completion_files?.length || 0} files
+                    </div>
+                  </div>
+                  {defect.completion_files?.length > 0 ? (
+                    <FileList
+                      files={defect.completion_files}
+                      onDelete={handleDeleteFile}
+                      title=""
+                    />
+                  ) : (
+                    <div className="text-xs text-white/40 italic">No closure documentation</div>
+                  )}
+                </div>
               </div>
             </div>
           </td>
