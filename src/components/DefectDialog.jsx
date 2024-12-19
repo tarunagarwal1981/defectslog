@@ -411,8 +411,24 @@ const DefectDialog = ({
             </div>
           </div>
 
+          
+          
           {/* Closure Files Upload - Only shown when status is CLOSED */}
           {defect?.['Status (Vessel)'] === 'CLOSED' && (
+            <>
+              <div className="grid gap-1.5">
+                <label htmlFor="closureComments" className="text-xs font-medium text-white/80">
+                  Closure Comments <span className="text-red-400">*</span>
+                </label>
+                <textarea
+                  id="closureComments"
+                  className="flex h-16 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
+                  value={defect?.closure_comments || ''}
+                  onChange={(e) => onChange('closure_comments', e.target.value)}
+                  placeholder="Enter closure comments and findings"
+                  required={defect?.['Status (Vessel)'] === 'CLOSED'}
+                />
+              </div>         
             <div className="grid gap-1.5">
               <label className="text-xs font-medium text-white/80">
                 Closure Documentation
