@@ -243,49 +243,65 @@ const DefectRow = ({ defect, index, onEditDefect, onDeleteDefect }) => {
           </div>
         </td>
       </tr>
+
       {isExpanded && (
         <tr className="bg-[#132337]/50">
           <td colSpan="11" className="px-8 py-3 border-b border-white/10">
-            <div className="grid gap-3">
-              <div>
-                <div className="text-xs font-medium text-white/80 mb-1">Description</div>
-                <div className="text-xs text-white/90">{defect.Description || '-'}</div>
-              </div>
-              <div>
-                <div className="text-xs font-medium text-white/80 mb-1">Action Planned</div>
-                <div className="text-xs text-white/90">{defect['Action Planned'] || '-'}</div>
-              </div>
-              <div>
-                <div className="text-xs font-medium text-white/80 mb-1">Comments</div>
-                <div className="text-xs text-white/90">{defect.Comments || '-'}</div>
+            <div className="grid gap-4">
+              {/* Top section: Description, Action, Comments in 3 columns */}
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <div className="text-xs font-medium text-white/80 mb-1">Description</div>
+                  <div className="text-xs text-white/90 bg-[#0B1623]/50 p-2 rounded-md min-h-[80px]">
+                    {defect.Description || '-'}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-white/80 mb-1">Action Planned</div>
+                  <div className="text-xs text-white/90 bg-[#0B1623]/50 p-2 rounded-md min-h-[80px]">
+                    {defect['Action Planned'] || '-'}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-white/80 mb-1">Comments</div>
+                  <div className="text-xs text-white/90 bg-[#0B1623]/50 p-2 rounded-md min-h-[80px]">
+                    {defect.Comments || '-'}
+                  </div>
+                </div>
               </div>
 
-              {/* Initial Files Section */}
-              {/* Initial Files Section */}
-              {defect.initial_files?.length > 0 && (
-                <FileList
-                  files={defect.initial_files}
-                  onDelete={handleDeleteFile}
-                  title="Initial Documentation"
-                />
-              )}
+              {/* Documentation section: Initial and Closure files side by side */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-[#0B1623]/50 p-4 rounded-md">
+                  {defect.initial_files?.length > 0 ? (
+                    <FileList
+                      files={defect.initial_files}
+                      onDelete={handleDeleteFile}
+                      title="Initial Documentation"
+                    />
+                  ) : (
+                    <div className="text-xs text-white/60">No initial documentation</div>
+                  )}
+                </div>
+                <div className="bg-[#0B1623]/50 p-4 rounded-md">
+                  {defect.completion_files?.length > 0 ? (
+                    <FileList
+                      files={defect.completion_files}
+                      onDelete={handleDeleteFile}
+                      title="Closure Documentation"
+                    />
+                  ) : (
+                    <div className="text-xs text-white/60">No closure documentation</div>
+                  )}
+                </div>
+              </div>
 
-              {/* Completion Files Section */}
-              {defect.completion_files?.length > 0 && (
-                <FileList
-                  files={defect.completion_files}
-                  onDelete={handleDeleteFile}
-                  title="Closure Documentation"
-                />
-              )}
-
-              {/* Add Report Generation Button */}
-              <div className="mt-4 flex justify-end">
+              {/* Report generation button */}
+              <div className="flex justify-end mt-2">
                 <button
                   onClick={async (e) => {
                     e.stopPropagation();
                     try {
-                      // Get signed URLs for images
                       const getSignedUrls = async (files) => {
                         const urls = {};
                         for (const file of files) {
@@ -326,10 +342,10 @@ const DefectRow = ({ defect, index, onEditDefect, onDeleteDefect }) => {
                       });
                     }
                   }}
-                  className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-[4px] 
+                  className="inline-flex items-center px-4 py-2 text-xs font-medium rounded-md 
                     text-white bg-[#3BADE5] hover:bg-[#3BADE5]/80 transition-colors"
                 >
-                  <FileText className="h-3.5 w-3.5 mr-1.5" />
+                  <FileText className="h-4 w-4 mr-2" />
                   Generate Report
                 </button>
               </div>
