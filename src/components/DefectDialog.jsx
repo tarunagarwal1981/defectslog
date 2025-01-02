@@ -184,7 +184,7 @@ const DefectDialog = ({
           ...(defect.completion_files || []),
           ...uploadedClosureFiles
         ],
-        closure_comments: defect.closure_comments
+        closure_comments: defect.closure_comments || ''
       };
 
       await onSave(updatedDefect);
