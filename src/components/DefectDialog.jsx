@@ -401,7 +401,7 @@ const DefectDialog = ({
             <div className="space-y-2">
               <label className="flex items-center gap-2 px-3 py-1.5 rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] cursor-pointer hover:border-[#3BADE5]/40">
                 <Upload className="h-4 w-4 text-white" />
-                <span className="text-xs text-white">Upload Initial Files</span>
+                <span className="text-xs text-white">Upload Initial Files (Max 2MB: PDF, DOC, Images)</span>
                 <input
                   type="file"
                   multiple
@@ -467,7 +467,7 @@ const DefectDialog = ({
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 px-3 py-1.5 rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] cursor-pointer hover:border-[#3BADE5]/40">
                     <Upload className="h-4 w-4 text-white" />
-                    <span className="text-xs text-white">Upload Closure Files</span>
+                    <span className="text-xs text-white">Upload Closure Files (Max 2MB: PDF, DOC, Images)</span>
                     <input
                       type="file"
                       multiple
