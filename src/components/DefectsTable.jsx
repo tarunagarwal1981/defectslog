@@ -11,10 +11,6 @@ import { exportToCSV } from '../utils/exportToCSV';
 import { supabase } from '../supabaseClient';
 import { toast } from './ui/use-toast';
 
-const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [defect, setDefect] = useState(initialDefect);
-
 
 const STATUS_COLORS = {
   'OPEN': {
@@ -133,6 +129,7 @@ const FileList = ({ files, onDelete, title }) => {
 
 const DefectRow = ({ defect, index, onEditDefect, onDeleteDefect }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [defect, setDefect] = useState(initialDefect);
 
   const toggleExpand = (e) => {
     e.stopPropagation();
