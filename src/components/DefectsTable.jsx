@@ -252,79 +252,7 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect 
         <tr className="bg-[#132337]/50">
           <td colSpan="11" className="p-4 border-b border-white/10">
             <div className="space-y-4">
-              {/* Status Bar */}
-              <div className="flex items-center justify-between bg-[#0B1623] rounded-md p-2">
-                <div className="flex items-center gap-4 flex-wrap">
-                  <div className="flex items-center gap-2">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] 
-                      ${STATUS_COLORS[defect['Status (Vessel)']].bg} 
-                      ${STATUS_COLORS[defect['Status (Vessel)']].text}
-                      ${STATUS_COLORS[defect['Status (Vessel)']].glow}`}>
-                      {defect['Status (Vessel)']}
-                    </span>
-                    <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] 
-                      ${CRITICALITY_COLORS[defect.Criticality]?.bg || 'bg-gray-500/20'} 
-                      ${CRITICALITY_COLORS[defect.Criticality]?.text || 'text-gray-300'}`}>
-                      {defect.Criticality || 'N/A'}
-                    </span>
-                    <span className="text-xs text-white/60">
-                      {defect['Date Reported'] ? new Date(defect['Date Reported']).toLocaleDateString() : '-'}
-                    </span>
-                  </div>
-                </div>
-                <button
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    try {
-                      const getSignedUrls = async (files) => {
-                        const urls = {};
-                        for (const file of files) {
-                          if (file.type.startsWith('image/')) {
-                            try {
-                              const { data: { signedUrl } } = await supabase.storage
-                                .from('defect-files')
-                                .createSignedUrl(file.path, 3600);
-                              
-                              urls[file.path] = signedUrl;
-                            } catch (error) {
-                              console.error('Error getting signed URL:', error);
-                            }
-                          }
-                        }
-                        return urls;
-                      };
-
-                      const initialUrls = await getSignedUrls(defect.initial_files || []);
-                      const completionUrls = await getSignedUrls(defect.completion_files || []);
-                      
-                      const { generateDefectReport } = await import('../utils/generateDefectReport');
-                      await generateDefectReport(defect, {
-                        ...initialUrls,
-                        ...completionUrls
-                      });
-
-                      toast({
-                        title: "Success",
-                        description: "Report generated successfully",
-                      });
-                    } catch (error) {
-                      console.error('Error generating report:', error);
-                      toast({
-                        title: "Error",
-                        description: "Failed to generate report",
-                        variant: "destructive",
-                      });
-                    }
-                  }}
-                  className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md 
-                    text-white bg-[#3BADE5] hover:bg-[#3BADE5]/80 transition-colors shadow-sm"
-                >
-                  <FileText className="h-3.5 w-3.5 mr-1.5" />
-                  Generate Report
-                </button>
-              </div>
-      
-              {/* All Content in 3-column Grid */}
+              {/* Main Content in 3-column Grid */}
               <div className="grid grid-cols-3 gap-4">
                 {/* Basic Details */}
                 <div className="bg-[#0B1623] rounded-md p-3">
@@ -369,32 +297,16 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect 
                   </div>
                 </div>
       
-                {/* Equipment Details */}
-                <div className="bg-[#0B1623] rounded-md p-3">
-                  <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Equipment Details</h4>
-                  <div className="text-xs leading-relaxed text-white/90 break-words">
-                    {defect.Equipments || '-'}
-                  </div>
-                </div>
-      
-                {/* Show either empty space or closure content based on status */}
-                {defect['Status (Vessel)'] === 'CLOSED' ? (
-                  <div className="bg-[#0B1623] rounded-md p-3">
-                    <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Closure Comments</h4>
-                    <div className="text-xs leading-relaxed text-white/90 break-words">
-                      {defect['Closure Comments'] || '-'}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="bg-[#0B1623] rounded-md p-3">
-                    <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Additional Info</h4>
-                    <div className="text-xs text-white/40 italic">No additional information</div>
-                  </div>
-                )}
-      
-                {/* Show closure documentation only when closed */}
+                {/* Show closure content only when status is CLOSED */}
                 {defect['Status (Vessel)'] === 'CLOSED' && (
                   <>
+                    <div className="bg-[#0B1623] rounded-md p-3">
+                      <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Closure Comments</h4>
+                      <div className="text-xs leading-relaxed text-white/90 break-words">
+                        {defect['Closure Comments'] || '-'}
+                      </div>
+                    </div>
+      
                     <div className="bg-[#0B1623] rounded-md p-3">
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="text-xs font-medium text-[#3BADE5]">Closure Documentation</h4>
@@ -416,6 +328,60 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect 
                     </div>
                   </>
                 )}
+              </div>
+      
+              {/* Generate Report Button - Bottom Right */}
+              <div className="flex justify-end">
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    try {
+                      const getSignedUrls = async (files) => {
+                        const urls = {};
+                        for (const file of files) {
+                          if (file.type.startsWith('image/')) {
+                            try {
+                              const { data: { signedUrl } } = await supabase.storage
+                                .from('defect-files')
+                                .createSignedUrl(file.path, 3600);
+                              
+                              urls[file.path] = signedUrl;
+                            } catch (error) {
+                              console.error('Error getting signed URL:', error);
+                            }
+                          }
+                        }
+                        return urls;
+                      };
+      
+                      const initialUrls = await getSignedUrls(defect.initial_files || []);
+                      const completionUrls = await getSignedUrls(defect.completion_files || []);
+                      
+                      const { generateDefectReport } = await import('../utils/generateDefectReport');
+                      await generateDefectReport(defect, {
+                        ...initialUrls,
+                        ...completionUrls
+                      });
+      
+                      toast({
+                        title: "Success",
+                        description: "Report generated successfully",
+                      });
+                    } catch (error) {
+                      console.error('Error generating report:', error);
+                      toast({
+                        title: "Error",
+                        description: "Failed to generate report",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                  className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md 
+                    text-white bg-[#3BADE5] hover:bg-[#3BADE5]/80 transition-colors shadow-sm"
+                >
+                  <FileText className="h-3.5 w-3.5 mr-1.5" />
+                  Generate Report
+                </button>
               </div>
             </div>
           </td>
