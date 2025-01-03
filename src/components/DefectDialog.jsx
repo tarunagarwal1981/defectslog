@@ -31,6 +31,7 @@ const DefectDialog = ({
   const [initialFiles, setInitialFiles] = useState([]);
   const [closureFiles, setClosureFiles] = useState([]);
   const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
   const [uploadProgress, setUploadProgress] = useState(0);
 
   const validateDefect = (defectData) => {
