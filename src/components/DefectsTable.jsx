@@ -247,7 +247,7 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect 
         </td>
       </tr>
 
-      {isExpanded && (
+     
       {isExpanded && (
         <tr className="bg-[#132337]/50">
           <td colSpan="11" className="p-4 border-b border-white/10">
