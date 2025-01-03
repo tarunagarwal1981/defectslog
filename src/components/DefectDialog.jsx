@@ -9,7 +9,7 @@ import { Upload, FileText, X } from 'lucide-react';
 import { toast } from './ui/use-toast';
 import { supabase } from '../supabaseClient';
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_FILE_SIZE = 2 * 1024 * 1024; // 5MB
 const ALLOWED_FILE_TYPES = [
   'image/jpeg',
   'image/png',
@@ -34,6 +34,20 @@ const DefectDialog = ({
   const [uploadProgress, setUploadProgress] = useState(0);
 
   const validateDefect = (defectData) => {
+    
+    if (defectData['Date Completed'] && defectData['Date Reported']) {
+      const closureDate = new Date(defectData['Date Completed']);
+      const reportedDate = new Date(defectData['Date Reported']);
+      
+      if (closureDate < reportedDate) {
+        toast({
+          title: "Invalid Date",
+          description: "Closure date cannot be before the reported date",
+          variant: "destructive",
+        });
+        return false;
+      }
+    }
     const required = [
       'vessel_id',
       'Equipments',
@@ -74,7 +88,7 @@ const DefectDialog = ({
     if (file.size > MAX_FILE_SIZE) {
       toast({
         title: "File Too Large",
-        description: `${file.name} exceeds 5MB limit`,
+        description: `${file.name} exceeds 2MB limit`,
         variant: "destructive",
       });
       return false;
