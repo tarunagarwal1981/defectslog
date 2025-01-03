@@ -248,10 +248,11 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect 
       </tr>
 
       {isExpanded && (
+      {isExpanded && (
         <tr className="bg-[#132337]/50">
           <td colSpan="11" className="p-4 border-b border-white/10">
             <div className="space-y-4">
-              {/* Status Bar - More compact */}
+              {/* Status Bar */}
               <div className="flex items-center justify-between bg-[#0B1623] rounded-md p-2">
                 <div className="flex items-center gap-4 flex-wrap">
                   <div className="flex items-center gap-2">
@@ -323,55 +324,98 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect 
                 </button>
               </div>
       
-              {/* Main Content - More compact with dynamic sizing */}
-              
+              {/* All Content in 3-column Grid */}
               <div className="grid grid-cols-3 gap-4">
-                {['Description', 'Action Planned', 'Comments'].map((title) => (
-                  <div key={title} className="bg-[#0B1623] rounded-md p-3 min-h-0">
-                    <h4 className="text-xs font-medium text-[#3BADE5] mb-2">{title}</h4>
-                    <div className="text-xs leading-relaxed text-white/90 break-words">
-                      {defect[title === 'Action Planned' ? 'Action Planned' : title] || '-'}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              
-              {/* Closure Comments - Only shown when status is CLOSED */}
-              {defect['Status (Vessel)'] === 'CLOSED' && (
+                {/* Basic Details */}
                 <div className="bg-[#0B1623] rounded-md p-3">
-                  <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Closure Comments</h4>
+                  <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Description</h4>
                   <div className="text-xs leading-relaxed text-white/90 break-words">
-                    {defect['Closure Comments'] || '-'}
+                    {defect.Description || '-'}
                   </div>
                 </div>
-              )}
+                
+                <div className="bg-[#0B1623] rounded-md p-3">
+                  <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Action Planned</h4>
+                  <div className="text-xs leading-relaxed text-white/90 break-words">
+                    {defect['Action Planned'] || '-'}
+                  </div>
+                </div>
       
-              {/* Documentation Section - Side by side with dynamic height */}
-              <div className="grid grid-cols-2 gap-4">
-                {[
-                  { title: 'Initial Documentation', files: defect.initial_files },
-                  { title: 'Closure Documentation', files: defect.completion_files }
-                ].map(({ title, files }) => (
-                  <div key={title} className="bg-[#0B1623] rounded-md p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-xs font-medium text-[#3BADE5]">{title}</h4>
-                      <div className="text-[10px] text-white/60 px-2 py-0.5 bg-[#132337] rounded-full">
-                        {files?.length || 0} files
-                      </div>
+                <div className="bg-[#0B1623] rounded-md p-3">
+                  <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Comments</h4>
+                  <div className="text-xs leading-relaxed text-white/90 break-words">
+                    {defect.Comments || '-'}
+                  </div>
+                </div>
+      
+                {/* Initial Documentation */}
+                <div className="bg-[#0B1623] rounded-md p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-xs font-medium text-[#3BADE5]">Initial Documentation</h4>
+                    <div className="text-[10px] text-white/60 px-2 py-0.5 bg-[#132337] rounded-full">
+                      {defect.initial_files?.length || 0} files
                     </div>
-                    {files?.length > 0 ? (
-                      <div className="max-h-32 overflow-y-auto custom-scrollbar pr-2">
-                        <FileList
-                          files={files}
-                          onDelete={handleDeleteFile}
-                          title=""
-                        />
-                      </div>
+                  </div>
+                  <div className="max-h-32 overflow-y-auto custom-scrollbar pr-2">
+                    {defect.initial_files?.length > 0 ? (
+                      <FileList
+                        files={defect.initial_files}
+                        onDelete={handleDeleteFile}
+                        title=""
+                      />
                     ) : (
                       <div className="text-xs text-white/40 italic">No documentation available</div>
                     )}
                   </div>
-                ))}
+                </div>
+      
+                {/* Equipment Details */}
+                <div className="bg-[#0B1623] rounded-md p-3">
+                  <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Equipment Details</h4>
+                  <div className="text-xs leading-relaxed text-white/90 break-words">
+                    {defect.Equipments || '-'}
+                  </div>
+                </div>
+      
+                {/* Show either empty space or closure content based on status */}
+                {defect['Status (Vessel)'] === 'CLOSED' ? (
+                  <div className="bg-[#0B1623] rounded-md p-3">
+                    <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Closure Comments</h4>
+                    <div className="text-xs leading-relaxed text-white/90 break-words">
+                      {defect['Closure Comments'] || '-'}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-[#0B1623] rounded-md p-3">
+                    <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Additional Info</h4>
+                    <div className="text-xs text-white/40 italic">No additional information</div>
+                  </div>
+                )}
+      
+                {/* Show closure documentation only when closed */}
+                {defect['Status (Vessel)'] === 'CLOSED' && (
+                  <>
+                    <div className="bg-[#0B1623] rounded-md p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-xs font-medium text-[#3BADE5]">Closure Documentation</h4>
+                        <div className="text-[10px] text-white/60 px-2 py-0.5 bg-[#132337] rounded-full">
+                          {defect.completion_files?.length || 0} files
+                        </div>
+                      </div>
+                      <div className="max-h-32 overflow-y-auto custom-scrollbar pr-2">
+                        {defect.completion_files?.length > 0 ? (
+                          <FileList
+                            files={defect.completion_files}
+                            onDelete={handleDeleteFile}
+                            title=""
+                          />
+                        ) : (
+                          <div className="text-xs text-white/40 italic">No documentation available</div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </td>
