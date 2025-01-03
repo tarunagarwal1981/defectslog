@@ -194,9 +194,9 @@ function App() {
       "Date Reported": updatedDefect['Date Reported'],
       "Date Completed": updatedDefect['Date Completed'] || null,
       Comments: updatedDefect.Comments || '',
-      // Make sure these match exactly with your database column names
       initial_files: updatedDefect.initial_files || [],
-      completion_files: updatedDefect.completion_files || []
+      completion_files: updatedDefect.completion_files || [],
+      closure_comments: updatedDefect.closure_comments || null
     };
 
     let result;
