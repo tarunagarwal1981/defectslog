@@ -11,6 +11,11 @@ import { exportToCSV } from '../utils/exportToCSV';
 import { supabase } from '../supabaseClient';
 import { toast } from './ui/use-toast';
 
+const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [defect, setDefect] = useState(initialDefect);
+
+
 const STATUS_COLORS = {
   'OPEN': {
     bg: 'bg-red-500/20',
@@ -161,7 +166,7 @@ const DefectRow = ({ defect, index, onEditDefect, onDeleteDefect }) => {
         .eq('id', defect.id);
 
       if (updateError) throw updateError;
-
+      setDefect(updatedDefect);
       toast({
         title: "File Deleted",
         description: "File was successfully removed",
@@ -321,8 +326,9 @@ const DefectRow = ({ defect, index, onEditDefect, onDeleteDefect }) => {
               </div>
       
               {/* Main Content - More compact with dynamic sizing */}
+              
               <div className="grid grid-cols-3 gap-4">
-                {['Description', 'Action Planned', 'Comments'].map((title, index) => (
+                {['Description', 'Action Planned', 'Comments'].map((title) => (
                   <div key={title} className="bg-[#0B1623] rounded-md p-3 min-h-0">
                     <h4 className="text-xs font-medium text-[#3BADE5] mb-2">{title}</h4>
                     <div className="text-xs leading-relaxed text-white/90 break-words">
@@ -331,6 +337,16 @@ const DefectRow = ({ defect, index, onEditDefect, onDeleteDefect }) => {
                   </div>
                 ))}
               </div>
+              
+              {/* Closure Comments - Only shown when status is CLOSED */}
+              {defect['Status (Vessel)'] === 'CLOSED' && (
+                <div className="bg-[#0B1623] rounded-md p-3">
+                  <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Closure Comments</h4>
+                  <div className="text-xs leading-relaxed text-white/90 break-words">
+                    {defect['Closure Comments'] || '-'}
+                  </div>
+                </div>
+              )}
       
               {/* Documentation Section - Side by side with dynamic height */}
               <div className="grid grid-cols-2 gap-4">
