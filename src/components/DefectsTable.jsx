@@ -127,9 +127,10 @@ const FileList = ({ files, onDelete, title }) => {
   );
 };
 
-const DefectRow = ({ defect, index, onEditDefect, onDeleteDefect }) => {
+const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [defect, setDefect] = useState(initialDefect);
+
 
   const toggleExpand = (e) => {
     e.stopPropagation();
