@@ -377,6 +377,30 @@ const DefectDialog = ({
             </select>
           </div>
 
+          {/* Raised By */}
+          <div className="grid gap-1.5">
+            <label htmlFor="raisedBy" className="text-xs font-medium text-white/80">
+              Raised By <span className="text-red-400">*</span>
+            </label>
+            <select
+              id="raisedBy"
+              className="flex h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
+              value={defect?.raised_by || ''}
+              onChange={(e) => onChange('raised_by', e.target.value)}
+              required
+              aria-required="true"
+            >
+              <option value="">Select Source</option>
+              <option value="Vessel">Vessel</option>
+              <option value="Office">Office</option>
+              <option value="Owners">Owners</option>
+              <option value="PSC">PSC</option>
+              <option value="CLASS">CLASS</option>
+              <option value="FLAG">FLAG</option>
+              <option value="Others">Others</option>
+            </select>
+          </div>
+          
           {/* Dates */}
           {/* Dates */}
           <div className="grid grid-cols-2 gap-3">
