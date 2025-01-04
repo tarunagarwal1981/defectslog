@@ -200,7 +200,7 @@ export const generateDefectReport = async (defect, signedUrls = {}) => {
     }
 
     // Save with vessel name included
-    doc.save(`Defect_Report_${defect.vessel_name}_${defect.id}.pdf`);
+    doc.save(`Defect_Report_${defect.vessel_name}.pdf`);
 
   } catch (error) {
     console.error('Error generating PDF:', error);
