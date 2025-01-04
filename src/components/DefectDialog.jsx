@@ -8,6 +8,7 @@ import {
 import { Upload, FileText, X } from 'lucide-react';
 import { toast } from './ui/use-toast';
 import { supabase } from '../supabaseClient';
+import { formatDateForInput, formatDateDisplay } from '../utils/dateUtils';
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 5MB
 const ALLOWED_FILE_TYPES = [
@@ -415,7 +416,7 @@ const DefectDialog = ({
                 id="dateCompleted"
                 type="date"
                 className="flex h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
-                value={defect?.['Date Completed'] || ''}
+                value={formatDateForInput(defect?.['Date Completed'])}
                 onChange={(e) => onChange('Date Completed', e.target.value)}
                 required={defect?.['Status (Vessel)'] === 'CLOSED'}
                 aria-required={defect?.['Status (Vessel)'] === 'CLOSED'}
