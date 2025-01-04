@@ -226,10 +226,10 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect 
           {defect['Action Planned']}
         </td>
         <td className="px-3 py-1.5" onClick={() => onEditDefect(defect)}>
-          {defect['Date Reported'] ? new Date(defect['Date Reported']).toLocaleDateString() : '-'}
+          {defect['Date Reported'] ? new Date(defect['Date Reported']).toLocaleDateString('en-GB') : '-'}
         </td>
         <td className="px-3 py-1.5" onClick={() => onEditDefect(defect)}>
-          {defect['Date Completed'] ? new Date(defect['Date Completed']).toLocaleDateString() : '-'}
+          {defect['Date Completed'] ? new Date(defect['Date Completed']).toLocaleDateString('en-GB') : '-'}
         </td>
         <td className="px-3 py-1.5">
           <div className="flex items-center justify-center">
