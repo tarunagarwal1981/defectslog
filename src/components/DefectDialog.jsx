@@ -385,25 +385,18 @@ const DefectDialog = ({
                 Date Reported <span className="text-red-400">*</span>
               </label>
               <div className="relative h-8">
-                {/* Hidden input for actual date handling */}
                 <input
                   id="dateReported"
                   type="date"
-                  className="absolute opacity-0 inset-0 h-8 w-full"
+                  className="absolute inset-0 h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-transparent hover:border-[#3BADE5]/40 focus:outline-none focus:ring-1 focus:ring-[#3BADE5] [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:text-white [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer [&::-webkit-calendar-picker-indicator]:hover:opacity-70"
                   value={formatDateForInput(defect?.['Date Reported'])}
                   onChange={(e) => {
-                    const displayDate = new Date(e.target.value).toLocaleDateString('en-GB', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric'
-                    });
                     onChange('Date Reported', e.target.value);
                   }}
                   required
                   aria-required="true"
                 />
-                {/* Visible display element */}
-                <div className="absolute inset-0 flex items-center rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white pointer-events-none">
+                <div className="absolute inset-0 flex items-center px-2 text-xs text-white pointer-events-none">
                   {formatDateDisplay(defect?.['Date Reported']) || 'dd/mm/yyyy'}
                 </div>
               </div>
@@ -414,26 +407,19 @@ const DefectDialog = ({
                 Date Completed {defect?.['Status (Vessel)'] === 'CLOSED' && <span className="text-red-400">*</span>}
               </label>
               <div className="relative h-8">
-                {/* Hidden input for actual date handling */}
                 <input
                   id="dateCompleted"
                   type="date"
-                  className="absolute opacity-0 inset-0 h-8 w-full"
+                  className="absolute inset-0 h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-transparent hover:border-[#3BADE5]/40 focus:outline-none focus:ring-1 focus:ring-[#3BADE5] [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:text-white [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer [&::-webkit-calendar-picker-indicator]:hover:opacity-70"
                   value={formatDateForInput(defect?.['Date Completed'])}
                   onChange={(e) => {
-                    const displayDate = new Date(e.target.value).toLocaleDateString('en-GB', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric'
-                    });
                     onChange('Date Completed', e.target.value);
                   }}
                   required={defect?.['Status (Vessel)'] === 'CLOSED'}
                   aria-required={defect?.['Status (Vessel)'] === 'CLOSED'}
                 />
-                {/* Visible display element */}
-                <div className="absolute inset-0 flex items-center rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white pointer-events-none">
-                  {formatDateDisplay(defect?.['Date Completed']) || 'dd/mm/yyyy'}
+                <div className="absolute inset-0 flex items-center px-2 text-xs text-white pointer-events-none">
+                  {formatDateDisplay(defect?.['Date Completed']) || '-'}
                 </div>
               </div>
             </div>
