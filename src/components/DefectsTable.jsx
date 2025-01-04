@@ -1,7 +1,16 @@
 import React, { useState } from 'react';
-import { PlusCircle, FileText, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { PlusCircle, FileText, Trash2, ChevronDown, ChevronUp, X } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog';
 import ExportButton from './ui/ExportButton';
 import { exportToCSV } from '../utils/exportToCSV';
+import { supabase } from '../supabaseClient';
+import { toast } from './ui/use-toast';
+
 
 const STATUS_COLORS = {
   'OPEN': {
@@ -36,12 +45,139 @@ const CRITICALITY_COLORS = {
   }
 };
 
-const DefectRow = ({ defect, index, onEditDefect, onDeleteDefect }) => {
+// File Viewer Component
+const FileViewer = ({ url, filename, onClose }) => (
+  <Dialog open={true} onOpenChange={onClose}>
+    <DialogContent className="max-w-4xl max-h-[90vh] bg-[#0B1623]">
+      <DialogHeader>
+        <DialogTitle className="text-sm font-medium text-white flex justify-between items-center">
+          <span>{filename}</span>
+          <button onClick={onClose} className="text-white/60 hover:text-white">
+            <X className="h-4 w-4" />
+          </button>
+        </DialogTitle>
+      </DialogHeader>
+      <div className="mt-4">
+        {url.match(/\.(jpg|jpeg|png|gif)$/i) ? (
+          <img src={url} alt={filename} className="max-w-full h-auto" />
+        ) : (
+          <iframe src={url} className="w-full h-[70vh]" title={filename} />
+        )}
+      </div>
+    </DialogContent>
+  </Dialog>
+);
+
+// File List Component
+const FileList = ({ files, onDelete, title }) => {
+  const [selectedFile, setSelectedFile] = useState(null);
+
+  const handleFileClick = async (file) => {
+    try {
+      const { data: { signedUrl }, error } = await supabase.storage
+        .from('defect-files')
+        .createSignedUrl(file.path, 3600); // 1 hour expiry
+
+      if (error) throw error;
+
+      setSelectedFile({ url: signedUrl, name: file.name });
+    } catch (error) {
+      console.error('Error getting signed URL:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load file",
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (!files?.length) return null;
+
+  return (
+    <div className="space-y-2">
+      <div className="text-xs font-medium text-white/80 mb-1">{title}</div>
+      {files.map((file, index) => (
+        <div key={index} className="flex items-center gap-2 text-xs">
+          <FileText className="h-3.5 w-3.5 text-[#3BADE5]" />
+          <button
+            onClick={() => handleFileClick(file)}
+            className="text-white/90 hover:text-white truncate flex-1"
+          >
+            {file.name}
+          </button>
+          {onDelete && (
+            <button
+              onClick={() => onDelete(file)}
+              className="text-red-400 hover:text-red-300 p-1 rounded-full hover:bg-red-500/20"
+              aria-label="Delete file"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      ))}
+      {selectedFile && (
+        <FileViewer
+          url={selectedFile.url}
+          filename={selectedFile.name}
+          onClose={() => setSelectedFile(null)}
+        />
+      )}
+    </div>
+  );
+};
+
+const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [defect, setDefect] = useState(initialDefect);
+
 
   const toggleExpand = (e) => {
     e.stopPropagation();
     setIsExpanded(!isExpanded);
+  };
+
+  const handleDeleteFile = async (file) => {
+    try {
+      // Delete from storage
+      const { error: storageError } = await supabase.storage
+        .from('defect-files')
+        .remove([file.path]);
+
+      if (storageError) throw storageError;
+
+      // Update defect record
+      const isInitialFile = defect.initial_files.some(f => f.path === file.path);
+      const updatedDefect = {
+        ...defect,
+        initial_files: isInitialFile 
+          ? defect.initial_files.filter(f => f.path !== file.path)
+          : defect.initial_files,
+        completion_files: !isInitialFile
+          ? defect.completion_files.filter(f => f.path !== file.path)
+          : defect.completion_files
+      };
+
+      const { error: updateError } = await supabase
+        .from('defects register')
+        .update(updatedDefect)
+        .eq('id', defect.id);
+
+      if (updateError) throw updateError;
+      setDefect(updatedDefect);
+      toast({
+        title: "File Deleted",
+        description: "File was successfully removed",
+      });
+
+    } catch (error) {
+      console.error('Error deleting file:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete file",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -80,13 +216,13 @@ const DefectRow = ({ defect, index, onEditDefect, onDeleteDefect }) => {
             {defect.Criticality || 'N/A'}
           </span>
         </td>
-        <td className="px-3 py-1.5 truncate max-w-[150px]" title={defect.Equipments} onClick={() => onEditDefect(defect)}>
+        <td className="px-3 py-1.5 truncate max-w-[150px]" onClick={() => onEditDefect(defect)}>
           {defect.Equipments}
         </td>
-        <td className="px-3 py-1.5 truncate max-w-[200px]" title={defect.Description} onClick={() => onEditDefect(defect)}>
+        <td className="px-3 py-1.5 truncate max-w-[200px]" onClick={() => onEditDefect(defect)}>
           {defect.Description}
         </td>
-        <td className="px-3 py-1.5 truncate max-w-[200px]" title={defect['Action Planned']} onClick={() => onEditDefect(defect)}>
+        <td className="px-3 py-1.5 truncate max-w-[200px]" onClick={() => onEditDefect(defect)}>
           {defect['Action Planned']}
         </td>
         <td className="px-3 py-1.5" onClick={() => onEditDefect(defect)}>
@@ -100,9 +236,7 @@ const DefectRow = ({ defect, index, onEditDefect, onDeleteDefect }) => {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                if (window.confirm('Are you sure you want to delete this defect?')) {
-                  onDeleteDefect(defect.id);
-                }
+                onDeleteDefect(defect.id);
               }}
               className="p-1 hover:bg-red-500/20 text-red-400 rounded-full transition-colors"
               aria-label="Delete defect"
@@ -112,41 +246,152 @@ const DefectRow = ({ defect, index, onEditDefect, onDeleteDefect }) => {
           </div>
         </td>
       </tr>
+
+     
       {isExpanded && (
         <tr className="bg-[#132337]/50">
-          <td colSpan="11" className="px-8 py-3 border-b border-white/10">
-            <div className="grid gap-3">
-              <div>
-                <div className="text-xs font-medium text-white/80 mb-1">Description</div>
-                <div className="text-xs text-white/90">{defect.Description || '-'}</div>
-              </div>
-              <div>
-                <div className="text-xs font-medium text-white/80 mb-1">Action Planned</div>
-                <div className="text-xs text-white/90">{defect['Action Planned'] || '-'}</div>
-              </div>
-              <div>
-                <div className="text-xs font-medium text-white/80 mb-1">Comments</div>
-                <div className="text-xs text-white/90">{defect.Comments || '-'}</div>
-              </div>
-              {defect.associated_files?.length > 0 && (
-                <div>
-                  <div className="text-xs font-medium text-white/80 mb-1">Files</div>
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-3.5 w-3.5 text-[#3BADE5]" />
-                    <span className="text-xs text-white/90">
-                      {defect.associated_files.length} file(s) attached
-                    </span>
+          <td colSpan="11" className="p-4 border-b border-white/10">
+            <div className="space-y-4">
+              {/* Main Content in 3-column Grid */}
+              <div className="grid grid-cols-3 gap-4">
+                {/* Basic Details */}
+                <div className="bg-[#0B1623] rounded-md p-3">
+                  <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Description</h4>
+                  <div className="text-xs leading-relaxed text-white/90 break-words">
+                    {defect.Description || '-'}
                   </div>
                 </div>
-              )}
+                
+                <div className="bg-[#0B1623] rounded-md p-3">
+                  <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Action Planned</h4>
+                  <div className="text-xs leading-relaxed text-white/90 break-words">
+                    {defect['Action Planned'] || '-'}
+                  </div>
+                </div>
+      
+                <div className="bg-[#0B1623] rounded-md p-3">
+                  <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Comments</h4>
+                  <div className="text-xs leading-relaxed text-white/90 break-words">
+                    {defect.Comments || '-'}
+                  </div>
+                </div>
+      
+                {/* Initial Documentation */}
+                <div className="bg-[#0B1623] rounded-md p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-xs font-medium text-[#3BADE5]">Initial Documentation</h4>
+                    <div className="text-[10px] text-white/60 px-2 py-0.5 bg-[#132337] rounded-full">
+                      {defect.initial_files?.length || 0} files
+                    </div>
+                  </div>
+                  <div className="max-h-32 overflow-y-auto custom-scrollbar pr-2">
+                    {defect.initial_files?.length > 0 ? (
+                      <FileList
+                        files={defect.initial_files}
+                        onDelete={handleDeleteFile}
+                        title=""
+                      />
+                    ) : (
+                      <div className="text-xs text-white/40 italic">No documentation available</div>
+                    )}
+                  </div>
+                </div>
+      
+                {/* Show closure content only when status is CLOSED */}
+                {defect['Status (Vessel)'] === 'CLOSED' && (
+                  <>
+                    <div className="bg-[#0B1623] rounded-md p-3">
+                      <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Closure Comments</h4>
+                      <div className="text-xs leading-relaxed text-white/90 break-words">
+                        {defect['Closure Comments'] || '-'}
+                      </div>
+                    </div>
+      
+                    <div className="bg-[#0B1623] rounded-md p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-xs font-medium text-[#3BADE5]">Closure Documentation</h4>
+                        <div className="text-[10px] text-white/60 px-2 py-0.5 bg-[#132337] rounded-full">
+                          {defect.completion_files?.length || 0} files
+                        </div>
+                      </div>
+                      <div className="max-h-32 overflow-y-auto custom-scrollbar pr-2">
+                        {defect.completion_files?.length > 0 ? (
+                          <FileList
+                            files={defect.completion_files}
+                            onDelete={handleDeleteFile}
+                            title=""
+                          />
+                        ) : (
+                          <div className="text-xs text-white/40 italic">No documentation available</div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+      
+              {/* Generate Report Button - Bottom Right */}
+              <div className="flex justify-end">
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    try {
+                      const getSignedUrls = async (files) => {
+                        const urls = {};
+                        for (const file of files) {
+                          if (file.type.startsWith('image/')) {
+                            try {
+                              const { data: { signedUrl } } = await supabase.storage
+                                .from('defect-files')
+                                .createSignedUrl(file.path, 3600);
+                              
+                              urls[file.path] = signedUrl;
+                            } catch (error) {
+                              console.error('Error getting signed URL:', error);
+                            }
+                          }
+                        }
+                        return urls;
+                      };
+      
+                      const initialUrls = await getSignedUrls(defect.initial_files || []);
+                      const completionUrls = await getSignedUrls(defect.completion_files || []);
+                      
+                      const { generateDefectReport } = await import('../utils/generateDefectReport');
+                      await generateDefectReport(defect, {
+                        ...initialUrls,
+                        ...completionUrls
+                      });
+      
+                      toast({
+                        title: "Success",
+                        description: "Report generated successfully",
+                      });
+                    } catch (error) {
+                      console.error('Error generating report:', error);
+                      toast({
+                        title: "Error",
+                        description: "Failed to generate report",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                  className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md 
+                    text-white bg-[#3BADE5] hover:bg-[#3BADE5]/80 transition-colors shadow-sm"
+                >
+                  <FileText className="h-3.5 w-3.5 mr-1.5" />
+                  Generate Report
+                </button>
+              </div>
             </div>
           </td>
         </tr>
       )}
     </>
   );
-};
+}; // End of DefectRow
 
+// Start of DefectsTable component
 const DefectsTable = ({ 
   data, 
   onAddDefect, 
@@ -176,14 +421,12 @@ const DefectsTable = ({
       const aValue = a[sortConfig.key];
       const bValue = b[sortConfig.key];
 
-      // Handle null/undefined values
       if (!aValue && !bValue) return 0;
       if (!aValue) return 1;
       if (!bValue) return -1;
 
       let comparison = 0;
 
-      // Handle different types of values
       if (sortConfig.key.includes('Date')) {
         comparison = new Date(aValue) - new Date(bValue);
       } else if (typeof aValue === 'string') {
@@ -206,6 +449,8 @@ const DefectsTable = ({
     });
   };
 
+  const sortedData = getSortedData();
+
   const renderSortIcon = (columnKey) => {
     if (sortConfig.key !== columnKey) {
       return <ChevronUp className="h-3 w-3 opacity-30" />;
@@ -226,8 +471,6 @@ const DefectsTable = ({
     { key: 'Date Completed', label: 'Completed' }
   ];
 
-  const sortedData = getSortedData();
-
   return (
     <div className="glass-card rounded-[4px]">
       <div className="flex justify-between items-center px-3 py-2 border-b border-white/10">
@@ -235,7 +478,7 @@ const DefectsTable = ({
         <div className="flex items-center gap-2">
           <ExportButton onClick={handleExport} />
           <button 
-            onClick={onAddDefect} 
+            onClick={onAddDefect}
             className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-[4px] 
               text-white bg-[#3BADE5] hover:bg-[#3BADE5]/80 transition-colors"
           >
