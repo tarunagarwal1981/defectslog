@@ -4,7 +4,7 @@ import 'jspdf-autotable';
 export const generateDefectReport = async (defect, signedUrls = {}) => {
   try {
     const doc = new jsPDF();
-    
+
     // Header
     doc.setFontSize(16);
     doc.setTextColor(44, 123, 229);
@@ -31,8 +31,8 @@ export const generateDefectReport = async (defect, signedUrls = {}) => {
         ['Equipment', `${defect.Equipments}`],
         ['Status', `${defect['Status (Vessel)']}`],
         ['Criticality', `${defect.Criticality}`],
-        ['Date Reported', `${defect['Date Reported'] ? new Date(defect['Date Reported']).toLocaleDateString() : '-'}`],
-        ['Date Completed', `${defect['Date Completed'] ? new Date(defect['Date Completed']).toLocaleDateString() : '-'}`]
+        ['Date Reported', `${defect['Date Reported'] ? formatDate(defect['Date Reported']) : '-'}`],
+        ['Date Completed', `${defect['Date Completed'] ? formatDate(defect['Date Completed']) : '-'}`]
       ],
       columnStyles: {
         0: { 
@@ -106,7 +106,7 @@ export const generateDefectReport = async (defect, signedUrls = {}) => {
       });
     }
 
-    // Function to add images
+    // Function to add images in 2 columns
     const addImagesSection = async (title, files, startY) => {
       if (!files?.length) return startY;
 
@@ -116,47 +116,76 @@ export const generateDefectReport = async (defect, signedUrls = {}) => {
       doc.text(title, 15, startY + 5);
       let currentY = startY + 10;
 
-      for (const file of files) {
-        if (!file.type.startsWith('image/') || !signedUrls[file.path]) continue;
+      // Calculate image width and spacing
+      const pageWidth = doc.internal.pageSize.width;
+      const margin = 15; // 15mm margin on each side
+      const spacing = 5; // Space between images
+      const imageWidth = (pageWidth - 2 * margin - spacing) / 2; // Half width for two images
 
-        // Check if need new page
+      for (let i = 0; i < files.length; i += 2) {
+        // Check if a new page is needed
         if (currentY > doc.internal.pageSize.height - 60) {
           doc.addPage();
           currentY = 15;
         }
 
-        try {
-          // Add image with fixed dimensions
-          const imgWidth = doc.internal.pageSize.width - 30; // 15mm margins
-          const imgHeight = 50; // Fixed height for consistency
+        // First image in the row
+        const file1 = files[i];
+        if (file1?.type.startsWith('image/') && signedUrls[file1.path]) {
+          try {
+            doc.addImage(
+              signedUrls[file1.path],
+              'JPEG',
+              margin,
+              currentY,
+              imageWidth,
+              50, // Fixed height
+              file1.name,
+              'MEDIUM'
+            );
 
-          doc.addImage(
-            signedUrls[file.path],
-            'JPEG',
-            15,
-            currentY,
-            imgWidth,
-            imgHeight,
-            file.name,
-            'MEDIUM'
-          );
-
-          // Add filename below image
-          doc.setFontSize(8);
-          doc.setTextColor(100);
-          doc.text(file.name, 15, currentY + imgHeight + 3);
-
-          currentY += imgHeight + 8; // Reduced spacing between images
-        } catch (error) {
-          console.error(`Error adding image ${file.name}:`, error);
+            // Add filename below image
+            doc.setFontSize(8);
+            doc.setTextColor(100);
+            doc.text(file1.name, margin, currentY + 50 + 3);
+          } catch (error) {
+            console.error(`Error adding image ${file1.name}:`, error);
+          }
         }
+
+        // Second image in the row (if available)
+        const file2 = files[i + 1];
+        if (file2?.type.startsWith('image/') && signedUrls[file2.path]) {
+          try {
+            doc.addImage(
+              signedUrls[file2.path],
+              'JPEG',
+              margin + imageWidth + spacing,
+              currentY,
+              imageWidth,
+              50, // Fixed height
+              file2.name,
+              'MEDIUM'
+            );
+
+            // Add filename below image
+            doc.setFontSize(8);
+            doc.setTextColor(100);
+            doc.text(file2.name, margin + imageWidth + spacing, currentY + 50 + 3);
+          } catch (error) {
+            console.error(`Error adding image ${file2.name}:`, error);
+          }
+        }
+
+        // Update Y position for the next row
+        currentY += 50 + 8; // Image height + spacing
       }
+
       return currentY;
     };
 
     // Add Initial Documentation
     let currentY = doc.lastAutoTable.finalY + 3;
-    
     if (defect.initial_files?.length) {
       currentY = await addImagesSection('Initial Documentation:', defect.initial_files, currentY);
     }
@@ -177,4 +206,13 @@ export const generateDefectReport = async (defect, signedUrls = {}) => {
     console.error('Error generating PDF:', error);
     throw error;
   }
+};
+
+// Helper function to format date as dd/mm/yyyy
+const formatDate = (dateString) => {
+  const date = new Date(dateString);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
 };
