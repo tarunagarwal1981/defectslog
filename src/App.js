@@ -170,7 +170,8 @@ function App() {
       'Date Reported': new Date().toISOString().split('T')[0],
       'Date Completed': '',
       initial_files: [],
-      completion_files: []
+      completion_files: [],
+      raised_by: ''
     });
     setIsDefectDialogOpen(true);
   };
