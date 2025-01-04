@@ -19,6 +19,22 @@ const ALLOWED_FILE_TYPES = [
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 ];
 
+const formatDateForInput = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toISOString().split('T')[0];
+};
+
+const formatDateDisplay = (dateString) => {
+  if (!dateString) return '-';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+};
+
 const DefectDialog = ({ 
   isOpen, 
   onClose, 
@@ -385,7 +401,7 @@ const DefectDialog = ({
                 id="dateReported"
                 type="date"
                 className="flex h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
-                value={defect?.['Date Reported'] || ''}
+                value={formatDateForInput(defect?.['Date Reported']) || ''}
                 onChange={(e) => onChange('Date Reported', e.target.value)}
                 required
                 aria-required="true"
