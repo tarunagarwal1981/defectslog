@@ -378,16 +378,17 @@ const DefectDialog = ({
           </div>
 
           {/* Dates */}
+          {/* Dates */}
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">
               <label htmlFor="dateReported" className="text-xs font-medium text-white/80">
                 Date Reported <span className="text-red-400">*</span>
               </label>
-              <div className="relative">
+              <div className="relative h-8">
                 <input
                   id="dateReported"
                   type="date"
-                  className="flex h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white opacity-0 focus:opacity-100 focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40 [&::-webkit-calendar-picker-indicator]:brightness-0 [&::-webkit-calendar-picker-indicator]:invert-[1]"
+                  className="absolute inset-0 h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40 [&::-webkit-calendar-picker-indicator]:brightness-0 [&::-webkit-calendar-picker-indicator]:invert-[1]"
                   value={formatDateForInput(defect?.['Date Reported'])}
                   onChange={(e) => {
                     onChange('Date Reported', e.target.value);
@@ -395,8 +396,8 @@ const DefectDialog = ({
                   required
                   aria-required="true"
                 />
-                <div className="absolute inset-0 pointer-events-none flex items-center px-2 text-xs text-white">
-                  {formatDateDisplay(defect?.['Date Reported']) || 'dd/mm/yyyy'}
+                <div className="absolute inset-0 flex items-center px-2 text-xs text-white pointer-events-none">
+                  {formatDateDisplay(defect?.['Date Reported'])}
                 </div>
               </div>
             </div>
@@ -404,11 +405,11 @@ const DefectDialog = ({
               <label htmlFor="dateCompleted" className="text-xs font-medium text-white/80">
                 Date Completed {defect?.['Status (Vessel)'] === 'CLOSED' && <span className="text-red-400">*</span>}
               </label>
-              <div className="relative">
+              <div className="relative h-8">
                 <input
                   id="dateCompleted"
                   type="date"
-                  className="flex h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white opacity-0 focus:opacity-100 focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40 [&::-webkit-calendar-picker-indicator]:brightness-0 [&::-webkit-calendar-picker-indicator]:invert-[1]"
+                  className="absolute inset-0 h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40 [&::-webkit-calendar-picker-indicator]:brightness-0 [&::-webkit-calendar-picker-indicator]:invert-[1]"
                   value={formatDateForInput(defect?.['Date Completed'])}
                   onChange={(e) => {
                     onChange('Date Completed', e.target.value);
@@ -416,8 +417,8 @@ const DefectDialog = ({
                   required={defect?.['Status (Vessel)'] === 'CLOSED'}
                   aria-required={defect?.['Status (Vessel)'] === 'CLOSED'}
                 />
-                <div className="absolute inset-0 pointer-events-none flex items-center px-2 text-xs text-white">
-                  {formatDateDisplay(defect?.['Date Completed']) || 'dd/mm/yyyy'}
+                <div className="absolute inset-0 flex items-center px-2 text-xs text-white pointer-events-none">
+                  {formatDateDisplay(defect?.['Date Completed']) || '-'}
                 </div>
               </div>
             </div>
