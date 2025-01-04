@@ -388,16 +388,26 @@ const DefectDialog = ({
                 <input
                   id="dateReported"
                   type="date"
-                  className="absolute inset-0 h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40 [&::-webkit-calendar-picker-indicator]:brightness-0 [&::-webkit-calendar-picker-indicator]:invert-[1]"
+                  className="absolute inset-0 h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40 [&::-webkit-calendar-picker-indicator]:brightness-0 [&::-webkit-calendar-picker-indicator]:invert-[1] appearance-none"
                   value={formatDateForInput(defect?.['Date Reported'])}
                   onChange={(e) => {
                     onChange('Date Reported', e.target.value);
                   }}
                   required
                   aria-required="true"
+                  style={{ colorScheme: 'dark' }}
                 />
-                <div className="absolute inset-0 flex items-center px-2 text-xs text-white pointer-events-none">
-                  {formatDateDisplay(defect?.['Date Reported'])}
+                <div className="absolute inset-0 flex items-center px-2 text-xs text-white pointer-events-none bg-transparent">
+                  {formatDateDisplay(defect?.['Date Reported']) || 'dd/mm/yyyy'}
+                </div>
+                {/* Calendar Icon */}
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/60">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
                 </div>
               </div>
             </div>
@@ -409,16 +419,26 @@ const DefectDialog = ({
                 <input
                   id="dateCompleted"
                   type="date"
-                  className="absolute inset-0 h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40 [&::-webkit-calendar-picker-indicator]:brightness-0 [&::-webkit-calendar-picker-indicator]:invert-[1]"
+                  className="absolute inset-0 h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40 [&::-webkit-calendar-picker-indicator]:brightness-0 [&::-webkit-calendar-picker-indicator]:invert-[1] appearance-none"
                   value={formatDateForInput(defect?.['Date Completed'])}
                   onChange={(e) => {
                     onChange('Date Completed', e.target.value);
                   }}
                   required={defect?.['Status (Vessel)'] === 'CLOSED'}
                   aria-required={defect?.['Status (Vessel)'] === 'CLOSED'}
+                  style={{ colorScheme: 'dark' }}
                 />
-                <div className="absolute inset-0 flex items-center px-2 text-xs text-white pointer-events-none">
-                  {formatDateDisplay(defect?.['Date Completed']) || '-'}
+                <div className="absolute inset-0 flex items-center px-2 text-xs text-white pointer-events-none bg-transparent">
+                  {formatDateDisplay(defect?.['Date Completed']) || 'dd/mm/yyyy'}
+                </div>
+                {/* Calendar Icon */}
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/60">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
                 </div>
               </div>
             </div>
