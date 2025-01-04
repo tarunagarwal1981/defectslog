@@ -303,7 +303,7 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect 
                     <div className="bg-[#0B1623] rounded-md p-3">
                       <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Closure Comments</h4>
                       <div className="text-xs leading-relaxed text-white/90 break-words">
-                        {defect['Closure Comments'] || '-'}
+                        {defect.closure_comments || '-'}
                       </div>
                     </div>
       
