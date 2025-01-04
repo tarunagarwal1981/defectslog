@@ -385,60 +385,55 @@ const DefectDialog = ({
                 Date Reported <span className="text-red-400">*</span>
               </label>
               <div className="relative h-8">
+                {/* Hidden input for actual date handling */}
                 <input
                   id="dateReported"
                   type="date"
-                  className="absolute inset-0 h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40 [&::-webkit-calendar-picker-indicator]:brightness-0 [&::-webkit-calendar-picker-indicator]:invert-[1] appearance-none"
+                  className="absolute opacity-0 inset-0 h-8 w-full"
                   value={formatDateForInput(defect?.['Date Reported'])}
                   onChange={(e) => {
+                    const displayDate = new Date(e.target.value).toLocaleDateString('en-GB', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric'
+                    });
                     onChange('Date Reported', e.target.value);
                   }}
                   required
                   aria-required="true"
-                  style={{ colorScheme: 'dark' }}
                 />
-                <div className="absolute inset-0 flex items-center px-2 text-xs text-white pointer-events-none bg-transparent">
+                {/* Visible display element */}
+                <div className="absolute inset-0 flex items-center rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white pointer-events-none">
                   {formatDateDisplay(defect?.['Date Reported']) || 'dd/mm/yyyy'}
-                </div>
-                {/* Calendar Icon */}
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/60">
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                  </svg>
                 </div>
               </div>
             </div>
+            
             <div className="grid gap-1.5">
               <label htmlFor="dateCompleted" className="text-xs font-medium text-white/80">
                 Date Completed {defect?.['Status (Vessel)'] === 'CLOSED' && <span className="text-red-400">*</span>}
               </label>
               <div className="relative h-8">
+                {/* Hidden input for actual date handling */}
                 <input
                   id="dateCompleted"
                   type="date"
-                  className="absolute inset-0 h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40 [&::-webkit-calendar-picker-indicator]:brightness-0 [&::-webkit-calendar-picker-indicator]:invert-[1] appearance-none"
+                  className="absolute opacity-0 inset-0 h-8 w-full"
                   value={formatDateForInput(defect?.['Date Completed'])}
                   onChange={(e) => {
+                    const displayDate = new Date(e.target.value).toLocaleDateString('en-GB', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric'
+                    });
                     onChange('Date Completed', e.target.value);
                   }}
                   required={defect?.['Status (Vessel)'] === 'CLOSED'}
                   aria-required={defect?.['Status (Vessel)'] === 'CLOSED'}
-                  style={{ colorScheme: 'dark' }}
                 />
-                <div className="absolute inset-0 flex items-center px-2 text-xs text-white pointer-events-none bg-transparent">
+                {/* Visible display element */}
+                <div className="absolute inset-0 flex items-center rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white pointer-events-none">
                   {formatDateDisplay(defect?.['Date Completed']) || 'dd/mm/yyyy'}
-                </div>
-                {/* Calendar Icon */}
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/60">
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                  </svg>
                 </div>
               </div>
             </div>
