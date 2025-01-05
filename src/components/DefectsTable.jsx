@@ -255,22 +255,13 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect 
               {/* Main Content in 3-column Grid */}
               <div className="grid grid-cols-3 gap-4">
                 {/* Basic Details */}
-
                 <div className="bg-[#0B1623] rounded-md p-3">
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="text-xs font-medium text-[#3BADE5]">Description</h4>
-                    {defect.raised_by && (
-                      <span className="text-[10px] bg-[#132337] text-white/80 px-2 py-0.5 rounded-full">
-                        Raised by: {defect.raised_by}
-                      </span>
-                    )}
-                  </div>
+                  <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Description</h4>
                   <div className="text-xs leading-relaxed text-white/90 break-words">
                     {defect.Description || '-'}
                   </div>
                 </div>
                 
-                            
                 <div className="bg-[#0B1623] rounded-md p-3">
                   <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Action Planned</h4>
                   <div className="text-xs leading-relaxed text-white/90 break-words">
@@ -339,8 +330,16 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect 
                 )}
               </div>
       
-              {/* Generate Report Button - Bottom Right */}
-              <div className="flex justify-end">
+              {/* Bottom row with Raised By and Generate Report */}
+              <div className="flex justify-between items-center">
+                {/* Raised By info */}
+                {defect.raised_by && (
+                  <div className="text-xs text-white/60">
+                    Raised by: <span className="text-white/80">{defect.raised_by}</span>
+                  </div>
+                )}
+
+                {/* Generate Report Button */}
                 <button
                   onClick={async (e) => {
                     e.stopPropagation();
