@@ -9,6 +9,7 @@ import DefectsTable from './components/DefectsTable';
 import DefectDialog from './components/DefectDialog';
 import ChatBot from './components/ChatBot/ChatBot';
 import { supabase } from './supabaseClient';
+const [raisedByFilter, setRaisedByFilter] = useState('');
 
 const getUserVessels = async (userId) => {
   try {
@@ -121,6 +122,7 @@ function App() {
       const matchesVessel = currentVessel.length === 0 || currentVessel.includes(defect.vessel_id);
       const matchesStatus = !statusFilter || defect['Status (Vessel)'] === statusFilter;
       const matchesCriticality = !criticalityFilter || defect.Criticality === criticalityFilter;
+      const matchesRaisedBy = !raisedByFilter || defect.raised_by === raisedByFilter;
       const matchesSearch = !searchTerm || 
         Object.values(defect).some(value => 
           String(value).toLowerCase().includes(searchTerm.toLowerCase())
@@ -128,11 +130,15 @@ function App() {
       const matchesDateRange = 
         (!dateRange.from || defectDate >= new Date(dateRange.from)) &&
         (!dateRange.to || defectDate <= new Date(dateRange.to));
-
-      return matchesVessel && matchesStatus && matchesCriticality && matchesSearch && matchesDateRange;
+  
+      return matchesVessel && matchesStatus && matchesCriticality && matchesRaisedBy && matchesSearch && matchesDateRange;
     });
-  }, [data, currentVessel, statusFilter, criticalityFilter, searchTerm, dateRange]);
+  }, [data, currentVessel, statusFilter, criticalityFilter, raisedByFilter, searchTerm, dateRange]);
 
+  const raisedByOptions = React.useMemo(() => {
+    return [...new Set(data.map(defect => defect.raised_by).filter(Boolean))].sort();
+  }, [data]);
+  
   const handleGeneratePdf = useCallback(async () => {
     setIsPdfGenerating(true);
     try {
@@ -362,8 +368,11 @@ function App() {
                 onSearch={setSearchTerm}
                 onFilterStatus={setStatusFilter}
                 onFilterCriticality={setCriticalityFilter}
+                onFilterRaisedBy={setRaisedByFilter}
                 status={statusFilter}
                 criticality={criticalityFilter}
+                raisedBy={raisedByFilter}
+                raisedByOptions={raisedByOptions}
               />
               
               <DefectsTable
