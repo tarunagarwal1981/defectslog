@@ -2,7 +2,16 @@ import React from 'react';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
-const SearchBar = ({ onSearch, onFilterStatus, onFilterCriticality, status, criticality }) => {
+const SearchBar = ({ 
+  onSearch, 
+  onFilterStatus, 
+  onFilterCriticality, 
+  onFilterRaisedBy,
+  status, 
+  criticality,
+  raisedBy,
+  raisedByOptions = [] // Array of unique raised_by values
+}) => {
   return (
     <div className="flex items-center justify-between gap-3 px-2 py-2 mb-2">
       <div className="w-full max-w-xs">
@@ -35,6 +44,20 @@ const SearchBar = ({ onSearch, onFilterStatus, onFilterCriticality, status, crit
             <SelectItem value="High">High</SelectItem>
             <SelectItem value="Medium">Medium</SelectItem>
             <SelectItem value="Low">Low</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={raisedBy} onValueChange={onFilterRaisedBy}>
+          <SelectTrigger className="w-[140px] h-8 text-xs bg-[#132337]/30 border-white/10">
+            <SelectValue placeholder="Created By" />
+          </SelectTrigger>
+          <SelectContent className="text-xs max-h-[200px]">
+            <SelectItem value="">All Users</SelectItem>
+            {raisedByOptions.map((user) => (
+              <SelectItem key={user} value={user}>
+                {user}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
