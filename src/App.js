@@ -197,7 +197,8 @@ function App() {
       Comments: updatedDefect.Comments || '',
       initial_files: updatedDefect.initial_files || [],
       completion_files: updatedDefect.completion_files || [],
-      closure_comments: updatedDefect.closure_comments || null
+      closure_comments: updatedDefect.closure_comments || null,
+      raised_by: updatedDefect.raised_by || ''
     };
 
     let result;
