@@ -52,7 +52,7 @@ const SearchBar = ({
             <SelectValue placeholder="Created By" />
           </SelectTrigger>
           <SelectContent className="text-xs max-h-[200px]">
-            <SelectItem value="">All Users</SelectItem>
+            <SelectItem value="">Raised By</SelectItem>
             {raisedByOptions.map((user) => (
               <SelectItem key={user} value={user}>
                 {user}
