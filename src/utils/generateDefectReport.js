@@ -32,7 +32,8 @@ export const generateDefectReport = async (defect, signedUrls = {}) => {
         ['Status', `${defect['Status (Vessel)']}`],
         ['Criticality', `${defect.Criticality}`],
         ['Date Reported', `${defect['Date Reported'] ? new Date(defect['Date Reported']).toLocaleDateString() : '-'}`],
-        ['Date Completed', `${defect['Date Completed'] ? new Date(defect['Date Completed']).toLocaleDateString() : '-'}`]
+        ['Date Completed', `${defect['Date Completed'] ? new Date(defect['Date Completed']).toLocaleDateString() : '-'}`],
+        ['Raised By', `${defect.raised_by || '-'}`]
       ],
       columnStyles: {
         0: { 
