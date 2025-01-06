@@ -21,6 +21,23 @@ const ALLOWED_FILE_TYPES = [
 ];
 
 
+const formatDateForInput = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toISOString().split('T')[0];
+};
+
+const formatDateDisplay = (dateString) => {
+  if (!dateString) return '-';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+};
+
+
 const DefectDialog = ({ 
   isOpen, 
   onClose, 
@@ -408,6 +425,7 @@ const DefectDialog = ({
               <label htmlFor="dateReported" className="text-xs font-medium text-white/80">
                 Date Reported <span className="text-red-400">*</span>
               </label>
+
               <div className="relative h-8">
                 <input
                   id="dateReported"
@@ -424,6 +442,7 @@ const DefectDialog = ({
                   {formatDateDisplay(defect?.['Date Reported']) || 'dd/mm/yyyy'}
                 </div>
               </div>
+
             </div>
             
             <div className="grid gap-1.5">
