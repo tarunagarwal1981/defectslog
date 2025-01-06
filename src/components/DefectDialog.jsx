@@ -8,6 +8,7 @@ import {
 import { Upload, FileText, X } from 'lucide-react';
 import { toast } from './ui/use-toast';
 import { supabase } from '../supabaseClient';
+import { formatDateForInput, formatDateDisplay } from '../utils/dateUtils';
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 5MB
 const ALLOWED_FILE_TYPES = [
@@ -18,6 +19,7 @@ const ALLOWED_FILE_TYPES = [
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 ];
+
 
 const formatDateForInput = (dateString) => {
   if (!dateString) return '';
@@ -34,6 +36,7 @@ const formatDateDisplay = (dateString) => {
     year: 'numeric'
   });
 };
+
 
 const DefectDialog = ({ 
   isOpen, 
@@ -391,35 +394,77 @@ const DefectDialog = ({
             </select>
           </div>
 
+          {/* Raised By */}
+          <div className="grid gap-1.5">
+            <label htmlFor="raisedBy" className="text-xs font-medium text-white/80">
+              Raised By <span className="text-red-400">*</span>
+            </label>
+            <select
+              id="raisedBy"
+              className="flex h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
+              value={defect?.raised_by || ''}
+              onChange={(e) => onChange('raised_by', e.target.value)}
+              required
+              aria-required="true"
+            >
+              <option value="">Select Source</option>
+              <option value="Vessel">Vessel</option>
+              <option value="Office">Office</option>
+              <option value="Owners">Owners</option>
+              <option value="PSC">PSC</option>
+              <option value="CLASS">CLASS</option>
+              <option value="FLAG">FLAG</option>
+              <option value="Others">Others</option>
+            </select>
+          </div>
+          
+          {/* Dates */}
           {/* Dates */}
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">
               <label htmlFor="dateReported" className="text-xs font-medium text-white/80">
                 Date Reported <span className="text-red-400">*</span>
               </label>
-              <input
-                id="dateReported"
-                type="date"
-                className="flex h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
-                value={formatDateForInput(defect?.['Date Reported']) || ''}
-                onChange={(e) => onChange('Date Reported', e.target.value)}
-                required
-                aria-required="true"
-              />
+
+              <div className="relative h-8">
+                <input
+                  id="dateReported"
+                  type="date"
+                  className="absolute inset-0 h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-transparent hover:border-[#3BADE5]/40 focus:outline-none focus:ring-1 focus:ring-[#3BADE5] [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:text-white [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer [&::-webkit-calendar-picker-indicator]:hover:opacity-70"
+                  value={formatDateForInput(defect?.['Date Reported'])}
+                  onChange={(e) => {
+                    onChange('Date Reported', e.target.value);
+                  }}
+                  required
+                  aria-required="true"
+                />
+                <div className="absolute inset-0 flex items-center px-2 text-xs text-white pointer-events-none">
+                  {formatDateDisplay(defect?.['Date Reported']) || 'dd/mm/yyyy'}
+                </div>
+              </div>
+
             </div>
+            
             <div className="grid gap-1.5">
               <label htmlFor="dateCompleted" className="text-xs font-medium text-white/80">
                 Date Completed {defect?.['Status (Vessel)'] === 'CLOSED' && <span className="text-red-400">*</span>}
               </label>
-              <input
-                id="dateCompleted"
-                type="date"
-                className="flex h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
-                value={defect?.['Date Completed'] || ''}
-                onChange={(e) => onChange('Date Completed', e.target.value)}
-                required={defect?.['Status (Vessel)'] === 'CLOSED'}
-                aria-required={defect?.['Status (Vessel)'] === 'CLOSED'}
-              />
+              <div className="relative h-8">
+                <input
+                  id="dateCompleted"
+                  type="date"
+                  className="absolute inset-0 h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-transparent hover:border-[#3BADE5]/40 focus:outline-none focus:ring-1 focus:ring-[#3BADE5] [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:text-white [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer [&::-webkit-calendar-picker-indicator]:hover:opacity-70"
+                  value={formatDateForInput(defect?.['Date Completed'])}
+                  onChange={(e) => {
+                    onChange('Date Completed', e.target.value);
+                  }}
+                  required={defect?.['Status (Vessel)'] === 'CLOSED'}
+                  aria-required={defect?.['Status (Vessel)'] === 'CLOSED'}
+                />
+                <div className="absolute inset-0 flex items-center px-2 text-xs text-white pointer-events-none">
+                  {formatDateDisplay(defect?.['Date Completed']) || '-'}
+                </div>
+              </div>
             </div>
           </div>
 

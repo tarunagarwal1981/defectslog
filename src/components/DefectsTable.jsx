@@ -226,10 +226,10 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect 
           {defect['Action Planned']}
         </td>
         <td className="px-3 py-1.5" onClick={() => onEditDefect(defect)}>
-          {defect['Date Reported'] ? new Date(defect['Date Reported']).toLocaleDateString() : '-'}
+          {defect['Date Reported'] ? new Date(defect['Date Reported']).toLocaleDateString('en-GB') : '-'}
         </td>
         <td className="px-3 py-1.5" onClick={() => onEditDefect(defect)}>
-          {defect['Date Completed'] ? new Date(defect['Date Completed']).toLocaleDateString() : '-'}
+          {defect['Date Completed'] ? new Date(defect['Date Completed']).toLocaleDateString('en-GB') : '-'}
         </td>
         <td className="px-3 py-1.5">
           <div className="flex items-center justify-center">
@@ -303,7 +303,7 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect 
                     <div className="bg-[#0B1623] rounded-md p-3">
                       <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Closure Comments</h4>
                       <div className="text-xs leading-relaxed text-white/90 break-words">
-                        {defect['Closure Comments'] || '-'}
+                        {defect.closure_comments || '-'}
                       </div>
                     </div>
       
@@ -330,8 +330,16 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect 
                 )}
               </div>
       
-              {/* Generate Report Button - Bottom Right */}
-              <div className="flex justify-end">
+              {/* Bottom row with Raised By and Generate Report */}
+              <div className="flex justify-between items-center">
+                {/* Raised By info */}
+                {defect.raised_by && (
+                  <div className="text-xs text-white/60">
+                    Raised by: <span className="text-white/80">{defect.raised_by}</span>
+                  </div>
+                )}
+
+                {/* Generate Report Button */}
                 <button
                   onClick={async (e) => {
                     e.stopPropagation();
