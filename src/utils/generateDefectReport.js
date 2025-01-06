@@ -106,15 +106,9 @@ export const generateDefectReport = async (defect, signedUrls = {}) => {
       });
     }
 
-    // Function to add images section
+    // Function to add images
     const addImagesSection = async (title, files, startY) => {
-      // Filter only image files that have signed URLs
-      const imageFiles = files?.filter(file => 
-        file.type.startsWith('image/') && signedUrls[file.path]
-      ) || [];
-
-      // Only proceed if there are actual images to display
-      if (imageFiles.length === 0) return startY;
+      if (!files?.length) return startY;
 
       // Add section title
       doc.setFontSize(11);
@@ -122,14 +116,16 @@ export const generateDefectReport = async (defect, signedUrls = {}) => {
       doc.text(title, 15, startY + 5);
       let currentY = startY + 10;
 
-      for (const file of imageFiles) {
-        try {
-          // Check if need new page
-          if (currentY > doc.internal.pageSize.height - 60) {
-            doc.addPage();
-            currentY = 15;
-          }
+      for (const file of files) {
+        if (!file.type.startsWith('image/') || !signedUrls[file.path]) continue;
 
+        // Check if need new page
+        if (currentY > doc.internal.pageSize.height - 60) {
+          doc.addPage();
+          currentY = 15;
+        }
+
+        try {
           // Add image with fixed dimensions
           const imgWidth = doc.internal.pageSize.width - 30; // 15mm margins
           const imgHeight = 50; // Fixed height for consistency
@@ -150,11 +146,9 @@ export const generateDefectReport = async (defect, signedUrls = {}) => {
           doc.setTextColor(100);
           doc.text(file.name, 15, currentY + imgHeight + 3);
 
-          currentY += imgHeight + 8; // Space between images
+          currentY += imgHeight + 8; // Reduced spacing between images
         } catch (error) {
           console.error(`Error adding image ${file.name}:`, error);
-          // Continue with next image if one fails
-          continue;
         }
       }
       return currentY;
@@ -162,24 +156,18 @@ export const generateDefectReport = async (defect, signedUrls = {}) => {
 
     // Add Initial Documentation
     let currentY = doc.lastAutoTable.finalY + 3;
+    
     if (defect.initial_files?.length) {
       currentY = await addImagesSection('Initial Documentation:', defect.initial_files, currentY);
     }
 
     // Add Closure Documentation
     if (defect.completion_files?.length) {
-      // Only add new page if we have actual images and need the space
-      const closureImageFiles = defect.completion_files.filter(file => 
-        file.type.startsWith('image/') && signedUrls[file.path]
-      );
-      
-      if (closureImageFiles.length > 0) {
-        if (currentY > doc.internal.pageSize.height - 60) {
-          doc.addPage();
-          currentY = 15;
-        }
-        await addImagesSection('Closure Documentation:', defect.completion_files, currentY);
+      if (currentY > doc.internal.pageSize.height - 60) {
+        doc.addPage();
+        currentY = 15;
       }
+      await addImagesSection('Closure Documentation:', defect.completion_files, currentY);
     }
 
     // Save with vessel name included
