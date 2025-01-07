@@ -397,6 +397,7 @@ const DefectDialog = ({
               <option value="PSC">PSC</option>
               <option value="CLASS">CLASS</option>
               <option value="FLAG">FLAG</option>
+              <option value="Guarantee Claim">Guarantee Claim</option>
               <option value="Others">Others</option>
             </select>
           </div>
