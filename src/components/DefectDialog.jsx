@@ -56,7 +56,8 @@ const DefectDialog = ({
       'Description',
       'Status (Vessel)',
       'Criticality',
-      'Date Reported'
+      'Date Reported',
+      'raised_by'
     ];
 
     // Add closure_comments requirement for CLOSED status
