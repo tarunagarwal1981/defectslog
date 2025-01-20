@@ -119,11 +119,13 @@ export const generateDefectReport = async (defect, signedUrls = {}) => {
     const filterDocumentFiles = (files) => {
       if (!files?.length) return [];
       return files.filter(file => {
-        // Check MIME types for PDF, DOC, and DOCX
-        const isDocument = file?.type === 'application/pdf' || 
-                          file?.type === 'application/msword' ||
-                          file?.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-        return isDocument && signedUrls[file.path];
+        const isDocument = 
+          file?.type === 'application/pdf' || 
+          file?.type === 'application/msword' ||
+          file?.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        const hasUrl = !!signedUrls[file.path];
+        console.log('File:', file.name, 'Type:', file.type, 'Has URL:', hasUrl);
+        return isDocument && hasUrl;
       });
     };
 
@@ -138,10 +140,15 @@ export const generateDefectReport = async (defect, signedUrls = {}) => {
 
     // Function to add images and documents section
     const addSection = async (title, files, startY) => {
+      console.log('Adding section:', title);
+      console.log('Files received:', files);
+      
       let currentY = startY;
       
       // Handle images first
       const imageFiles = filterImageFiles(files);
+      console.log('Image files:', imageFiles);
+      
       if (imageFiles.length > 0) {
         // Add section title
         doc.setFontSize(11);
@@ -197,6 +204,8 @@ export const generateDefectReport = async (defect, signedUrls = {}) => {
       
       // Handle documents
       const documentFiles = filterDocumentFiles(files);
+      console.log('Document files:', documentFiles);
+      
       if (documentFiles.length > 0) {
         // Add title if no images were added
         if (imageFiles.length === 0) {
@@ -209,18 +218,25 @@ export const generateDefectReport = async (defect, signedUrls = {}) => {
         // Add "Attached Documents" subtitle
         doc.setFontSize(10);
         doc.setTextColor(44, 123, 229);
-        doc.text('Attached Documents:', 15, currentY + 5);
+        doc.text('Attached Documents:', 15, currentY);
         currentY += 10;
 
         // Add each document as a link with icon
         doc.setFontSize(9);
-        documentFiles.forEach(file => {
+        documentFiles.forEach((file, index) => {
+          console.log('Adding document link:', file.name);
           const icon = getDocumentIcon(file.name);
+          const text = `${icon}${file.name}`;
+          
+          // Draw the text in blue
           doc.setTextColor(44, 123, 229);
-          doc.textWithLink(`${icon}${file.name}`, 20, currentY, {
-            url: signedUrls[file.path],
-            target: '_blank'
+          doc.text(text, 20, currentY);
+          
+          // Add clickable link area
+          doc.link(20, currentY - 5, doc.getTextWidth(text), 8, {
+            url: signedUrls[file.path]
           });
+          
           currentY += 7;
         });
         currentY += 3;
