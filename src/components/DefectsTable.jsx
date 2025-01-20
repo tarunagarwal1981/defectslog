@@ -346,31 +346,33 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect 
                     try {
                       const getSignedUrls = async (files) => {
                         const urls = {};
-                        for (const file of files) {
-                          if (file.type.startsWith('image/')) {
-                            try {
-                              const { data: { signedUrl } } = await supabase.storage
-                                .from('defect-files')
-                                .createSignedUrl(file.path, 3600);
-                              
-                              urls[file.path] = signedUrl;
-                            } catch (error) {
-                              console.error('Error getting signed URL:', error);
+                        for (const file of files || []) {
+                          try {
+                            const { data: { signedUrl }, error } = await supabase.storage
+                              .from('defect-files')
+                              .createSignedUrl(file.path, 3600);
+                            
+                            if (error) {
+                              console.error('Error getting signed URL for file:', file.name, error);
+                              continue;
                             }
+                            urls[file.path] = signedUrl;
+                          } catch (error) {
+                            console.error('Error getting signed URL for file:', file.name, error);
                           }
                         }
                         return urls;
                       };
-      
-                      const initialUrls = await getSignedUrls(defect.initial_files || []);
-                      const completionUrls = await getSignedUrls(defect.completion_files || []);
+                
+                      const initialUrls = await getSignedUrls(defect.initial_files);
+                      const completionUrls = await getSignedUrls(defect.completion_files);
                       
                       const { generateDefectReport } = await import('../utils/generateDefectReport');
                       await generateDefectReport(defect, {
                         ...initialUrls,
                         ...completionUrls
                       });
-      
+                
                       toast({
                         title: "Success",
                         description: "Report generated successfully",
