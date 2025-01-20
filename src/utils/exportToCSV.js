@@ -46,7 +46,9 @@ export const exportToCSV = (data, vesselNames, filters = {}) => {
         'Action Planned': item['Action Planned'] || '',
         'Date Reported': formatDate(item['Date Reported']),
         'Date Completed': formatDate(item['Date Completed']),
-        'Comments': item.Comments || ''
+        'Comments': item.Comments || '',
+        'Closure Comments': item.closure_comments || '',  
+        'Raised By': item.raised_by || ''
       };
     });
 
