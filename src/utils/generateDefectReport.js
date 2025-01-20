@@ -107,7 +107,7 @@ export const generateDefectReport = async (defect, signedUrls = {}) => {
       });
     }
 
-    // Function to filter image files and check if they have signed URLs
+    // Helper function to filter image files
     const filterImageFiles = (files) => {
       if (!files?.length) return [];
       return files.filter(file => 
@@ -115,94 +115,130 @@ export const generateDefectReport = async (defect, signedUrls = {}) => {
       );
     };
 
-    // Function to add images in 2 columns
-    const addImagesSection = async (title, files, startY) => {
-      // Filter for only valid image files with signed URLs
-      const imageFiles = filterImageFiles(files);
+    // Helper function to filter document files
+    const filterDocumentFiles = (files) => {
+      if (!files?.length) return [];
+      return files.filter(file => {
+        const ext = file?.name?.toLowerCase().split('.').pop();
+        return (ext === 'pdf' || ext === 'doc' || ext === 'docx') && signedUrls[file.path];
+      });
+    };
+
+    // Function to get document icon based on file type
+    const getDocumentIcon = (fileName) => {
+      const ext = fileName.toLowerCase().split('.').pop();
+      if (ext === 'pdf') {
+        return '📄 '; // PDF icon
+      }
+      return '📝 '; // DOC icon
+    };
+
+    // Function to add images and documents section
+    const addSection = async (title, files, startY) => {
+      let currentY = startY;
       
-      // If no valid images, return current Y position without adding section
-      if (!imageFiles.length) return startY;
+      // Handle images first
+      const imageFiles = filterImageFiles(files);
+      if (imageFiles.length > 0) {
+        // Add section title
+        doc.setFontSize(11);
+        doc.setTextColor(44, 123, 229);
+        doc.text(title, 15, currentY + 5);
+        currentY += 10;
 
-      // Add section title
-      doc.setFontSize(11);
-      doc.setTextColor(44, 123, 229);
-      doc.text(title, 15, startY + 5);
-      let currentY = startY + 10;
+        // Calculate image layout
+        const pageWidth = doc.internal.pageSize.width;
+        const margin = 15;
+        const spacing = 5;
+        const imageWidth = (pageWidth - 2 * margin - spacing) / 2;
 
-      // Calculate image width and spacing
-      const pageWidth = doc.internal.pageSize.width;
-      const margin = 15;
-      const spacing = 5;
-      const imageWidth = (pageWidth - 2 * margin - spacing) / 2;
+        for (let i = 0; i < imageFiles.length; i += 2) {
+          if (currentY > doc.internal.pageSize.height - 60) {
+            doc.addPage();
+            currentY = 15;
+          }
 
-      for (let i = 0; i < imageFiles.length; i += 2) {
-        // Check if a new page is needed
-        if (currentY > doc.internal.pageSize.height - 60) {
-          doc.addPage();
-          currentY = 15;
-        }
-
-        // Add first image in row
-        try {
-          const file1 = imageFiles[i];
-          doc.addImage(
-            signedUrls[file1.path],
-            'JPEG',
-            margin,
-            currentY,
-            imageWidth,
-            50,
-            file1.name,
-            'MEDIUM'
-          );
-          doc.setFontSize(8);
-          doc.setTextColor(100);
-          doc.text(file1.name, margin, currentY + 50 + 3);
-        } catch (error) {
-          console.error('Error adding first image:', error);
-        }
-
-        // Add second image if available
-        if (imageFiles[i + 1]) {
           try {
-            const file2 = imageFiles[i + 1];
+            const file1 = imageFiles[i];
             doc.addImage(
-              signedUrls[file2.path],
+              signedUrls[file1.path],
               'JPEG',
-              margin + imageWidth + spacing,
+              margin,
               currentY,
               imageWidth,
               50,
-              file2.name,
+              file1.name,
               'MEDIUM'
             );
-            doc.setFontSize(8);
-            doc.setTextColor(100);
-            doc.text(file2.name, margin + imageWidth + spacing, currentY + 50 + 3);
+
+            if (imageFiles[i + 1]) {
+              const file2 = imageFiles[i + 1];
+              doc.addImage(
+                signedUrls[file2.path],
+                'JPEG',
+                margin + imageWidth + spacing,
+                currentY,
+                imageWidth,
+                50,
+                file2.name,
+                'MEDIUM'
+              );
+            }
+
+            currentY += 50 + 8;
           } catch (error) {
-            console.error('Error adding second image:', error);
+            console.error('Error adding images:', error);
           }
         }
+      }
+      
+      // Handle documents
+      const documentFiles = filterDocumentFiles(files);
+      if (documentFiles.length > 0) {
+        // Add title if no images were added
+        if (imageFiles.length === 0) {
+          doc.setFontSize(11);
+          doc.setTextColor(44, 123, 229);
+          doc.text(title, 15, currentY + 5);
+          currentY += 10;
+        }
 
-        currentY += 50 + 8; // Image height + spacing
+        // Add "Attached Documents" subtitle
+        doc.setFontSize(10);
+        doc.setTextColor(44, 123, 229);
+        doc.text('Attached Documents:', 15, currentY + 5);
+        currentY += 10;
+
+        // Add each document as a link with icon
+        doc.setFontSize(9);
+        documentFiles.forEach(file => {
+          const icon = getDocumentIcon(file.name);
+          doc.setTextColor(44, 123, 229);
+          doc.textWithLink(`${icon}${file.name}`, 20, currentY, {
+            url: signedUrls[file.path],
+            target: '_blank'
+          });
+          currentY += 7;
+        });
+        currentY += 3;
       }
 
       return currentY;
     };
 
-    // Add Initial Documentation (only if there are valid images)
+    // Add Initial Documentation
     let currentY = doc.lastAutoTable.finalY + 3;
-    if (filterImageFiles(defect.initial_files).length > 0) {
-      currentY = await addImagesSection('Initial Documentation:', defect.initial_files, currentY);
+    if (defect.initial_files?.length > 0) {
+      currentY = await addSection('Initial Documentation:', defect.initial_files, currentY);
     }
 
-    // Add Closure Documentation (only if there are valid images)
-    if (filterImageFiles(defect.completion_files).length > 0) {
+    // Add Closure Documentation
+    if (defect.completion_files?.length > 0) {
       if (currentY > doc.internal.pageSize.height - 60) {
         doc.addPage();
         currentY = 15;
       }
-      await addImagesSection('Closure Documentation:', defect.completion_files, currentY);
+      await addSection('Closure Documentation:', defect.completion_files, currentY);
     }
 
     // Save with vessel name included
