@@ -129,7 +129,13 @@ export const generateDefectReport = async (defect, signedUrls = {}) => {
 
     // Function to get document icon based on file type
     const getDocumentIcon = (fileName) => {
-      return '📎 ';  // Using paperclip icon for all document types
+      const ext = fileName.toLowerCase().split('.').pop();
+      if (ext === 'pdf') {
+        return '[PDF] ';
+      } else if (ext === 'doc' || ext === 'docx') {
+        return '[DOC] ';
+      }
+      return '[FILE] ';
     };
 
     // Function to add images and documents section
@@ -206,7 +212,7 @@ export const generateDefectReport = async (defect, signedUrls = {}) => {
         doc.setFontSize(10);
         doc.setTextColor(44, 123, 229);
         doc.text('Attached Documents:', 15, currentY);
-        currentY += 5;  // Reduced spacing after subtitle
+        currentY += 5;
 
         // Add each document as a link with icon
         doc.setFontSize(9);
@@ -214,13 +220,13 @@ export const generateDefectReport = async (defect, signedUrls = {}) => {
           const icon = getDocumentIcon(file.name);
           const text = `${icon}${file.name}`;
           doc.setTextColor(44, 123, 229);
-          currentY += 4;  // Reduced spacing between documents
+          currentY += 4;
           doc.text(text, 20, currentY);
           doc.link(20, currentY - 3, doc.getTextWidth(text), 5, {
             url: signedUrls[file.path]
           });
         });
-        currentY += 2;  // Reduced final spacing
+        currentY += 2;
       }
 
       return currentY;
