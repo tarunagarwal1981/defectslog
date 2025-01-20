@@ -119,8 +119,11 @@ export const generateDefectReport = async (defect, signedUrls = {}) => {
     const filterDocumentFiles = (files) => {
       if (!files?.length) return [];
       return files.filter(file => {
-        const ext = file?.name?.toLowerCase().split('.').pop();
-        return (ext === 'pdf' || ext === 'doc' || ext === 'docx') && signedUrls[file.path];
+        // Check MIME types for PDF, DOC, and DOCX
+        const isDocument = file?.type === 'application/pdf' || 
+                          file?.type === 'application/msword' ||
+                          file?.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        return isDocument && signedUrls[file.path];
       });
     };
 
