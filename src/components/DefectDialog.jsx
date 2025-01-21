@@ -32,11 +32,12 @@ const DefectDialog = ({
   vessels, 
   isNew 
 }) => {
+  const { toast } = useToast();
   const [initialFiles, setInitialFiles] = useState([]);
   const [closureFiles, setClosureFiles] = useState([]);
   const [saving, setSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const { toast } = useToast();
+  
   const validateDefect = (defectData) => {
     
     if (defectData['Date Completed'] && defectData['Date Reported']) {
