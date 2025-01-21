@@ -22,7 +22,8 @@
     "tailwind-merge": "^2.0.0",
     "@radix-ui/react-slot": "^1.0.2",
     "jspdf": "^2.5.1",
-    "jspdf-autotable": "^3.8.1"
+    "jspdf-autotable": "^3.8.1",
+    "@radix-ui/react-tooltip": "^1.0.7"
   },
   "scripts": {
     "start": "react-scripts start",
