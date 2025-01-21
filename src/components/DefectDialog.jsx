@@ -48,20 +48,22 @@ const DefectDialog = ({
   const [uploadProgress, setUploadProgress] = useState(0);
   
   const validateDefect = (defectData) => {
+  console.log("Running validation", defectData);
+  
+  if (defectData['Date Completed'] && defectData['Date Reported']) {
+    const closureDate = new Date(defectData['Date Completed']);
+    const reportedDate = new Date(defectData['Date Reported']);
     
-    if (defectData['Date Completed'] && defectData['Date Reported']) {
-      const closureDate = new Date(defectData['Date Completed']);
-      const reportedDate = new Date(defectData['Date Reported']);
-      
-      if (closureDate < reportedDate) {
-        toast({
-          title: "Invalid Date",
-          description: "Closure date cannot be before the reported date",
-          variant: "destructive",
-        });
-        return false;
-      }
+    if (closureDate < reportedDate) {
+      console.log("Date validation failed");
+      toast({
+        title: "Invalid Date",
+        description: "Closure date cannot be before the reported date",
+        variant: "destructive",
+      });
+      return false;
     }
+  }
     const required = [
       'vessel_id',
       'Equipments',
