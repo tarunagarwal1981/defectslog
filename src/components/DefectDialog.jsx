@@ -515,8 +515,7 @@ const DefectDialog = ({
                   <div className="space-y-1 mt-2">
                     <div className="text-xs text-white/60">Existing files:</div>
                     {defect.initial_files.map((file, index) => (
-                      <div key={index} className="flex items-center gap-2 text-xs text-white/80">
-                        <FileText className="h-3.5 w-3
+                      
                       <div key={index} className="flex items-center gap-2 text-xs text-white/80">
                         <FileText className="h-3.5 w-3.5" />
                         <span className="truncate flex-1">{file.name}</span>
