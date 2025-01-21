@@ -34,15 +34,7 @@ const DefectDialog = ({
   isNew 
 }) => {
   const { toast } = useToast();
-  useEffect(() => {
-    if (isOpen) {
-      console.log("Dialog opened, testing toast");
-      toast({
-        title: "Test Toast",
-        description: "Dialog opened successfully",
-      });
-    }
-  }, [isOpen]);
+  
   const [initialFiles, setInitialFiles] = useState([]);
   const [closureFiles, setClosureFiles] = useState([]);
   const [saving, setSaving] = useState(false);
