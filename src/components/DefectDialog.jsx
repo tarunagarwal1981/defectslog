@@ -89,21 +89,6 @@ const DefectDialog = ({
         'closure_comments': 'Closure Comments'
       };
 
-      const missing = required.filter(field => !defectData[field]);
-    
-    if (missing.length > 0) {
-      // Map field names to more readable labels
-      const fieldLabels = {
-        'vessel_id': 'Vessel',
-        'Equipments': 'Equipment',
-        'Description': 'Description',
-        'Status (Vessel)': 'Status',
-        'Criticality': 'Criticality',
-        'Date Reported': 'Date Reported',
-        'raised_by': 'Raised By',
-        'closure_comments': 'Closure Comments'
-      };
-
       const missingFieldLabels = missing.map(field => fieldLabels[field] || field);
       
       toast({
