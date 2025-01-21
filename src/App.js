@@ -157,6 +157,7 @@ function App() {
   }, [toast]);
 
   const handleAddDefect = () => {
+    console.log('Opening dialog');
     if (assignedVessels.length === 0) {
       toast({
         title: "Error",
@@ -383,6 +384,7 @@ function App() {
               <DefectDialog
                 isOpen={isDefectDialogOpen}
                 onClose={() => {
+                  console.log('Closing dialog');
                   setIsDefectDialogOpen(false);
                   setCurrentDefect(null);
                 }}
