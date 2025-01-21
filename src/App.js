@@ -11,7 +11,6 @@ import DefectDialog from './components/DefectDialog';
 import ChatBot from './components/ChatBot/ChatBot';
 import { supabase } from './supabaseClient';
 
-
 const getUserVessels = async (userId) => {
   try {
     const { data, error } = await supabase
@@ -380,7 +379,7 @@ function App() {
                 onDeleteDefect={handleDeleteDefect}
                 loading={loading}
               />
-  
+
               <DefectDialog
                 isOpen={isDefectDialogOpen}
                 onClose={() => {
@@ -395,7 +394,7 @@ function App() {
                 vessels={vesselNames}
                 isNew={currentDefect?.id?.startsWith('temp-')}
               />
-  
+
               <ChatBot 
                 data={filteredData}
                 vesselName={getSelectedVesselsDisplay()}
@@ -416,5 +415,6 @@ function App() {
       <Toaster />
     </ToastProvider>
   );
+}
 
 export default App;
