@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -7,9 +7,9 @@ import {
 } from './ui/dialog';
 import { Upload, FileText, X } from 'lucide-react';
 import { useToast } from './ui/use-toast';
+import { Toaster } from "./ui/toaster";
 import { supabase } from '../supabaseClient';
 import { formatDateForInput, formatDateDisplay } from '../utils/dateUtils';
-import { Toaster } from "./ui/toaster";
 
 
 
@@ -41,7 +41,7 @@ const DefectDialog = ({
   const [uploadProgress, setUploadProgress] = useState(0);
   
   const validateDefect = (defectData) => {
-  console.log("Running validation", defectData);
+  
   
   if (defectData['Date Completed'] && defectData['Date Reported']) {
     const closureDate = new Date(defectData['Date Completed']);
@@ -256,6 +256,10 @@ const DefectDialog = ({
         className="max-w-md max-h-[90vh] overflow-y-auto bg-[#0B1623] relative"
         aria-describedby="dialog-description"
       >
+        <div className="absolute right-4 bottom-4 z-50">
+          <Toaster />
+        </div>
+        
         <DialogHeader>
           <DialogTitle className="text-sm font-medium text-white">
             {isNew ? 'Add New Defect' : 'Edit Defect'}
@@ -265,9 +269,7 @@ const DefectDialog = ({
           </p>
         </DialogHeader>
 
-        <div className="absolute inset-0 pointer-events-none">
-          <Toaster />
-        </div>
+        
         
         <div className="grid gap-3 py-3">
           {/* Vessel Selection */}
