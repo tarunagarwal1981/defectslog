@@ -7,7 +7,6 @@ import {
 } from './ui/dialog';
 import { Upload, FileText, X } from 'lucide-react';
 import { useToast } from './ui/use-toast';
-import { Toaster } from "./ui/toaster";
 import { supabase } from '../supabaseClient';
 import { formatDateForInput, formatDateDisplay } from '../utils/dateUtils';
 
