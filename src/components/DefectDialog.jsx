@@ -43,6 +43,7 @@ const DefectDialog = ({
     const toastConfig = {
       variant: "destructive",
       duration: 3000,
+      className: "absolute top-4 right-4 z-50 bg-red-700 border-red-800",
     };
   
     if (defectData['Date Completed'] && defectData['Date Reported']) {
@@ -251,9 +252,9 @@ const DefectDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>
+      <DialogContent className="w-full max-w-[90vw] md:max-w-[600px] h-[90vh] max-h-[900px] p-4 bg-[#0B1623] overflow-hidden flex flex-col">
+        <DialogHeader className="flex-shrink-0 px-4 py-2 border-b border-[#3BADE5]/20">
+          <DialogTitle className="text-sm font-medium text-white">
             {isNew ? 'Add New Defect' : 'Edit Defect'}
           </DialogTitle>
           <div className="text-xs text-white/60">
