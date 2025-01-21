@@ -41,23 +41,24 @@ const DefectDialog = ({
   const [uploadProgress, setUploadProgress] = useState(0);
   
   const validateDefect = (defectData) => {
+    const toastConfig = {
+      variant: "destructive",
+      duration: 3000,
+    };
   
-  
-  if (defectData['Date Completed'] && defectData['Date Reported']) {
-    const closureDate = new Date(defectData['Date Completed']);
-    const reportedDate = new Date(defectData['Date Reported']);
-    
-    if (closureDate < reportedDate) {
-      console.log("Date validation failed");
-      toast({
-        title: "Invalid Date",
-        description: "Closure date cannot be before the reported date",
-        variant: "destructive",
-        className: "absolute bottom-4 right-4 w-auto"
-      });
-      return false;
+    if (defectData['Date Completed'] && defectData['Date Reported']) {
+      const closureDate = new Date(defectData['Date Completed']);
+      const reportedDate = new Date(defectData['Date Reported']);
+      
+      if (closureDate < reportedDate) {
+        toast({
+          title: "Invalid Date",
+          description: "Closure date cannot be before the reported date",
+          ...toastConfig
+        });
+        return false;
+      }
     }
-  }
     
     const fieldNames = {
       'vessel_id': 'Vessel',
@@ -108,8 +109,7 @@ const DefectDialog = ({
             </ul>
           </div>
         ),
-        variant: "destructive",
-        className: "absolute bottom-4 right-4 w-auto max-w-[300px]"
+        ...toastConfig
       });
       return false;
     }
@@ -256,9 +256,7 @@ const DefectDialog = ({
         className="max-w-md max-h-[90vh] overflow-y-auto bg-[#0B1623] relative"
         aria-describedby="dialog-description"
       >
-        <div className="absolute right-4 bottom-4 z-50">
-          <Toaster />
-        </div>
+        
         
         <DialogHeader>
           <DialogTitle className="text-sm font-medium text-white">
