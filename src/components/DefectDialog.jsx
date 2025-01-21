@@ -4,6 +4,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from './ui/dialog';
 import { Upload, FileText, X } from 'lucide-react';
 import { useToast } from './ui/use-toast';
@@ -252,20 +253,16 @@ const DefectDialog = ({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent 
-        className="max-w-md max-h-[90vh] overflow-y-auto bg-[#0B1623] relative"
-        aria-describedby="dialog-description"
+        className="max-w-md max-h-[90vh] overflow-y-auto bg-[#0B1623]"
       >
-        
-        
         <DialogHeader>
           <DialogTitle className="text-sm font-medium text-white">
             {isNew ? 'Add New Defect' : 'Edit Defect'}
           </DialogTitle>
-          <p id="dialog-description" className="text-xs text-white/60">
+          <DialogDescription className="text-xs text-white/60">
             {isNew ? 'Create a new defect record' : 'Edit existing defect details'}
-          </p>
+          </DialogDescription>
         </DialogHeader>
-
         
         
         <div className="grid gap-3 py-3">
