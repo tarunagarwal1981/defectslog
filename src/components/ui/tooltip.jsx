@@ -1,6 +1,12 @@
 import * as React from "react"
 import * as TooltipPrimitive from "@radix-ui/react-tooltip"
-import { cn } from "@/lib/utils"  // Using same import style as Button component
+import { clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+// Local cn function instead of importing
+const cn = (...inputs) => {
+  return twMerge(clsx(inputs))
+}
 
 const TooltipProvider = TooltipPrimitive.Provider
 
