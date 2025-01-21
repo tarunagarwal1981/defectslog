@@ -74,13 +74,35 @@ const DefectDialog = ({
       }
     }
     
-    const missing = required.filter(field => !defectData[field]);
-    
     if (missing.length > 0) {
+      // Map field names to more readable labels
+      const fieldLabels = {
+        'vessel_id': 'Vessel',
+        'Equipments': 'Equipment',
+        'Description': 'Description',
+        'Status (Vessel)': 'Status',
+        'Criticality': 'Criticality',
+        'Date Reported': 'Date Reported',
+        'raised_by': 'Raised By',
+        'closure_comments': 'Closure Comments'
+      };
+
+      const missingFieldLabels = missing.map(field => fieldLabels[field] || field);
+      
       toast({
-        title: "Required Fields Missing",
-        description: "Please fill in all required fields",
-        variant: "destructive",
+        title: "Missing Information",
+        description: (
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Please fill in the following fields:</p>
+            <ul className="list-disc pl-4 text-sm space-y-1">
+              {missingFieldLabels.map((field, index) => (
+                <li key={index} className="text-sm opacity-90">{field}</li>
+              ))}
+            </ul>
+          </div>
+        ),
+        variant: "subtle",
+        className: "bg-[#132337] border border-[#3BADE5]/20 text-white",
       });
       return false;
     }
