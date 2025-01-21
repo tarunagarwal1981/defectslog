@@ -9,6 +9,7 @@ import { Upload, FileText, X } from 'lucide-react';
 import { useToast } from './ui/use-toast';
 import { supabase } from '../supabaseClient';
 import { formatDateForInput, formatDateDisplay } from '../utils/dateUtils';
+import { Toaster } from "./ui/toaster";
 
 
 
@@ -60,10 +61,21 @@ const DefectDialog = ({
         title: "Invalid Date",
         description: "Closure date cannot be before the reported date",
         variant: "destructive",
+        className: "absolute bottom-4 right-4 w-auto"
       });
       return false;
     }
   }
+    
+    const fieldNames = {
+      'vessel_id': 'Vessel',
+      'Equipments': 'Equipment',
+      'Description': 'Description',
+      'Status (Vessel)': 'Status',
+      'Criticality': 'Criticality',
+      'Date Reported': 'Date Reported',
+      'raised_by': 'Raised By'
+    };
     const required = [
       'vessel_id',
       'Equipments',
@@ -91,10 +103,21 @@ const DefectDialog = ({
     const missing = required.filter(field => !defectData[field]);
     
     if (missing.length > 0) {
+      const missingFieldNames = missing.map(field => fieldNames[field]);
       toast({
         title: "Required Fields Missing",
-        description: "Please fill in all required fields",
+        description: (
+          <div className="mt-1">
+            <p>Please fill in the following fields:</p>
+            <ul className="list-disc pl-4 mt-1">
+              {missingFieldNames.map((fieldName, index) => (
+                <li key={index}>{fieldName}</li>
+              ))}
+            </ul>
+          </div>
+        ),
         variant: "destructive",
+        className: "absolute bottom-4 right-4 w-auto max-w-[300px]"
       });
       return false;
     }
@@ -238,7 +261,7 @@ const DefectDialog = ({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent 
-        className="max-w-md max-h-[90vh] overflow-y-auto bg-[#0B1623]"
+        className="max-w-md max-h-[90vh] overflow-y-auto bg-[#0B1623] relative"
         aria-describedby="dialog-description"
       >
         <DialogHeader>
@@ -249,6 +272,10 @@ const DefectDialog = ({
             {isNew ? 'Create a new defect record' : 'Edit existing defect details'}
           </p>
         </DialogHeader>
+
+        <div className="absolute inset-0 pointer-events-none">
+          <Toaster />
+        </div>
         
         <div className="grid gap-3 py-3">
           {/* Vessel Selection */}
