@@ -73,7 +73,8 @@ const DefectDialog = ({
         return false;
       }
     }
-    
+
+    const missing = required.filter(field => !defectData[field]);
     if (missing.length > 0) {
       // Map field names to more readable labels
       const fieldLabels = {
