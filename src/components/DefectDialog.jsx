@@ -7,6 +7,7 @@ import {
 } from './ui/dialog';
 import { Upload, FileText, X } from 'lucide-react';
 import { toast } from './ui/use-toast';
+import { ToastIcon, ToastTitle, ToastDescription, ToastClose } from "./ui/toast";
 import { supabase } from '../supabaseClient';
 import { formatDateForInput, formatDateDisplay } from '../utils/dateUtils';
 
@@ -36,20 +37,32 @@ const DefectDialog = ({
   const [uploadProgress, setUploadProgress] = useState(0);
 
   const validateDefect = (defectData) => {
-    
+    // Check date validation for completed defects
     if (defectData['Date Completed'] && defectData['Date Reported']) {
       const closureDate = new Date(defectData['Date Completed']);
       const reportedDate = new Date(defectData['Date Reported']);
       
       if (closureDate < reportedDate) {
         toast({
-          title: "Invalid Date",
-          description: "Closure date cannot be before the reported date",
-          variant: "destructive",
+          variant: "warning",
+          children: (
+            <div className="flex w-full gap-4">
+              <ToastIcon variant="warning" />
+              <div className="flex-1">
+                <ToastTitle>Invalid Date</ToastTitle>
+                <ToastDescription>
+                  Closure date cannot be before the reported date
+                </ToastDescription>
+              </div>
+              <ToastClose />
+            </div>
+          )
         });
         return false;
       }
     }
+  
+    // Define required fields
     const required = [
       'vessel_id',
       'Equipments',
@@ -59,21 +72,32 @@ const DefectDialog = ({
       'Date Reported',
       'raised_by'
     ];
-
+  
     // Add closure_comments requirement for CLOSED status
     if (defectData['Status (Vessel)'] === 'CLOSED') {
       required.push('closure_comments');
-
+  
       if (!defectData['Date Completed']) {
         toast({
-          title: "Required Field Missing",
-          description: "Please enter Date Completed for closed defects",
-          variant: "destructive",
+          variant: "warning",
+          children: (
+            <div className="flex w-full gap-4">
+              <ToastIcon variant="warning" />
+              <div className="flex-1">
+                <ToastTitle>Required Field Missing</ToastTitle>
+                <ToastDescription>
+                  Please enter Date Completed for closed defects
+                </ToastDescription>
+              </div>
+              <ToastClose />
+            </div>
+          )
         });
         return false;
       }
     }
-
+  
+    // Check for missing required fields
     const missing = required.filter(field => !defectData[field]);
     
     if (missing.length > 0) {
@@ -88,26 +112,34 @@ const DefectDialog = ({
         'raised_by': 'Raised By',
         'closure_comments': 'Closure Comments'
       };
-
+  
       const missingFieldLabels = missing.map(field => fieldLabels[field] || field);
       
       toast({
-        title: "Missing Information",
-        description: (
-          <div className="space-y-2">
-            <p className="text-sm font-medium">Please fill in the following fields:</p>
-            <ul className="list-disc pl-4 text-sm space-y-1">
-              {missingFieldLabels.map((field, index) => (
-                <li key={index} className="text-sm opacity-90">{field}</li>
-              ))}
-            </ul>
+        variant: "info",
+        children: (
+          <div className="flex w-full gap-4">
+            <ToastIcon variant="info" />
+            <div className="flex-1">
+              <ToastTitle>Required Fields Missing</ToastTitle>
+              <ToastDescription>
+                <div className="mt-1.5 space-y-1.5">
+                  {missingFieldLabels.map((field, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <div className="h-1 w-1 rounded-full bg-current opacity-70" />
+                      <span>{field}</span>
+                    </div>
+                  ))}
+                </div>
+              </ToastDescription>
+            </div>
+            <ToastClose />
           </div>
-        ),
-        variant: "subtle",
-        className: "bg-[#132337] border border-[#3BADE5]/20 text-white",
+        )
       });
       return false;
     }
+  
     return true;
   };
 
