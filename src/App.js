@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ToastProvider } from './components/ui/toast';
 import { useToast } from './components/ui/use-toast';
+import { Toaster } from "./components/ui/toaster";
 import Auth from './components/Auth';
 import Header from './components/Header';
 import StatsCards from './components/StatsCards';
@@ -9,7 +10,7 @@ import DefectsTable from './components/DefectsTable';
 import DefectDialog from './components/DefectDialog';
 import ChatBot from './components/ChatBot/ChatBot';
 import { supabase } from './supabaseClient';
-import { Toaster } from "./components/ui/toaster";
+
 
 const getUserVessels = async (userId) => {
   try {
