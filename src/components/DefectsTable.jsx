@@ -10,6 +10,12 @@ import ExportButton from './ui/ExportButton';
 import { exportToCSV } from '../utils/exportToCSV';
 import { supabase } from '../supabaseClient';
 import { toast } from './ui/use-toast';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from './ui/tooltip';
 
 
 const STATUS_COLORS = {
@@ -127,6 +133,29 @@ const FileList = ({ files, onDelete, title }) => {
   );
 };
 
+const TruncatedText = ({ text, maxWidth = "max-w-[200px]" }) => {
+  if (!text) return '-';
+  
+  return (
+    <TooltipProvider>
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <div className={`truncate ${maxWidth}`}>
+            {text}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent 
+          side="top" 
+          className="max-w-sm bg-[#132337] text-white border-white/20"
+        >
+          <p className="text-xs">{text}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
+
+
 const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [defect, setDefect] = useState(initialDefect);
@@ -216,14 +245,14 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect 
             {defect.Criticality || 'N/A'}
           </span>
         </td>
-        <td className="px-3 py-1.5 truncate max-w-[150px]" onClick={() => onEditDefect(defect)}>
-          {defect.Equipments}
+        <td className="px-3 py-1.5" onClick={() => onEditDefect(defect)}>
+          <TruncatedText text={defect.Equipments} maxWidth="max-w-[150px]" />
         </td>
-        <td className="px-3 py-1.5 truncate max-w-[200px]" onClick={() => onEditDefect(defect)}>
-          {defect.Description}
+        <td className="px-3 py-1.5" onClick={() => onEditDefect(defect)}>
+          <TruncatedText text={defect.Description} />
         </td>
-        <td className="px-3 py-1.5 truncate max-w-[200px]" onClick={() => onEditDefect(defect)}>
-          {defect['Action Planned']}
+        <td className="px-3 py-1.5" onClick={() => onEditDefect(defect)}>
+          <TruncatedText text={defect['Action Planned']} />
         </td>
         <td className="px-3 py-1.5" onClick={() => onEditDefect(defect)}>
           {defect['Date Reported'] ? new Date(defect['Date Reported']).toLocaleDateString('en-GB') : '-'}
