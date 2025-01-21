@@ -5,14 +5,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from './ui/dialog';
-import { Upload, FileText, X } from 'lucide-react';
+import { Upload, FileText, X, AlertCircle } from 'lucide-react';
 import { useToast } from './ui/use-toast';
 import { supabase } from '../supabaseClient';
 import { formatDateForInput, formatDateDisplay } from '../utils/dateUtils';
 
-
-
-const MAX_FILE_SIZE = 2 * 1024 * 1024; // 5MB
+// Constants
+const MAX_FILE_SIZE = 2 * 1024 * 1024;
 const ALLOWED_FILE_TYPES = [
   'image/jpeg',
   'image/png',
@@ -21,7 +20,6 @@ const ALLOWED_FILE_TYPES = [
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 ];
-
 
 const DefectDialog = ({ 
   isOpen, 
@@ -33,19 +31,31 @@ const DefectDialog = ({
   isNew 
 }) => {
   const { toast } = useToast();
-  
   const [initialFiles, setInitialFiles] = useState([]);
   const [closureFiles, setClosureFiles] = useState([]);
   const [saving, setSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  
+
+  // Form input component for consistent styling
+  const FormInput = ({ label, id, required, children }) => (
+    <div className="space-y-1.5">
+      <label htmlFor={id} className="flex items-center text-xs font-medium text-white/80">
+        {label}
+        {required && <span className="ml-1 text-rose-500">*</span>}
+      </label>
+      {children}
+    </div>
+  );
+
+  // Reusable input class for consistent styling
+  const inputClass = "w-full rounded-md bg-white/5 border border-white/10 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 hover:border-white/20 transition duration-200";
+
   const validateDefect = (defectData) => {
     const toastConfig = {
       variant: "destructive",
       duration: 3000,
-      className: "absolute top-4 right-4 z-50 bg-red-700 border-red-800",
     };
-  
+
     if (defectData['Date Completed'] && defectData['Date Reported']) {
       const closureDate = new Date(defectData['Date Completed']);
       const reportedDate = new Date(defectData['Date Reported']);
@@ -69,6 +79,7 @@ const DefectDialog = ({
       'Date Reported': 'Date Reported',
       'raised_by': 'Raised By'
     };
+    
     const required = [
       'vessel_id',
       'Equipments',
@@ -79,10 +90,8 @@ const DefectDialog = ({
       'raised_by'
     ];
 
-    // Add closure_comments requirement for CLOSED status
     if (defectData['Status (Vessel)'] === 'CLOSED') {
       required.push('closure_comments');
-
       if (!defectData['Date Completed']) {
         toast({
           title: "Required Field Missing",
@@ -96,15 +105,20 @@ const DefectDialog = ({
     const missing = required.filter(field => !defectData[field]);
     
     if (missing.length > 0) {
-      const missingFieldNames = missing.map(field => fieldNames[field]);
       toast({
         title: "Required Fields Missing",
         description: (
           <div className="mt-1">
-            <p>Please fill in the following fields:</p>
-            <ul className="list-disc pl-4 mt-1">
-              {missingFieldNames.map((fieldName, index) => (
-                <li key={index}>{fieldName}</li>
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <AlertCircle className="h-4 w-4" />
+              <span>Please fill in all required fields:</span>
+            </div>
+            <ul className="mt-2 space-y-1 text-sm">
+              {missing.map((field) => (
+                <li key={field} className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                  {fieldNames[field]}
+                </li>
               ))}
             </ul>
           </div>
@@ -179,6 +193,7 @@ const DefectDialog = ({
     return uploadedFiles;
   };
 
+  // File handling functions
   const handleInitialFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
     setInitialFiles(prevFiles => [...prevFiles, ...selectedFiles]);
@@ -207,7 +222,6 @@ const DefectDialog = ({
         return;
       }
 
-      // Upload files if any
       let uploadedInitialFiles = [];
       let uploadedClosureFiles = [];
 
@@ -219,17 +233,10 @@ const DefectDialog = ({
         uploadedClosureFiles = await uploadFiles(closureFiles, defect.id || 'temp', 'closure');
       }
 
-      // Combine existing and new files
       const updatedDefect = {
         ...defect,
-        initial_files: [
-          ...(defect.initial_files || []),
-          ...uploadedInitialFiles
-        ],
-        completion_files: [
-          ...(defect.completion_files || []),
-          ...uploadedClosureFiles
-        ],
+        initial_files: [...(defect.initial_files || []), ...uploadedInitialFiles],
+        completion_files: [...(defect.completion_files || []), ...uploadedClosureFiles],
         closure_comments: defect.closure_comments || ''
       };
 
@@ -250,55 +257,67 @@ const DefectDialog = ({
     }
   };
 
+  // File list component
+  const FileList = ({ files, onRemove, existing, title }) => (
+    <div className="space-y-2">
+      {files?.length > 0 && (
+        <div className="space-y-1.5">
+          {title && <div className="text-xs text-white/60">{title}</div>}
+          {files.map((file, index) => (
+            <div key={index} 
+              className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-white/5 text-sm text-white/80">
+              <FileText className="h-4 w-4 flex-shrink-0" />
+              <span className="truncate flex-1">{file.name}</span>
+              {!existing && (
+                <button
+                  onClick={() => onRemove(index)}
+                  className="p-1 rounded-full hover:bg-white/10 transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-full max-w-[90vw] md:max-w-[600px] h-[90vh] max-h-[900px] bg-[#0B1623] overflow-hidden flex flex-col p-0">
-        <DialogHeader className="flex-shrink-0 px-4 py-2 border-b border-[#3BADE5]/20">
-          <DialogTitle className="text-sm font-medium text-white">
+      <DialogContent className="max-w-2xl max-h-[90vh] bg-[#0B1623] p-0 overflow-hidden rounded-lg border border-white/10">
+        <DialogHeader className="px-6 py-4 border-b border-white/10">
+          <DialogTitle className="text-lg font-semibold text-white">
             {isNew ? 'Add New Defect' : 'Edit Defect'}
           </DialogTitle>
-          <div className="text-xs text-white/60">
+          <p className="text-sm text-white/60">
             {isNew ? 'Create a new defect record' : 'Edit existing defect details'}
-          </div>
+          </p>
         </DialogHeader>
-  
-        {/* Scrollable Content Area */}
-        <div className="flex-1 overflow-y-auto px-4 space-y-4">
-          <div className="grid gap-3 py-3">
-            {/* Your existing form fields, keeping them as they are */}
-            
-            {/* Vessel Selection */}
-            <div className="grid gap-1.5">
-              <label htmlFor="vessel" className="text-xs font-medium text-white/80">
-                Vessel <span className="text-red-400">*</span>
-              </label>
+
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {/* Vessel and Equipment Section */}
+          <div className="grid grid-cols-2 gap-4">
+            <FormInput label="Vessel" id="vessel" required>
               <select
                 id="vessel"
-                className="flex h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
+                className={inputClass}
                 value={defect?.vessel_id || ''}
                 onChange={(e) => onChange('vessel_id', e.target.value)}
-                required
-                aria-required="true"
               >
                 <option value="">Select Vessel</option>
                 {Object.entries(vessels).map(([id, name]) => (
                   <option key={id} value={id}>{name}</option>
                 ))}
               </select>
-            </div>
-  
-            {/* Equipment */}
-            <div className="grid gap-1.5">
-              <label htmlFor="equipment" className="text-xs font-medium text-white/80">
-                Equipment <span className="text-red-400">*</span>
-              </label>
+            </FormInput>
+
+            <FormInput label="Equipment" id="equipment" required>
               <select
                 id="equipment"
-                className="flex h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
+                className={inputClass}
                 value={defect?.Equipments || ''}
                 onChange={(e) => onChange('Equipments', e.target.value)}
-                required
-                aria-required="true"
               >
                 <option value="">Select Equipment</option>
                 <option value="Air System and Air Compressor">Air System and Air Compressor</option>
@@ -320,173 +339,149 @@ const DefectDialog = ({
                 <option value="Steering Gear and Rudder">Steering Gear and Rudder</option>
                 <option value="Others">Others</option>
               </select>
-            </div>
-  
-            {/* Description */}
-            <div className="grid gap-1.5">
-              <label htmlFor="description" className="text-xs font-medium text-white/80">
-                Description <span className="text-red-400">*</span>
-              </label>
+            </FormInput>
+          </div>
+
+          {/* Description and Action Section */}
+          <div className="space-y-4">
+            <FormInput label="Description" id="description" required>
               <textarea
                 id="description"
-                className="flex h-16 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
+                className={`${inputClass} h-24 resize-none`}
                 value={defect?.Description || ''}
                 onChange={(e) => onChange('Description', e.target.value)}
                 placeholder="Enter defect description"
-                required
-                aria-required="true"
               />
-            </div>
-  
-            {/* Action Planned */}
-            <div className="grid gap-1.5">
-              <label htmlFor="action" className="text-xs font-medium text-white/80">
-                Action Planned <span className="text-red-400">*</span>
-              </label>
+            </FormInput>
+
+            <FormInput label="Action Planned" id="action" required>
               <textarea
                 id="action"
-                className="flex h-16 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
+                className={`${inputClass} h-24 resize-none`}
                 value={defect?.['Action Planned'] || ''}
                 onChange={(e) => onChange('Action Planned', e.target.value)}
                 placeholder="Enter planned action"
-                required
-                aria-required="true"
               />
-            </div>
-  
-            {/* Comments */}
-            <div className="grid gap-1.5">
-              <label htmlFor="comments" className="text-xs font-medium text-white/80">
-                Comments
-              </label>
-              <textarea
-                id="comments"
-                className="flex h-16 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
-                value={defect?.Comments || ''}
-                onChange={(e) => onChange('Comments', e.target.value)}
-                placeholder="Add any additional comments"
-              />
-            </div>
-  
-            {/* Status */}
-            <div className="grid gap-1.5">
-              <label htmlFor="status" className="text-xs font-medium text-white/80">
-                Status <span className="text-red-400">*</span>
-              </label>
+            </FormInput>
+          </div>
+
+          {/* Status and Criticality Section */}
+          <div className="grid grid-cols-2 gap-4">
+            <FormInput label="Status" id="status" required>
               <select
                 id="status"
-                className="flex h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
+                className={inputClass}
                 value={defect?.['Status (Vessel)'] || ''}
                 onChange={(e) => onChange('Status (Vessel)', e.target.value)}
-                required
-                aria-required="true"
               >
                 <option value="">Select Status</option>
                 <option value="OPEN">Open</option>
                 <option value="IN PROGRESS">In Progress</option>
                 <option value="CLOSED">Closed</option>
               </select>
-            </div>
-  
-            {/* Criticality */}
-            <div className="grid gap-1.5">
-              <label htmlFor="criticality" className="text-xs font-medium text-white/80">
-                Criticality <span className="text-red-400">*</span>
-              </label>
+            </FormInput>
+
+            <FormInput label="Criticality" id="criticality" required>
               <select
                 id="criticality"
-                className="flex h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
+                className={inputClass}
                 value={defect?.Criticality || ''}
                 onChange={(e) => onChange('Criticality', e.target.value)}
-                required
-                aria-required="true"
+              >
+                <option value="">Select Status</option>
+                <option value="OPEN">Open</option>
+                <option value="IN PROGRESS">In Progress</option>
+                <option value="CLOSED">Closed</option>
+              </select>
+            </FormInput>
+
+            <FormInput label="Criticality" id="criticality" required>
+              <select
+                id="criticality"
+                className={inputClass}
+                value={defect?.Criticality || ''}
+                onChange={(e) => onChange('Criticality', e.target.value)}
               >
                 <option value="">Select Criticality</option>
                 <option value="High">High</option>
                 <option value="Medium">Medium</option>
                 <option value="Low">Low</option>
               </select>
-            </div>
-  
-            {/* Raised By */}
-            <div className="grid gap-1.5">
-              <label htmlFor="raisedBy" className="text-xs font-medium text-white/80">
-                Raised By <span className="text-red-400">*</span>
-              </label>
-              <select
-                id="raisedBy"
-                className="flex h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
-                value={defect?.raised_by || ''}
-                onChange={(e) => onChange('raised_by', e.target.value)}
-                required
-                aria-required="true"
-              >
-                <option value="">Select Source</option>
-                <option value="Vessel">Vessel</option>
-                <option value="Office">Office</option>
-                <option value="Owners">Owners</option>
-                <option value="PSC">PSC</option>
-                <option value="CLASS">CLASS</option>
-                <option value="FLAG">FLAG</option>
-                <option value="Guarantee Claim">Guarantee Claim</option>
-                <option value="Others">Others</option>
-              </select>
-            </div>
-  
-            {/* Dates */}
-            <div className="grid grid-cols-2 gap-3">
-              {/* Date Reported */}
-              <div className="grid gap-1.5">
-                <label htmlFor="dateReported" className="text-xs font-medium text-white/80">
-                  Date Reported <span className="text-red-400">*</span>
-                </label>
-                <div className="relative h-8">
-                  <input
-                    id="dateReported"
-                    type="date"
-                    className="absolute inset-0 h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-transparent hover:border-[#3BADE5]/40 focus:outline-none focus:ring-1 focus:ring-[#3BADE5] [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:text-white [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer [&::-webkit-calendar-picker-indicator]:hover:opacity-70"
-                    value={formatDateForInput(defect?.['Date Reported'])}
-                    onChange={(e) => onChange('Date Reported', e.target.value)}
-                    required
-                    aria-required="true"
-                  />
-                  <div className="absolute inset-0 flex items-center px-2 text-xs text-white pointer-events-none">
-                    {formatDateDisplay(defect?.['Date Reported']) || 'dd/mm/yyyy'}
-                  </div>
+            </FormInput>
+          </div>
+
+          {/* Dates Section */}
+          <div className="grid grid-cols-2 gap-4">
+            <FormInput label="Date Reported" id="dateReported" required>
+              <div className="relative">
+                <input
+                  type="date"
+                  id="dateReported"
+                  className={`${inputClass} text-white`}
+                  value={formatDateForInput(defect?.['Date Reported'])}
+                  onChange={(e) => onChange('Date Reported', e.target.value)}
+                />
+                <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
+                  <span className="text-white/40 text-sm">
+                    {formatDateDisplay(defect?.['Date Reported']) || 'Select date'}
+                  </span>
                 </div>
               </div>
-  
-              {/* Date Completed */}
-              <div className="grid gap-1.5">
-                <label htmlFor="dateCompleted" className="text-xs font-medium text-white/80">
-                  Date Completed {defect?.['Status (Vessel)'] === 'CLOSED' && <span className="text-red-400">*</span>}
-                </label>
-                <div className="relative h-8">
-                  <input
-                    id="dateCompleted"
-                    type="date"
-                    className="absolute inset-0 h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-transparent hover:border-[#3BADE5]/40 focus:outline-none focus:ring-1 focus:ring-[#3BADE5] [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:text-white [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer [&::-webkit-calendar-picker-indicator]:hover:opacity-70"
-                    value={formatDateForInput(defect?.['Date Completed'])}
-                    onChange={(e) => onChange('Date Completed', e.target.value)}
-                    required={defect?.['Status (Vessel)'] === 'CLOSED'}
-                    aria-required={defect?.['Status (Vessel)'] === 'CLOSED'}
-                  />
-                  <div className="absolute inset-0 flex items-center px-2 text-xs text-white pointer-events-none">
-                    {formatDateDisplay(defect?.['Date Completed']) || '-'}
-                  </div>
+            </FormInput>
+
+            <FormInput 
+              label="Date Completed" 
+              id="dateCompleted" 
+              required={defect?.['Status (Vessel)'] === 'CLOSED'}
+            >
+              <div className="relative">
+                <input
+                  type="date"
+                  id="dateCompleted"
+                  className={`${inputClass} text-white`}
+                  value={formatDateForInput(defect?.['Date Completed'])}
+                  onChange={(e) => onChange('Date Completed', e.target.value)}
+                  disabled={defect?.['Status (Vessel)'] !== 'CLOSED'}
+                />
+                <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
+                  <span className="text-white/40 text-sm">
+                    {formatDateDisplay(defect?.['Date Completed']) || 'Select date'}
+                  </span>
                 </div>
               </div>
-            </div>
-  
-            {/* Initial Files Upload */}
-            <div className="grid gap-1.5">
-              <label className="text-xs font-medium text-white/80">
-                Initial Documentation
-              </label>
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 px-3 py-1.5 rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] cursor-pointer hover:border-[#3BADE5]/40">
-                  <Upload className="h-4 w-4 text-white" />
-                  <span className="text-xs text-white">Upload Initial Files (Max 2MB: PDF, DOC, Images)</span>
+            </FormInput>
+          </div>
+
+          {/* Raised By Section */}
+          <FormInput label="Raised By" id="raisedBy" required>
+            <select
+              id="raisedBy"
+              className={inputClass}
+              value={defect?.raised_by || ''}
+              onChange={(e) => onChange('raised_by', e.target.value)}
+            >
+              <option value="">Select Source</option>
+              <option value="Vessel">Vessel</option>
+              <option value="Office">Office</option>
+              <option value="Owners">Owners</option>
+              <option value="PSC">PSC</option>
+              <option value="CLASS">CLASS</option>
+              <option value="FLAG">FLAG</option>
+              <option value="Guarantee Claim">Guarantee Claim</option>
+              <option value="Others">Others</option>
+            </select>
+          </FormInput>
+
+          {/* Initial Files Upload Section */}
+          <div className="space-y-4">
+            <FormInput label="Initial Documentation" id="initialFiles">
+              <div className="space-y-3">
+                <label className="group flex items-center gap-3 p-4 rounded-lg border border-dashed border-white/20 hover:border-blue-500/50 hover:bg-blue-500/5 transition-colors cursor-pointer">
+                  <Upload className="h-5 w-5 text-white/60 group-hover:text-blue-500" />
+                  <div className="flex-1">
+                    <div className="text-sm text-white">Upload Initial Files</div>
+                    <div className="text-xs text-white/60">PDF, DOC, or images up to 2MB</div>
+                  </div>
                   <input
                     type="file"
                     multiple
@@ -495,137 +490,104 @@ const DefectDialog = ({
                     accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                   />
                 </label>
-                {initialFiles.length > 0 && (
-                  <div className="space-y-1">
-                    {initialFiles.map((file, index) => (
-                      <div key={index} className="flex items-center gap-2 text-xs text-white/80">
-                        <FileText className="h-3.5 w-3.5" />
-                        <span className="truncate flex-1">{file.name}</span>
-                        <button
-                          onClick={() => removeInitialFile(index)}
-                          className="p-1 hover:bg-white/10 rounded-full"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {defect?.initial_files?.length > 0 && (
-                  <div className="space-y-1 mt-2">
-                    <div className="text-xs text-white/60">Existing files:</div>
-                    {defect.initial_files.map((file, index) => (
-                      
-                      <div key={index} className="flex items-center gap-2 text-xs text-white/80">
-                        <FileText className="h-3.5 w-3.5" />
-                        <span className="truncate flex-1">{file.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-  
-            {/* Closure section only shown when status is CLOSED */}
-            {defect?.['Status (Vessel)'] === 'CLOSED' && (
-              <>
-                {/* Closure Comments */}
-                <div className="grid gap-1.5">
-                  <label htmlFor="closureComments" className="text-xs font-medium text-white/80">
-                    Closure Comments <span className="text-red-400">*</span>
-                  </label>
-                  <textarea
-                    id="closureComments"
-                    className="flex h-16 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
-                    value={defect?.closure_comments || ''}
-                    onChange={(e) => onChange('closure_comments', e.target.value)}
-                    placeholder="Enter closure comments and findings"
-                    required
-                    aria-required="true"
-                  />
-                </div>
-  
-                {/* Closure Files Upload */}
-                <div className="grid gap-1.5">
-                  <label className="text-xs font-medium text-white/80">
-                    Closure Documentation
-                  </label>
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2 px-3 py-1.5 rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] cursor-pointer hover:border-[#3BADE5]/40">
-                      <Upload className="h-4 w-4 text-white" />
-                      <span className="text-xs text-white">Upload Closure Files (Max 2MB: PDF, DOC, Images)</span>
-                      <input
-                        type="file"
-                        multiple
-                        className="hidden"
-                        onChange={handleClosureFileChange}
-                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                      />
-                    </label>
-                    {closureFiles.length > 0 && (
-                      <div className="space-y-1">
-                        {closureFiles.map((file, index) => (
-                          <div key={index} className="flex items-center gap-2 text-xs text-white/80">
-                            <FileText className="h-3.5 w-3.5" />
-                            <span className="truncate flex-1">{file.name}</span>
-                            <button
-                              onClick={() => removeClosureFile(index)}
-                              className="p-1 hover:bg-white/10 rounded-full"
-                            >
-                              <X className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {defect?.completion_files?.length > 0 && (
-                      <div className="space-y-1 mt-2">
-                        <div className="text-xs text-white/60">Existing closure files:</div>
-                        {defect.completion_files.map((file, index) => (
-                          <div key={index} className="flex items-center gap-2 text-xs text-white/80">
-                            <FileText className="h-3.5 w-3.5" />
-                            <span className="truncate flex-1">{file.name}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
-  
-            {/* Upload Progress */}
-            {uploadProgress > 0 && uploadProgress < 100 && (
-              <div className="w-full bg-[#132337] rounded-full h-1.5">
-                <div
-                  className="bg-[#3BADE5] h-1.5 rounded-full transition-all duration-300"
-                  style={{ width: `${uploadProgress}%` }}
+                
+                <FileList 
+                  files={initialFiles}
+                  onRemove={removeInitialFile}
+                />
+                
+                <FileList 
+                  files={defect?.initial_files}
+                  existing
+                  title="Existing files:"
                 />
               </div>
-            )}
+            </FormInput>
           </div>
+
+          {/* Closure Section - Only shown when status is CLOSED */}
+          {defect?.['Status (Vessel)'] === 'CLOSED' && (
+            <div className="space-y-4 pt-4 border-t border-white/10">
+              <FormInput label="Closure Comments" id="closureComments" required>
+                <textarea
+                  id="closureComments"
+                  className={`${inputClass} h-24 resize-none`}
+                  value={defect?.closure_comments || ''}
+                  onChange={(e) => onChange('closure_comments', e.target.value)}
+                  placeholder="Enter closure comments and findings"
+                />
+              </FormInput>
+
+              <FormInput label="Closure Documentation" id="closureFiles">
+                <div className="space-y-3">
+                  <label className="group flex items-center gap-3 p-4 rounded-lg border border-dashed border-white/20 hover:border-blue-500/50 hover:bg-blue-500/5 transition-colors cursor-pointer">
+                    <Upload className="h-5 w-5 text-white/60 group-hover:text-blue-500" />
+                    <div className="flex-1">
+                      <div className="text-sm text-white">Upload Closure Files</div>
+                      <div className="text-xs text-white/60">PDF, DOC, or images up to 2MB</div>
+                    </div>
+                    <input
+                      type="file"
+                      multiple
+                      className="hidden"
+                      onChange={handleClosureFileChange}
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    />
+                  </label>
+
+                  <FileList 
+                    files={closureFiles}
+                    onRemove={removeClosureFile}
+                  />
+                  
+                  <FileList 
+                    files={defect?.completion_files}
+                    existing
+                    title="Existing closure files:"
+                  />
+                </div>
+              </FormInput>
+            </div>
+          )}
+
+          {/* Upload Progress Indicator */}
+          {uploadProgress > 0 && uploadProgress < 100 && (
+            <div className="relative w-full h-1 bg-white/5 rounded-full overflow-hidden">
+              <div
+                className="absolute inset-y-0 left-0 bg-blue-500 transition-all duration-300"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+          )}
         </div>
-  
-        {/* Fixed Footer */}
-        <div className="flex justify-end gap-2 p-4 border-t border-[#3BADE5]/20 mt-auto">
+
+        {/* Dialog Footer */}
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-white/10">
           <button
             onClick={onClose}
             disabled={saving}
-            className="h-7 px-3 text-xs font-medium rounded-[4px] border border-[#3BADE5]/20 hover:border-[#3BADE5]/40 text-white disabled:opacity-50"
+            className="px-4 py-2 text-sm font-medium text-white/80 hover:text-white hover:bg-white/5 rounded-md transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
             disabled={saving}
-            className="h-7 px-3 text-xs font-medium rounded-[4px] bg-[#3BADE5] hover:bg-[#3BADE5]/90 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {saving ? 'Saving...' : (isNew ? 'Add Defect' : 'Save Changes')}
+            {saving ? (
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                <span>Saving...</span>
+              </div>
+            ) : (
+              isNew ? 'Add Defect' : 'Save Changes'
+            )}
           </button>
         </div>
       </DialogContent>
     </Dialog>
-  );  
+  );
 };
 
 export default DefectDialog;
