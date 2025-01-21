@@ -6,9 +6,11 @@ import {
   DialogTitle,
 } from './ui/dialog';
 import { Upload, FileText, X } from 'lucide-react';
-import { toast } from './ui/use-toast';
+import { useToast } from './ui/use-toast';
 import { supabase } from '../supabaseClient';
 import { formatDateForInput, formatDateDisplay } from '../utils/dateUtils';
+
+
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 5MB
 const ALLOWED_FILE_TYPES = [
@@ -34,7 +36,7 @@ const DefectDialog = ({
   const [closureFiles, setClosureFiles] = useState([]);
   const [saving, setSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-
+  const { toast } = useToast();
   const validateDefect = (defectData) => {
     
     if (defectData['Date Completed'] && defectData['Date Reported']) {
