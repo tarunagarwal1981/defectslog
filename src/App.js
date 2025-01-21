@@ -9,6 +9,7 @@ import DefectsTable from './components/DefectsTable';
 import DefectDialog from './components/DefectDialog';
 import ChatBot from './components/ChatBot/ChatBot';
 import { supabase } from './supabaseClient';
+import { Toaster } from "./components/ui/toaster";
 
 const getUserVessels = async (userId) => {
   try {
@@ -340,79 +341,79 @@ function App() {
   };
 
   return (
-    <ToastProvider>
-      <div className="min-h-screen bg-background">
-        {session ? (
-          <>
-            <Header 
-              user={session.user}
-              vessels={Object.entries(vesselNames)}
-              currentVessel={currentVessel}
-              onVesselChange={setCurrentVessel}
-              onLogout={handleLogout}
-              dateRange={dateRange}
-              onDateRangeChange={setDateRange}
+  <ToastProvider>
+    <div className="min-h-screen bg-background">
+      {session ? (
+        <>
+          <Header 
+            user={session.user}
+            vessels={Object.entries(vesselNames)}
+            currentVessel={currentVessel}
+            onVesselChange={setCurrentVessel}
+            onLogout={handleLogout}
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+          />
+          
+          <main className="container mx-auto pt-20">
+            <StatsCards data={filteredData} />
+            
+            <SearchBar 
+              onSearch={setSearchTerm}
+              onFilterStatus={setStatusFilter}
+              onFilterCriticality={setCriticalityFilter}
+              onFilterRaisedBy={setRaisedByFilter}
+              status={statusFilter}
+              criticality={criticalityFilter}
+              raisedBy={raisedByFilter}
+              raisedByOptions={raisedByOptions}
             />
             
-            <main className="container mx-auto pt-20">
-              <StatsCards data={filteredData} />
-              
-              <SearchBar 
-                onSearch={setSearchTerm}
-                onFilterStatus={setStatusFilter}
-                onFilterCriticality={setCriticalityFilter}
-                onFilterRaisedBy={setRaisedByFilter}
-                status={statusFilter}
-                criticality={criticalityFilter}
-                raisedBy={raisedByFilter}
-                raisedByOptions={raisedByOptions}
-              />
-              
-              <DefectsTable
-                data={filteredData}
-                onAddDefect={handleAddDefect}
-                onEditDefect={(defect) => {
-                  setCurrentDefect(defect);
-                  setIsDefectDialogOpen(true);
-                }}
-                onDeleteDefect={handleDeleteDefect}
-                loading={loading}
-              />
+            <DefectsTable
+              data={filteredData}
+              onAddDefect={handleAddDefect}
+              onEditDefect={(defect) => {
+                setCurrentDefect(defect);
+                setIsDefectDialogOpen(true);
+              }}
+              onDeleteDefect={handleDeleteDefect}
+              loading={loading}
+            />
 
-              <DefectDialog
-                isOpen={isDefectDialogOpen}
-                onClose={() => {
-                  setIsDefectDialogOpen(false);
-                  setCurrentDefect(null);
-                }}
-                defect={currentDefect}
-                onChange={(field, value) => 
-                  setCurrentDefect(prev => ({ ...prev, [field]: value }))
-                }
-                onSave={handleSaveDefect}
-                vessels={vesselNames}
-                isNew={currentDefect?.id?.startsWith('temp-')}
-              />
+            <DefectDialog
+              isOpen={isDefectDialogOpen}
+              onClose={() => {
+                setIsDefectDialogOpen(false);
+                setCurrentDefect(null);
+              }}
+              defect={currentDefect}
+              onChange={(field, value) => 
+                setCurrentDefect(prev => ({ ...prev, [field]: value }))
+              }
+              onSave={handleSaveDefect}
+              vessels={vesselNames}
+              isNew={currentDefect?.id?.startsWith('temp-')}
+            />
 
-              <ChatBot 
-                data={filteredData}
-                vesselName={getSelectedVesselsDisplay()}
-                filters={{
-                  status: statusFilter,
-                  criticality: criticalityFilter,
-                  search: searchTerm
-                }}
-                isPdfGenerating={isPdfGenerating}
-                onGeneratePdf={handleGeneratePdf}
-              />
-            </main>
-          </>
-        ) : (
-          <Auth onLogin={setSession} />
-        )}
-      </div>
-    </ToastProvider>
-  );
-}
+            <ChatBot 
+              data={filteredData}
+              vesselName={getSelectedVesselsDisplay()}
+              filters={{
+                status: statusFilter,
+                criticality: criticalityFilter,
+                search: searchTerm
+              }}
+              isPdfGenerating={isPdfGenerating}
+              onGeneratePdf={handleGeneratePdf}
+            />
+          </main>
+        </>
+      ) : (
+        <Auth onLogin={setSession} />
+      )}
+    </div>
+    <Toaster />
+  </ToastProvider>
+);
 
 export default App;
