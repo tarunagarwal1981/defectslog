@@ -251,18 +251,14 @@ const DefectDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent 
-        className="max-w-md max-h-[90vh] overflow-y-auto bg-[#0B1623]"
-        aria-labelledby="dialog-title"
-        aria-describedby="dialog-description"
-      >
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle id="dialog-title" className="text-sm font-medium text-white">
+          <DialogTitle>
             {isNew ? 'Add New Defect' : 'Edit Defect'}
           </DialogTitle>
-          <p id="dialog-description" className="text-xs text-white/60">
+          <div className="text-xs text-white/60">
             {isNew ? 'Create a new defect record' : 'Edit existing defect details'}
-          </p>
+          </div>
         </DialogHeader>
 
         
