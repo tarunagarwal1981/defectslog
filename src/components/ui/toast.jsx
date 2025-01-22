@@ -2,7 +2,13 @@ import * as React from "react"
 import * as ToastPrimitives from "@radix-ui/react-toast"
 import { AlertCircle, Check, Info, X } from "lucide-react"
 
-const ToastProvider = ToastPrimitives.Provider
+const ToastProvider = ({ children, ...props }) => {
+  return (
+    <ToastPrimitives.Provider duration={6000} {...props}>
+      {children}
+    </ToastPrimitives.Provider>
+  )
+}
 
 const ToastViewport = React.forwardRef(({ className, ...props }, ref) => (
   <ToastPrimitives.Viewport
