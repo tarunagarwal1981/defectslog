@@ -45,9 +45,9 @@ function App() {
   
   const [currentVessel, setCurrentVessel] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [criticalityFilter, setCriticalityFilter] = useState('');
-  const [raisedByFilter, setRaisedByFilter] = useState(''); // New raised by filter state
+  const [statusFilter, setStatusFilter] = useState([]); 
+const [criticalityFilter, setCriticalityFilter] = useState([]); 
+const [raisedByFilter, setRaisedByFilter] = useState([]);
   
   const [isDefectDialogOpen, setIsDefectDialogOpen] = useState(false);
   const [currentDefect, setCurrentDefect] = useState(null);
@@ -125,22 +125,27 @@ function App() {
   const filteredData = React.useMemo(() => {
     return data.filter(defect => {
       const defectDate = new Date(defect['Date Reported']);
+      
+      // Check if defect matches any of the selected filters (or all if none selected)
       const matchesVessel = currentVessel.length === 0 || currentVessel.includes(defect.vessel_id);
-      const matchesStatus = !statusFilter || defect['Status (Vessel)'] === statusFilter;
-      const matchesCriticality = !criticalityFilter || defect.Criticality === criticalityFilter;
-      const matchesRaisedBy = !raisedByFilter || defect.raised_by === raisedByFilter; // New raised by filter
+      const matchesStatus = statusFilter.length === 0 || statusFilter.includes(defect['Status (Vessel)']);
+      const matchesCriticality = criticalityFilter.length === 0 || criticalityFilter.includes(defect.Criticality);
+      const matchesRaisedBy = raisedByFilter.length === 0 || raisedByFilter.includes(defect.raised_by);
+      
       const matchesSearch = !searchTerm || 
         Object.values(defect).some(value => 
           String(value).toLowerCase().includes(searchTerm.toLowerCase())
         );
+        
       const matchesDateRange = 
         (!dateRange.from || defectDate >= new Date(dateRange.from)) &&
         (!dateRange.to || defectDate <= new Date(dateRange.to));
-
-      return matchesVessel && matchesStatus && matchesCriticality && matchesRaisedBy && matchesSearch && matchesDateRange;
+  
+      return matchesVessel && matchesStatus && matchesCriticality && 
+             matchesRaisedBy && matchesSearch && matchesDateRange;
     });
-  }, [data, currentVessel, statusFilter, criticalityFilter, raisedByFilter, searchTerm, dateRange]);
-
+  }, [data, currentVessel, statusFilter, criticalityFilter, raisedByFilter, 
+      searchTerm, dateRange]);
   const handleGeneratePdf = useCallback(async () => {
     setIsPdfGenerating(true);
     try {
