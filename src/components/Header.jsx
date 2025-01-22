@@ -105,7 +105,7 @@ const Header = ({ user, vessels, currentVessel, onVesselChange, onLogout, dateRa
               className="flex items-center space-x-2 bg-background border rounded-md px-2 py-1 text-xs focus:outline-none focus:ring-1 hover:bg-accent/50"
               onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}
             >
-              <Calendar className="h-3 w-3 text-white" />
+              <Calendar className="h-3 w-3 text-foreground" />
               <span>{getDateRangeDisplay()}</span>
             </button>
 
