@@ -1,6 +1,6 @@
+// SearchBar.jsx
 import React from 'react';
 import { Input } from './ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -16,32 +16,34 @@ const SearchBar = ({
   onFilterStatus, 
   onFilterCriticality, 
   onFilterRaisedBy,
-  status, 
-  criticality = [], // Now an array
-  raisedBy,
+  status = [], // Now an array
+  criticality = [], // Already an array
+  raisedBy = [], // Now an array
   raisedByOptions = []
 }) => {
-  // Handle criticality toggle
-  const handleCriticalityToggle = (value) => {
+  // Generic handler for all filter types
+  const handleFilterToggle = (type, value, currentSelection, onFilter) => {
     if (value === '') {
-      // If "All Criticality" is clicked, clear selection
-      onFilterCriticality([]);
+      // If "All" is clicked, clear selection
+      onFilter([]);
       return;
     }
 
-    const updatedSelection = criticality.includes(value)
-      ? criticality.filter(item => item !== value)
-      : [...criticality, value];
+    const updatedSelection = currentSelection.includes(value)
+      ? currentSelection.filter(item => item !== value)
+      : [...currentSelection, value];
     
-    onFilterCriticality(updatedSelection);
+    onFilter(updatedSelection);
   };
 
-  // Get display text for criticality
-  const getCriticalityDisplayText = () => {
-    if (criticality.length === 0) return 'All Criticality';
-    if (criticality.length === 1) return criticality[0];
-    return `${criticality.length} Selected`;
+  // Get display text for any filter type
+  const getFilterDisplayText = (type, selection, options) => {
+    if (selection.length === 0) return `All ${type}`;
+    if (selection.length === 1) return selection[0];
+    return `${selection.length} Selected`;
   };
+
+  const statusOptions = ['OPEN', 'IN PROGRESS', 'CLOSED'];
 
   return (
     <div className="flex items-center justify-between gap-3 px-2 py-2 mb-2">
@@ -54,22 +56,51 @@ const SearchBar = ({
       </div>
       
       <div className="flex gap-2">
-        <Select value={status} onValueChange={onFilterStatus}>
-          <SelectTrigger className="w-[140px] h-8 text-xs bg-[#132337]/30 border-white/10">
-            <SelectValue placeholder="All Status" />
-          </SelectTrigger>
-          <SelectContent className="text-xs">
-            <SelectItem value="">All Status</SelectItem>
-            <SelectItem value="OPEN">Open</SelectItem>
-            <SelectItem value="IN PROGRESS">In Progress</SelectItem>
-            <SelectItem value="CLOSED">Closed</SelectItem>
-          </SelectContent>
-        </Select>
+        {/* Status Multi-select Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger className="flex items-center justify-between w-[140px] h-8 px-3 text-xs bg-[#132337]/30 border border-white/10 rounded-md">
+            <span>{getFilterDisplayText('Status', status)}</span>
+            <ChevronDown className="h-4 w-4 opacity-50" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-[140px]">
+            <DropdownMenuLabel className="text-xs text-muted-foreground">
+              Select Status
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <div className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent">
+              <label className="flex flex-1 items-center">
+                <input
+                  type="checkbox"
+                  className="mr-2 h-4 w-4 rounded border-gray-300"
+                  checked={status.length === 0}
+                  onChange={() => handleFilterToggle('Status', '', status, onFilterStatus)}
+                />
+                All Status
+              </label>
+            </div>
+            {statusOptions.map((value) => (
+              <div 
+                key={value}
+                className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent"
+              >
+                <label className="flex flex-1 items-center">
+                  <input
+                    type="checkbox"
+                    className="mr-2 h-4 w-4 rounded border-gray-300"
+                    checked={status.includes(value)}
+                    onChange={() => handleFilterToggle('Status', value, status, onFilterStatus)}
+                  />
+                  {value}
+                </label>
+              </div>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {/* Criticality Multi-select Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger className="flex items-center justify-between w-[140px] h-8 px-3 text-xs bg-[#132337]/30 border border-white/10 rounded-md">
-            <span>{getCriticalityDisplayText()}</span>
+            <span>{getFilterDisplayText('Criticality', criticality)}</span>
             <ChevronDown className="h-4 w-4 opacity-50" />
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-[140px]">
@@ -77,19 +108,17 @@ const SearchBar = ({
               Select Criticality
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {/* All Criticality Option */}
             <div className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent">
               <label className="flex flex-1 items-center">
                 <input
                   type="checkbox"
                   className="mr-2 h-4 w-4 rounded border-gray-300"
                   checked={criticality.length === 0}
-                  onChange={() => handleCriticalityToggle('')}
+                  onChange={() => handleFilterToggle('Criticality', '', criticality, onFilterCriticality)}
                 />
                 All Criticality
               </label>
             </div>
-            {/* Individual Criticality Options */}
             {['High', 'Medium', 'Low'].map((value) => (
               <div 
                 key={value}
@@ -100,7 +129,7 @@ const SearchBar = ({
                     type="checkbox"
                     className="mr-2 h-4 w-4 rounded border-gray-300"
                     checked={criticality.includes(value)}
-                    onChange={() => handleCriticalityToggle(value)}
+                    onChange={() => handleFilterToggle('Criticality', value, criticality, onFilterCriticality)}
                   />
                   {value}
                 </label>
@@ -109,19 +138,46 @@ const SearchBar = ({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <Select value={raisedBy} onValueChange={onFilterRaisedBy}>
-          <SelectTrigger className="w-[140px] h-8 text-xs bg-[#132337]/30 border-white/10">
-            <SelectValue placeholder="Created By" />
-          </SelectTrigger>
-          <SelectContent className="text-xs max-h-[200px]">
-            <SelectItem value="">Raised By</SelectItem>
-            {raisedByOptions.map((user) => (
-              <SelectItem key={user} value={user}>
-                {user}
-              </SelectItem>
+        {/* Raised By Multi-select Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger className="flex items-center justify-between w-[140px] h-8 px-3 text-xs bg-[#132337]/30 border border-white/10 rounded-md">
+            <span>{getFilterDisplayText('Raised By', raisedBy)}</span>
+            <ChevronDown className="h-4 w-4 opacity-50" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-[140px]">
+            <DropdownMenuLabel className="text-xs text-muted-foreground">
+              Select Raised By
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <div className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent">
+              <label className="flex flex-1 items-center">
+                <input
+                  type="checkbox"
+                  className="mr-2 h-4 w-4 rounded border-gray-300"
+                  checked={raisedBy.length === 0}
+                  onChange={() => handleFilterToggle('Raised By', '', raisedBy, onFilterRaisedBy)}
+                />
+                All Users
+              </label>
+            </div>
+            {raisedByOptions.map((value) => (
+              <div 
+                key={value}
+                className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent"
+              >
+                <label className="flex flex-1 items-center">
+                  <input
+                    type="checkbox"
+                    className="mr-2 h-4 w-4 rounded border-gray-300"
+                    checked={raisedBy.includes(value)}
+                    onChange={() => handleFilterToggle('Raised By', value, raisedBy, onFilterRaisedBy)}
+                  />
+                  {value}
+                </label>
+              </div>
             ))}
-          </SelectContent>
-        </Select>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );
