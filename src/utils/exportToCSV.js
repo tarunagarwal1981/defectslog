@@ -48,7 +48,7 @@ export const exportToCSV = (data, vesselNames, filters = {}) => {
         'Date Completed': formatDate(item['Date Completed']),
         'Comments': item.Comments || '',
         'Closure Comments': item.closure_comments || '',  
-        'Raised By': item.raised_by || ''
+        'Defect Source': item.raised_by || ''
       };
     });
 
