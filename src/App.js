@@ -44,7 +44,7 @@ function App() {
   
   const [currentVessel, setCurrentVessel] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('OPEN,IN PROGRESS');
   const [criticalityFilter, setCriticalityFilter] = useState('');
   const [raisedByFilter, setRaisedByFilter] = useState(''); // New raised by filter state
   
@@ -125,7 +125,7 @@ function App() {
     return data.filter(defect => {
       const defectDate = new Date(defect['Date Reported']);
       const matchesVessel = currentVessel.length === 0 || currentVessel.includes(defect.vessel_id);
-      const matchesStatus = !statusFilter || defect['Status (Vessel)'] === statusFilter;
+      const matchesStatus = !statusFilter || statusFilter.split(',').includes(defect['Status (Vessel)']);
       const matchesCriticality = !criticalityFilter || defect.Criticality === criticalityFilter;
       const matchesRaisedBy = !raisedByFilter || defect.raised_by === raisedByFilter; // New raised by filter
       const matchesSearch = !searchTerm || 
