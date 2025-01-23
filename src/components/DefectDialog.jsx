@@ -85,7 +85,7 @@ const DefectDialog = ({
         'Status (Vessel)': 'Status',
         'Criticality': 'Criticality',
         'Date Reported': 'Date Reported',
-        'raised_by': 'Raised By',
+        'raised_by': 'Defect Source',
         'closure_comments': 'Closure Comments'
       };
 
