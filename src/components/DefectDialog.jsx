@@ -73,14 +73,38 @@ const DefectDialog = ({
         return false;
       }
     }
-    
+
     const missing = required.filter(field => !defectData[field]);
     
     if (missing.length > 0) {
+      // Map field names to more readable labels
+      const fieldLabels = {
+        'vessel_id': 'Vessel',
+        'Equipments': 'Equipment',
+        'Description': 'Description',
+        'Status (Vessel)': 'Status',
+        'Criticality': 'Criticality',
+        'Date Reported': 'Date Reported',
+        'raised_by': 'Defect Source',
+        'closure_comments': 'Closure Comments'
+      };
+
+      const missingFieldLabels = missing.map(field => fieldLabels[field] || field);
+      
       toast({
-        title: "Required Fields Missing",
-        description: "Please fill in all required fields",
-        variant: "destructive",
+        title: "Missing Information",
+        description: (
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Please fill in the following fields:</p>
+            <ul className="list-disc pl-4 text-sm space-y-1">
+              {missingFieldLabels.map((field, index) => (
+                <li key={index} className="text-sm opacity-90">{field}</li>
+              ))}
+            </ul>
+          </div>
+        ),
+        variant: "subtle",
+        className: "bg-[#132337] border border-[#3BADE5]/20 text-white",
       });
       return false;
     }
@@ -381,7 +405,7 @@ const DefectDialog = ({
           {/* Raised By */}
           <div className="grid gap-1.5">
             <label htmlFor="raisedBy" className="text-xs font-medium text-white/80">
-              Raised By <span className="text-red-400">*</span>
+              Defect Source <span className="text-red-400">*</span>
             </label>
             <select
               id="raisedBy"
@@ -394,11 +418,14 @@ const DefectDialog = ({
               <option value="">Select Source</option>
               <option value="Vessel">Vessel</option>
               <option value="Office">Office</option>
+              <option value="Internal Audit">Internal Audit</option>
+              <option value="VIR">VIR</option>
               <option value="Owners">Owners</option>
               <option value="PSC">PSC</option>
               <option value="CLASS">CLASS</option>
               <option value="FLAG">FLAG</option>
               <option value="Guarantee Claim">Guarantee Claim</option>
+              <option value="Dry Dock">Dry Dock</option>
               <option value="Others">Others</option>
             </select>
           </div>

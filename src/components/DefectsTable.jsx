@@ -10,6 +10,12 @@ import ExportButton from './ui/ExportButton';
 import { exportToCSV } from '../utils/exportToCSV';
 import { supabase } from '../supabaseClient';
 import { toast } from './ui/use-toast';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from './ui/tooltip';
 
 
 const STATUS_COLORS = {
@@ -127,6 +133,29 @@ const FileList = ({ files, onDelete, title }) => {
   );
 };
 
+const TruncatedText = ({ text, maxWidth = "max-w-[200px]" }) => {
+  if (!text) return '-';
+  
+  return (
+    <TooltipProvider>
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <div className={`truncate ${maxWidth}`}>
+            {text}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent 
+          side="top" 
+          className="max-w-sm bg-[#132337] text-white border-white/20"
+        >
+          <p className="text-xs">{text}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
+
+
 const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [defect, setDefect] = useState(initialDefect);
@@ -216,14 +245,14 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect 
             {defect.Criticality || 'N/A'}
           </span>
         </td>
-        <td className="px-3 py-1.5 truncate max-w-[150px]" onClick={() => onEditDefect(defect)}>
-          {defect.Equipments}
+        <td className="px-3 py-1.5" onClick={() => onEditDefect(defect)}>
+          <TruncatedText text={defect.Equipments} maxWidth="max-w-[150px]" />
         </td>
-        <td className="px-3 py-1.5 truncate max-w-[200px]" onClick={() => onEditDefect(defect)}>
-          {defect.Description}
+        <td className="px-3 py-1.5" onClick={() => onEditDefect(defect)}>
+          <TruncatedText text={defect.Description} />
         </td>
-        <td className="px-3 py-1.5 truncate max-w-[200px]" onClick={() => onEditDefect(defect)}>
-          {defect['Action Planned']}
+        <td className="px-3 py-1.5" onClick={() => onEditDefect(defect)}>
+          <TruncatedText text={defect['Action Planned']} />
         </td>
         <td className="px-3 py-1.5" onClick={() => onEditDefect(defect)}>
           {defect['Date Reported'] ? new Date(defect['Date Reported']).toLocaleDateString('en-GB') : '-'}
@@ -335,7 +364,7 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect 
                 {/* Raised By info */}
                 {defect.raised_by && (
                   <div className="text-xs text-white/60">
-                    Raised by: <span className="text-white/80">{defect.raised_by}</span>
+                    Defect Source: <span className="text-white/80">{defect.raised_by}</span>
                   </div>
                 )}
 
@@ -346,31 +375,33 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect 
                     try {
                       const getSignedUrls = async (files) => {
                         const urls = {};
-                        for (const file of files) {
-                          if (file.type.startsWith('image/')) {
-                            try {
-                              const { data: { signedUrl } } = await supabase.storage
-                                .from('defect-files')
-                                .createSignedUrl(file.path, 3600);
-                              
-                              urls[file.path] = signedUrl;
-                            } catch (error) {
-                              console.error('Error getting signed URL:', error);
+                        for (const file of files || []) {
+                          try {
+                            const { data: { signedUrl }, error } = await supabase.storage
+                              .from('defect-files')
+                              .createSignedUrl(file.path, 3600);
+                            
+                            if (error) {
+                              console.error('Error getting signed URL for file:', file.name, error);
+                              continue;
                             }
+                            urls[file.path] = signedUrl;
+                          } catch (error) {
+                            console.error('Error getting signed URL for file:', file.name, error);
                           }
                         }
                         return urls;
                       };
-      
-                      const initialUrls = await getSignedUrls(defect.initial_files || []);
-                      const completionUrls = await getSignedUrls(defect.completion_files || []);
+                
+                      const initialUrls = await getSignedUrls(defect.initial_files);
+                      const completionUrls = await getSignedUrls(defect.completion_files);
                       
                       const { generateDefectReport } = await import('../utils/generateDefectReport');
                       await generateDefectReport(defect, {
                         ...initialUrls,
                         ...completionUrls
                       });
-      
+                
                       toast({
                         title: "Success",
                         description: "Report generated successfully",

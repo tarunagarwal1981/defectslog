@@ -102,15 +102,15 @@ const Header = ({ user, vessels, currentVessel, onVesselChange, onLogout, dateRa
           {/* Date Range Selector */}
           <div className="relative">
             <button
-              className="flex items-center space-x-2 bg-background border rounded-md px-2 py-1 text-xs focus:outline-none focus:ring-1 hover:bg-accent/50"
+              className="flex items-center space-x-2 bg-[#132337] border border-[#3BADE5]/20 rounded-md px-2 py-1 text-xs focus:outline-none focus:ring-1 hover:bg-[#1c3251] hover:border-[#3BADE5]/40"
               onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}
             >
-              <Calendar className="h-3 w-3" />
-              <span>{getDateRangeDisplay()}</span>
+              <Calendar className="h-3 w-3 text-[#3BADE5]" />
+              <span className="text-white">{getDateRangeDisplay()}</span>
             </button>
-
+          
             {isDatePickerOpen && (
-              <div className="absolute top-full left-0 mt-1 bg-background border rounded-md shadow-lg p-2 z-20">
+              <div className="absolute top-full left-0 mt-1 bg-[#0B1623] border border-[#3BADE5]/20 rounded-md shadow-lg p-2 z-20 w-[280px]">
                 <div className="grid gap-2">
                   <div className="flex gap-2">
                     <div className="grid gap-1">

@@ -24,22 +24,31 @@ export const exportToCSV = (data, vesselNames, filters = {}) => {
       );
     }
 
+    // Helper function to format date as ddmmyyyy
+    const formatDate = (date) => {
+      if (!date) return '';
+      const d = new Date(date);
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0'); // Months are zero-based
+      const year = d.getFullYear();
+      return `${day}/${month}/${year}`;
+    };
+
     // Format data for CSV
     const csvData = filteredData.map((item, index) => {
-      // Use the vesselNames mapping with vessel_id to get the vessel name
-      //const vesselName = vesselNames[item.vessel_id] || '';
-      
       return {
         'No.': index + 1,
-        'Vessel Name': item.vessel_name || vesselNames[item.vessel_id] || '-', // Now correctly gets the vessel name from the mapping
+        'Vessel Name': item.vessel_name || vesselNames[item.vessel_id] || '-',
         'Status': item['Status (Vessel)'],
         'Criticality': item.Criticality || '',
         'Equipment': item.Equipments || '',
         'Description': item.Description || '',
         'Action Planned': item['Action Planned'] || '',
-        'Date Reported': item['Date Reported'] ? new Date(item['Date Reported']).toLocaleDateString() : '',
-        'Date Completed': item['Date Completed'] ? new Date(item['Date Completed']).toLocaleDateString() : '',
-        'Comments': item.Comments || ''
+        'Date Reported': formatDate(item['Date Reported']),
+        'Date Completed': formatDate(item['Date Completed']),
+        'Comments': item.Comments || '',
+        'Closure Comments': item.closure_comments || '',  
+        'Defect Source': item.raised_by || ''
       };
     });
 
