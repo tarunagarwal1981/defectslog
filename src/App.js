@@ -45,7 +45,7 @@ function App() {
   
   const [currentVessel, setCurrentVessel] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState([]); 
+  const [statusFilter, setStatusFilter] = useState(['OPEN', 'IN PROGRESS']);
 const [criticalityFilter, setCriticalityFilter] = useState([]); 
 const [raisedByFilter, setRaisedByFilter] = useState([]);
   
