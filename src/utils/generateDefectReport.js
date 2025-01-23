@@ -217,8 +217,9 @@ export const generateDefectReport = async (defect, signedUrls = {}) => {
         // Add each document as a link with icon
         doc.setFontSize(9);
         documentFiles.forEach((file) => {
-          const { icon, isPdf } = getDocumentIcon(file.name);
+          const icon = getDocumentIcon(file.name);
           const text = `${icon}${file.name}`;
+          const isPdf = file.name.toLowerCase().endsWith('.pdf');
           doc.setTextColor(44, 123, 229);
           currentY += 4;
           doc.text(text, 20, currentY);
