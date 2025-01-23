@@ -85,7 +85,7 @@ const DefectDialog = ({
         'Status (Vessel)': 'Status',
         'Criticality': 'Criticality',
         'Date Reported': 'Date Reported',
-        'raised_by': 'Defect Source',
+        'raised_by': 'Raised By',
         'closure_comments': 'Closure Comments'
       };
 
@@ -405,7 +405,7 @@ const DefectDialog = ({
           {/* Raised By */}
           <div className="grid gap-1.5">
             <label htmlFor="raisedBy" className="text-xs font-medium text-white/80">
-              Raised By <span className="text-red-400">*</span>
+              Defect Source <span className="text-red-400">*</span>
             </label>
             <select
               id="raisedBy"
