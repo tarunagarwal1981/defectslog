@@ -364,7 +364,7 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect 
                 {/* Raised By info */}
                 {defect.raised_by && (
                   <div className="text-xs text-white/60">
-                    Raised by: <span className="text-white/80">{defect.raised_by}</span>
+                    Defect Source: <span className="text-white/80">{defect.raised_by}</span>
                   </div>
                 )}
 
