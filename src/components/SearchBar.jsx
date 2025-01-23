@@ -141,7 +141,7 @@ const SearchBar = ({
         {/* Raised By Multi-select Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger className="flex items-center justify-between w-[140px] h-8 px-3 text-xs bg-[#132337]/30 border border-white/10 rounded-md">
-            <span>{getFilterDisplayText('Raised By', raisedBy)}</span>
+            <span>{getFilterDisplayText('Defect Source', raisedBy)}</span>
             <ChevronDown className="h-4 w-4 opacity-50" />
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-[140px]">
