@@ -85,7 +85,7 @@ const DefectDialog = ({
         'Status (Vessel)': 'Status',
         'Criticality': 'Criticality',
         'Date Reported': 'Date Reported',
-        'raised_by': 'Raised By',
+        'raised_by': 'Defect Source',
         'closure_comments': 'Closure Comments'
       };
 
@@ -425,6 +425,7 @@ const DefectDialog = ({
               <option value="CLASS">CLASS</option>
               <option value="FLAG">FLAG</option>
               <option value="Guarantee Claim">Guarantee Claim</option>
+              <option value="Dry Dock">Dry Dock</option>
               <option value="Others">Others</option>
             </select>
           </div>
