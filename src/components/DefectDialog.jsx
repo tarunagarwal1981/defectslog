@@ -10,7 +10,7 @@ import { toast } from './ui/use-toast';
 import { supabase } from '../supabaseClient';
 import { formatDateForInput, formatDateDisplay } from '../utils/dateUtils';
 
-const MAX_FILE_SIZE = 2 * 1024 * 1024; // 5MB
+const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 const ALLOWED_FILE_TYPES = [
   'image/jpeg',
   'image/png',
@@ -20,7 +20,6 @@ const ALLOWED_FILE_TYPES = [
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 ];
 
-
 const DefectDialog = ({ 
   isOpen, 
   onClose, 
@@ -28,14 +27,23 @@ const DefectDialog = ({
   onChange, 
   onSave, 
   vessels, 
-  isNew 
+  isNew,
+  permissions 
 }) => {
   const [initialFiles, setInitialFiles] = useState([]);
   const [closureFiles, setClosureFiles] = useState([]);
   const [saving, setSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
+  // Helper to check if a field is viewable/editable
+  const canViewField = (fieldName) => {
+    return permissions?.fieldPermissions?.[fieldName];
+  };
+
+  const canEdit = isNew ? permissions?.can.create : permissions?.can.update;
+
   const validateDefect = (defectData) => {
+    if (!canEdit) return false;
     
     if (defectData['Date Completed'] && defectData['Date Reported']) {
       const closureDate = new Date(defectData['Date Completed']);
@@ -50,7 +58,9 @@ const DefectDialog = ({
         return false;
       }
     }
-    const required = [
+
+    // Only validate fields that user has permission to edit
+    const requiredFields = [
       'vessel_id',
       'Equipments',
       'Description',
@@ -58,13 +68,13 @@ const DefectDialog = ({
       'Criticality',
       'Date Reported',
       'raised_by'
-    ];
+    ].filter(field => canViewField(field));
 
     // Add closure_comments requirement for CLOSED status
-    if (defectData['Status (Vessel)'] === 'CLOSED') {
-      required.push('closure_comments');
+    if (defectData['Status (Vessel)'] === 'CLOSED' && canViewField('closure_comments')) {
+      requiredFields.push('closure_comments');
 
-      if (!defectData['Date Completed']) {
+      if (canViewField('Date Completed') && !defectData['Date Completed']) {
         toast({
           title: "Required Field Missing",
           description: "Please enter Date Completed for closed defects",
@@ -74,10 +84,9 @@ const DefectDialog = ({
       }
     }
 
-    const missing = required.filter(field => !defectData[field]);
+    const missing = requiredFields.filter(field => !defectData[field]);
     
     if (missing.length > 0) {
-      // Map field names to more readable labels
       const fieldLabels = {
         'vessel_id': 'Vessel',
         'Equipments': 'Equipment',
@@ -134,6 +143,8 @@ const DefectDialog = ({
   };
 
   const uploadFiles = async (files, defectId, type = 'initial') => {
+    if (!canEdit) return [];
+    
     const uploadedFiles = [];
     let progress = 0;
     
@@ -175,24 +186,37 @@ const DefectDialog = ({
   };
 
   const handleInitialFileChange = (e) => {
+    if (!canEdit) return;
     const selectedFiles = Array.from(e.target.files);
     setInitialFiles(prevFiles => [...prevFiles, ...selectedFiles]);
   };
 
   const handleClosureFileChange = (e) => {
+    if (!canEdit) return;
     const selectedFiles = Array.from(e.target.files);
     setClosureFiles(prevFiles => [...prevFiles, ...selectedFiles]);
   };
 
   const removeInitialFile = (index) => {
+    if (!canEdit) return;
     setInitialFiles(prevFiles => prevFiles.filter((_, i) => i !== index));
   };
 
   const removeClosureFile = (index) => {
+    if (!canEdit) return;
     setClosureFiles(prevFiles => prevFiles.filter((_, i) => i !== index));
   };
 
   const handleSave = async () => {
+    if (!canEdit) {
+      toast({
+        title: "Permission Denied",
+        description: isNew ? "You don't have permission to create defects" : "You don't have permission to update defects",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setSaving(true);
       setUploadProgress(0);
@@ -202,19 +226,17 @@ const DefectDialog = ({
         return;
       }
 
-      // Upload files if any
       let uploadedInitialFiles = [];
       let uploadedClosureFiles = [];
 
-      if (initialFiles.length > 0) {
+      if (initialFiles.length > 0 && canViewField('initial_files')) {
         uploadedInitialFiles = await uploadFiles(initialFiles, defect.id || 'temp', 'initial');
       }
 
-      if (closureFiles.length > 0 && defect['Status (Vessel)'] === 'CLOSED') {
+      if (closureFiles.length > 0 && canViewField('completion_files') && defect['Status (Vessel)'] === 'CLOSED') {
         uploadedClosureFiles = await uploadFiles(closureFiles, defect.id || 'temp', 'closure');
       }
 
-      // Combine existing and new files
       const updatedDefect = {
         ...defect,
         initial_files: [
@@ -245,6 +267,11 @@ const DefectDialog = ({
     }
   };
 
+  const renderField = (fieldName, component) => {
+    if (!canViewField(fieldName)) return null;
+    return component;
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent 
@@ -262,334 +289,370 @@ const DefectDialog = ({
         
         <div className="grid gap-3 py-3">
           {/* Vessel Selection */}
-          <div className="grid gap-1.5">
-            <label htmlFor="vessel" className="text-xs font-medium text-white/80">
-              Vessel <span className="text-red-400">*</span>
-            </label>
-            <select
-              id="vessel"
-              className="flex h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
-              value={defect?.vessel_id || ''}
-              onChange={(e) => onChange('vessel_id', e.target.value)}
-              required
-              aria-required="true"
-            >
-              <option value="">Select Vessel</option>
-              {Object.entries(vessels).map(([id, name]) => (
-                <option key={id} value={id}>{name}</option>
-              ))}
-            </select>
-          </div>
+          {renderField('vessel_id', (
+            <div className="grid gap-1.5">
+              <label htmlFor="vessel" className="text-xs font-medium text-white/80">
+                Vessel <span className="text-red-400">*</span>
+              </label>
+              <select
+                id="vessel"
+                className="flex h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
+                value={defect?.vessel_id || ''}
+                onChange={(e) => onChange('vessel_id', e.target.value)}
+                disabled={!canEdit}
+                required
+                aria-required="true"
+              >
+                <option value="">Select Vessel</option>
+                {Object.entries(vessels).map(([id, name]) => (
+                  <option key={id} value={id}>{name}</option>
+                ))}
+              </select>
+            </div>
+          ))}
 
           {/* Equipment */}
-          <div className="grid gap-1.5">
-            <label htmlFor="equipment" className="text-xs font-medium text-white/80">
-              Equipment <span className="text-red-400">*</span>
-            </label>
-            <select
-              id="equipment"
-              className="flex h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
-              value={defect?.Equipments || ''}
-              onChange={(e) => onChange('Equipments', e.target.value)}
-              required
-              aria-required="true"
-            >
-              <option value="">Select Equipment</option>
-              <option value="Air System and Air Compressor">Air System and Air Compressor</option>
-              <option value="Airconditioning & Refrigeration System">Airconditioning & Refrigeration System</option>
-              <option value="Cargo and Ballast System">Cargo and Ballast System</option>
-              <option value="Deck Crane and Grab">Deck Crane and Grab</option>
-              <option value="BWTS">BWTS</option>
-              <option value="Aux Engine">Aux Engine</option>
-              <option value="Main Engine">Main Engine</option>
-              <option value="LO System">LO System</option>
-              <option value="FO System">FO System</option>
-              <option value="FW and SW System">FW and SW System</option>
-              <option value="Load line Item">Load line Item</option>
-              <option value="SOLAS">SOLAS</option>
-              <option value="MARPOL">MARPOL</option>
-              <option value="Navigation and Radio Equipment">Navigation and Radio Equipment</option>
-              <option value="Anchor and Mooring">Anchor and Mooring</option>
-              <option value="Steam System">Steam System</option>
-              <option value="Steering Gear and Rudder">Steering Gear and Rudder</option>
-              <option value="Others">Others</option>
-            </select>
-          </div>
+          {renderField('Equipments', (
+            <div className="grid gap-1.5">
+              <label htmlFor="equipment" className="text-xs font-medium text-white/80">
+                Equipment <span className="text-red-400">*</span>
+              </label>
+              <select
+                id="equipment"
+                className="flex h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
+                value={defect?.Equipments || ''}
+                onChange={(e) => onChange('Equipments', e.target.value)}
+                disabled={!canEdit}
+                required
+                aria-required="true"
+              >
+                <option value="">Select Equipment</option>
+                <option value="Air System and Air Compressor">Air System and Air Compressor</option>
+                <option value="Airconditioning & Refrigeration System">Airconditioning & Refrigeration System</option>
+                <option value="Cargo and Ballast System">Cargo and Ballast System</option>
+                <option value="Deck Crane and Grab">Deck Crane and Grab</option>
+                <option value="BWTS">BWTS</option>
+                <option value="Aux Engine">Aux Engine</option>
+                <option value="Main Engine">Main Engine</option>
+                <option value="LO System">LO System</option>
+                <option value="FO System">FO System</option>
+                <option value="FW and SW System">FW and SW System</option>
+                <option value="Load line Item">Load line Item</option>
+                <option value="SOLAS">SOLAS</option>
+                <option value="MARPOL">MARPOL</option>
+                <option value="Navigation and Radio Equipment">Navigation and Radio Equipment</option>
+                <option value="Anchor and Mooring">Anchor and Mooring</option>
+                <option value="Steam System">Steam System</option>
+                <option value="Steering Gear and Rudder">Steering Gear and Rudder</option>
+                <option value="Others">Others</option>
+              </select>
+            </div>
+          ))}
 
           {/* Description */}
-          <div className="grid gap-1.5">
-            <label htmlFor="description" className="text-xs font-medium text-white/80">
-              Description <span className="text-red-400">*</span>
-            </label>
-            <textarea
-              id="description"
-              className="flex h-16 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
-              value={defect?.Description || ''}
-              onChange={(e) => onChange('Description', e.target.value)}
-              placeholder="Enter defect description"
-              required
-              aria-required="true"
-            />
-          </div>
+          {renderField('Description', (
+            <div className="grid gap-1.5">
+              <label htmlFor="description" className="text-xs font-medium text-white/80">
+                Description <span className="text-red-400">*</span>
+              </label>
+              <textarea
+                id="description"
+                className="flex h-16 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
+                value={defect?.Description || ''}
+                onChange={(e) => onChange('Description', e.target.value)}
+                placeholder="Enter defect description"
+                disabled={!canEdit}
+                required
+                aria-required="true"
+              />
+            </div>
+          ))}
 
           {/* Action Planned */}
-          <div className="grid gap-1.5">
-            <label htmlFor="action" className="text-xs font-medium text-white/80">
-              Action Planned <span className="text-red-400">*</span>
-            </label>
-            <textarea
-              id="action"
-              className="flex h-16 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
-              value={defect?.['Action Planned'] || ''}
-              onChange={(e) => onChange('Action Planned', e.target.value)}
-              placeholder="Enter planned action"
-              required
-              aria-required="true"
-            />
-          </div>
+          {renderField('Action Planned', (
+            <div className="grid gap-1.5">
+              <label htmlFor="action" className="text-xs font-medium text-white/80">
+                Action Planned <span className="text-red-400">*</span>
+              </label>
+              <textarea
+                id="action"
+                className="flex h-16 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
+                value={defect?.['Action Planned'] || ''}
+                onChange={(e) => onChange('Action Planned', e.target.value)}
+                placeholder="Enter planned action"
+                disabled={!canEdit}
+                required
+                aria-required="true"
+              />
+            </div>
+          ))}
 
           {/* Comments */}
-          <div className="grid gap-1.5">
-            <label htmlFor="comments" className="text-xs font-medium text-white/80">
-              Comments
-            </label>
-            <textarea
-              id="comments"
-              className="flex h-16 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
-              value={defect?.Comments || ''}
-              onChange={(e) => onChange('Comments', e.target.value)}
-              placeholder="Add any additional comments"
-            />
-          </div>
+          {renderField('Comments', (
+            <div className="grid gap-1.5">
+              <label htmlFor="comments" className="text-xs font-medium text-white/80">
+                Comments
+              </label>
+              <textarea
+                id="comments"
+                className="flex h-16 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
+                value={defect?.Comments || ''}
+                onChange={(e) => onChange('Comments', e.target.value)}
+                placeholder="Add any additional comments"
+                disabled={!canEdit}
+              />
+            </div>
+          ))}
 
           {/* Status */}
-          <div className="grid gap-1.5">
-            <label htmlFor="status" className="text-xs font-medium text-white/80">
-              Status <span className="text-red-400">*</span>
-            </label>
-            <select
-              id="status"
-              className="flex h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
-              value={defect?.['Status (Vessel)'] || ''}
-              onChange={(e) => onChange('Status (Vessel)', e.target.value)}
-              required
-              aria-required="true"
-            >
-              <option value="">Select Status</option>
-              <option value="OPEN">Open</option>
-              <option value="IN PROGRESS">In Progress</option>
-              <option value="CLOSED">Closed</option>
-            </select>
-          </div>
+          {renderField('Status (Vessel)', (
+            <div className="grid gap-1.5">
+              <label htmlFor="status" className="text-xs font-medium text-white/80">
+                Status <span className="text-red-400">*</span>
+              </label>
+              <select
+                id="status"
+                className="flex h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
+                value={defect?.['Status (Vessel)'] || ''}
+                onChange={(e) => onChange('Status (Vessel)', e.target.value)}
+                disabled={!canEdit}
+                required
+                aria-required="true"
+              >
+                <option value="">Select Status</option>
+                <option value="OPEN">Open</option>
+                <option value="IN PROGRESS">In Progress</option>
+                <option value="CLOSED">Closed</option>
+              </select>
+            </div>
+          ))}
 
           {/* Criticality */}
-          <div className="grid gap-1.5">
-            <label htmlFor="criticality" className="text-xs font-medium text-white/80">
-              Criticality <span className="text-red-400">*</span>
-            </label>
-            <select
-              id="criticality"
-              className="flex h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
-              value={defect?.Criticality || ''}
-              onChange={(e) => onChange('Criticality', e.target.value)}
-              required
-              aria-required="true"
-            >
-              <option value="">Select Criticality</option>
-              <option value="High">High</option>
-              <option value="Medium">Medium</option>
-              <option value="Low">Low</option>
-            </select>
-          </div>
+          {renderField('Criticality', (
+            <div className="grid gap-1.5">
+              <label htmlFor="criticality" className="text-xs font-medium text-white/80">
+                Criticality <span className="text-red-400">*</span>
+              </label>
+              <select
+                id="criticality"
+                className="flex h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
+                value={defect?.Criticality || ''}
+                onChange={(e) => onChange('Criticality', e.target.value)}
+                disabled={!canEdit}
+                required
+                aria-required="true"
+              >
+                <option value="">Select Criticality</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+              </select>
+            </div>
+          ))}
 
           {/* Raised By */}
-          <div className="grid gap-1.5">
-            <label htmlFor="raisedBy" className="text-xs font-medium text-white/80">
-              Defect Source <span className="text-red-400">*</span>
-            </label>
-            <select
-              id="raisedBy"
-              className="flex h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
-              value={defect?.raised_by || ''}
-              onChange={(e) => onChange('raised_by', e.target.value)}
-              required
-              aria-required="true"
-            >
-              <option value="">Select Source</option>
-              <option value="Vessel">Vessel</option>
-              <option value="Office">Office</option>
-              <option value="Internal Audit">Internal Audit</option>
-              <option value="VIR">VIR</option>
-              <option value="Owners">Owners</option>
-              <option value="PSC">PSC</option>
-              <option value="CLASS">CLASS</option>
-              <option value="FLAG">FLAG</option>
-              <option value="Guarantee Claim">Guarantee Claim</option>
-              <option value="Dry Dock">Dry Dock</option>
-              <option value="Others">Others</option>
-            </select>
-          </div>
-          
-          {/* Dates */}
+          {renderField('raised_by', (
+            <div className="grid gap-1.5">
+              <label htmlFor="raisedBy" className="text-xs font-medium text-white/80">
+                Defect Source <span className="text-red-400">*</span>
+              </label>
+              <select
+                id="raisedBy"
+                className="flex h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
+                value={defect?.raised_by || ''}
+                onChange={(e) => onChange('raised_by', e.target.value)}
+                disabled={!canEdit}
+                required
+                aria-required="true"
+              >
+                <option value="">Select Source</option>
+                <option value="Vessel">Vessel</option>
+                <option value="Office">Office</option>
+                <option value="Internal Audit">Internal Audit</option>
+                <option value="VIR">VIR</option>
+                <option value="Owners">Owners</option>
+                <option value="PSC">PSC</option>
+                <option value="CLASS">CLASS</option>
+                <option value="FLAG">FLAG</option>
+                <option value="Guarantee Claim">Guarantee Claim</option>
+                <option value="Dry Dock">Dry Dock</option>
+                <option value="Others">Others</option>
+              </select>
+            </div>
+          ))}
+
           {/* Dates */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <label htmlFor="dateReported" className="text-xs font-medium text-white/80">
-                Date Reported <span className="text-red-400">*</span>
-              </label>
-              <div className="relative h-8">
-                <input
-                  id="dateReported"
-                  type="date"
-                  className="absolute inset-0 h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-transparent hover:border-[#3BADE5]/40 focus:outline-none focus:ring-1 focus:ring-[#3BADE5] [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:text-white [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer [&::-webkit-calendar-picker-indicator]:hover:opacity-70"
-                  value={formatDateForInput(defect?.['Date Reported'])}
-                  onChange={(e) => {
-                    onChange('Date Reported', e.target.value);
-                  }}
-                  required
-                  aria-required="true"
-                />
-                <div className="absolute inset-0 flex items-center px-2 text-xs text-white pointer-events-none">
-                  {formatDateDisplay(defect?.['Date Reported']) || 'dd/mm/yyyy'}
+            {renderField('Date Reported', (
+              <div className="grid gap-1.5">
+                <label htmlFor="dateReported" className="text-xs font-medium text-white/80">
+                  Date Reported <span className="text-red-400">*</span>
+                </label>
+                <div className="relative h-8">
+                  <input
+                    id="dateReported"
+                    type="date"
+                    className="absolute inset-0 h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-transparent hover:border-[#3BADE5]/40 focus:outline-none focus:ring-1 focus:ring-[#3BADE5] [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:text-white [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer [&::-webkit-calendar-picker-indicator]:hover:opacity-70"
+                    value={formatDateForInput(defect?.['Date Reported'])}
+                    onChange={(e) => onChange('Date Reported', e.target.value)}
+                    disabled={!canEdit}
+                    required
+                    aria-required="true"
+                  />
+                  <div className="absolute inset-0 flex items-center px-2 text-xs text-white pointer-events-none">
+                    {formatDateDisplay(defect?.['Date Reported']) || 'dd/mm/yyyy'}
+                  </div>
                 </div>
               </div>
-            </div>
+            ))}
             
-            <div className="grid gap-1.5">
-              <label htmlFor="dateCompleted" className="text-xs font-medium text-white/80">
-                Date Completed {defect?.['Status (Vessel)'] === 'CLOSED' && <span className="text-red-400">*</span>}
-              </label>
-              <div className="relative h-8">
-                <input
-                  id="dateCompleted"
-                  type="date"
-                  className="absolute inset-0 h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-transparent hover:border-[#3BADE5]/40 focus:outline-none focus:ring-1 focus:ring-[#3BADE5] [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:text-white [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer [&::-webkit-calendar-picker-indicator]:hover:opacity-70"
-                  value={formatDateForInput(defect?.['Date Completed'])}
-                  onChange={(e) => {
-                    onChange('Date Completed', e.target.value);
-                  }}
-                  required={defect?.['Status (Vessel)'] === 'CLOSED'}
-                  aria-required={defect?.['Status (Vessel)'] === 'CLOSED'}
-                />
-                <div className="absolute inset-0 flex items-center px-2 text-xs text-white pointer-events-none">
-                  {formatDateDisplay(defect?.['Date Completed']) || '-'}
+            {renderField('Date Completed', (
+              <div className="grid gap-1.5">
+                <label htmlFor="dateCompleted" className="text-xs font-medium text-white/80">
+                  Date Completed {defect?.['Status (Vessel)'] === 'CLOSED' && <span className="text-red-400">*</span>}
+                </label>
+                <div className="relative h-8">
+                  <input
+                    id="dateCompleted"
+                    type="date"
+                    className="absolute inset-0 h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-transparent hover:border-[#3BADE5]/40 focus:outline-none focus:ring-1 focus:ring-[#3BADE5] [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:text-white [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer [&::-webkit-calendar-picker-indicator]:hover:opacity-70"
+                    value={formatDateForInput(defect?.['Date Completed'])}
+                    onChange={(e) => onChange('Date Completed', e.target.value)}
+                    disabled={!canEdit}
+                    required={defect?.['Status (Vessel)'] === 'CLOSED'}
+                    aria-required={defect?.['Status (Vessel)'] === 'CLOSED'}
+                  />
+                  <div className="absolute inset-0 flex items-center px-2 text-xs text-white pointer-events-none">
+                    {formatDateDisplay(defect?.['Date Completed']) || '-'}
+                  </div>
                 </div>
               </div>
-            </div>
+            ))}
           </div>
 
           {/* Initial Files Upload */}
-          <div className="grid gap-1.5">
-            <label className="text-xs font-medium text-white/80">
-              Initial Documentation
-            </label>
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 px-3 py-1.5 rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] cursor-pointer hover:border-[#3BADE5]/40">
-                <Upload className="h-4 w-4 text-white" />
-                <span className="text-xs text-white">Upload Initial Files (Max 2MB: PDF, DOC, Images)</span>
-                <input
-                  type="file"
-                  multiple
-                  className="hidden"
-                  onChange={handleInitialFileChange}
-                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                />
+          {renderField('initial_files', (
+            <div className="grid gap-1.5">
+              <label className="text-xs font-medium text-white/80">
+                Initial Documentation
               </label>
-              {initialFiles.length > 0 && (
-                <div className="space-y-1">
-                  {initialFiles.map((file, index) => (
-                    <div key={index} className="flex items-center gap-2 text-xs text-white/80">
-                      <FileText className="h-3.5 w-3.5" />
-                      <span className="truncate flex-1">{file.name}</span>
-                      <button
-                        onClick={() => removeInitialFile(index)}
-                        className="p-1 hover:bg-white/10 rounded-full"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {defect?.initial_files?.length > 0 && (
-                <div className="space-y-1 mt-2">
-                  <div className="text-xs text-white/60">Existing files:</div>
-                  {defect.initial_files.map((file, index) => (
-                    <div key={index} className="flex items-center gap-2 text-xs text-white/80">
-                      <FileText className="h-3.5 w-3.5" />
-                      <span className="truncate flex-1">{file.name}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div className="space-y-2">
+                {canEdit && (
+                  <label className="flex items-center gap-2 px-3 py-1.5 rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] cursor-pointer hover:border-[#3BADE5]/40">
+                    <Upload className="h-4 w-4 text-white" />
+                    <span className="text-xs text-white">Upload Initial Files (Max 2MB: PDF, DOC, Images)</span>
+                    <input
+                      type="file"
+                      multiple
+                      className="hidden"
+                      onChange={handleInitialFileChange}
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    />
+                  </label>
+                )}
+                {initialFiles.length > 0 && (
+                  <div className="space-y-1">
+                    {initialFiles.map((file, index) => (
+                      <div key={index} className="flex items-center gap-2 text-xs text-white/80">
+                        <FileText className="h-3.5 w-3.5" />
+                        <span className="truncate flex-1">{file.name}</span>
+                        <button
+                          onClick={() => removeInitialFile(index)}
+                          className="p-1 hover:bg-white/10 rounded-full"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {defect?.initial_files?.length > 0 && (
+                  <div className="space-y-1 mt-2">
+                    <div className="text-xs text-white/60">Existing files:</div>
+                    {defect.initial_files.map((file, index) => (
+                      <div key={index} className="flex items-center gap-2 text-xs text-white/80">
+                        <FileText className="h-3.5 w-3.5" />
+                        <span className="truncate flex-1">{file.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          ))}
 
           {/* Closure section only shown when status is CLOSED */}
           {defect?.['Status (Vessel)'] === 'CLOSED' && (
             <>
               {/* Closure Comments */}
-              <div className="grid gap-1.5">
-                <label htmlFor="closureComments" className="text-xs font-medium text-white/80">
-                  Closure Comments <span className="text-red-400">*</span>
-                </label>
-                <textarea
-                  id="closureComments"
-                  className="flex h-16 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
-                  value={defect?.closure_comments || ''}
-                  onChange={(e) => onChange('closure_comments', e.target.value)}
-                  placeholder="Enter closure comments and findings"
-                  required
-                  aria-required="true"
-                />
-              </div>
+              {renderField('closure_comments', (
+                <div className="grid gap-1.5">
+                  <label htmlFor="closureComments" className="text-xs font-medium text-white/80">
+                    Closure Comments <span className="text-red-400">*</span>
+                  </label>
+                  <textarea
+                    id="closureComments"
+                    className="flex h-16 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
+                    value={defect?.closure_comments || ''}
+                    onChange={(e) => onChange('closure_comments', e.target.value)}
+                    placeholder="Enter closure comments and findings"
+                    disabled={!canEdit}
+                    required
+                    aria-required="true"
+                  />
+                </div>
+              ))}
 
               {/* Closure Files Upload */}
-              <div className="grid gap-1.5">
-                <label className="text-xs font-medium text-white/80">
-                  Closure Documentation
-                </label>
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 px-3 py-1.5 rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] cursor-pointer hover:border-[#3BADE5]/40">
-                    <Upload className="h-4 w-4 text-white" />
-                    <span className="text-xs text-white">Upload Closure Files (Max 2MB: PDF, DOC, Images)</span>
-                    <input
-                      type="file"
-                      multiple
-                      className="hidden"
-                      onChange={handleClosureFileChange}
-                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                    />
+              {renderField('completion_files', (
+                <div className="grid gap-1.5">
+                  <label className="text-xs font-medium text-white/80">
+                    Closure Documentation
                   </label>
-                  {closureFiles.length > 0 && (
-                    <div className="space-y-1">
-                      {closureFiles.map((file, index) => (
-                        <div key={index} className="flex items-center gap-2 text-xs text-white/80">
-                          <FileText className="h-3.5 w-3.5" />
-                          <span className="truncate flex-1">{file.name}</span>
-                          <button
-                            onClick={() => removeClosureFile(index)}
-                            className="p-1 hover:bg-white/10 rounded-full"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {defect?.completion_files?.length > 0 && (
-                    <div className="space-y-1 mt-2">
-                      <div className="text-xs text-white/60">Existing closure files:</div>
-                      {defect.completion_files.map((file, index) => (
-                        <div key={index} className="flex items-center gap-2 text-xs text-white/80">
-                          <FileText className="h-3.5 w-3.5" />
-                          <span className="truncate flex-1">{file.name}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <div className="space-y-2">
+                    {canEdit && (
+                      <label className="flex items-center gap-2 px-3 py-1.5 rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] cursor-pointer hover:border-[#3BADE5]/40">
+                        <Upload className="h-4 w-4 text-white" />
+                        <span className="text-xs text-white">Upload Closure Files (Max 2MB: PDF, DOC, Images)</span>
+                        <input
+                          type="file"
+                          multiple
+                          className="hidden"
+                          onChange={handleClosureFileChange}
+                          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        />
+                      </label>
+                    )}
+                    {closureFiles.length > 0 && (
+                      <div className="space-y-1">
+                        {closureFiles.map((file, index) => (
+                          <div key={index} className="flex items-center gap-2 text-xs text-white/80">
+                            <FileText className="h-3.5 w-3.5" />
+                            <span className="truncate flex-1">{file.name}</span>
+                            <button
+                              onClick={() => removeClosureFile(index)}
+                              className="p-1 hover:bg-white/10 rounded-full"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {defect?.completion_files?.length > 0 && (
+                      <div className="space-y-1 mt-2">
+                        <div className="text-xs text-white/60">Existing closure files:</div>
+                        {defect.completion_files.map((file, index) => (
+                          <div key={index} className="flex items-center gap-2 text-xs text-white/80">
+                            <FileText className="h-3.5 w-3.5" />
+                            <span className="truncate flex-1">{file.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              ))}
             </>
           )}
 
@@ -612,13 +675,15 @@ const DefectDialog = ({
           >
             Cancel
           </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="h-7 px-3 text-xs font-medium rounded-[4px] bg-[#3BADE5] hover:bg-[#3BADE5]/90 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {saving ? 'Saving...' : (isNew ? 'Add Defect' : 'Save Changes')}
-          </button>
+          {canEdit && (
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="h-7 px-3 text-xs font-medium rounded-[4px] bg-[#3BADE5] hover:bg-[#3BADE5]/90 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? 'Saving...' : (isNew ? 'Add Defect' : 'Save Changes')}
+            </button>
+          )}
         </div>
       </DialogContent>
     </Dialog>
