@@ -16,6 +16,34 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from './ui/tooltip';
+import { CORE_FIELDS } from '../config/fieldMappings';
+
+const isColumnVisible = (fieldId, permissions) => {
+  if (!permissions?.fieldPermissions) return true;
+  return permissions.fieldPermissions[fieldId]?.visible;
+};
+
+const canPerformAction = (action, permissions) => {
+  if (!permissions?.actionPermissions) return false;
+  return permissions.actionPermissions[action];
+};
+
+const getVisibleColumns = (permissions, isExternal) => {
+  return Object.entries(CORE_FIELDS.TABLE)
+    .filter(([fieldId, field]) => {
+      // Always show action columns
+      if (field.isAction) return true;
+      
+      // Check permission visibility
+      if (!isColumnVisible(fieldId, permissions)) return false;
+      
+      // Handle external user restrictions
+      if (isExternal && field.restrictedToInternal) return false;
+      
+      return true;
+    })
+    .sort((a, b) => a[1].priority - b[1].priority);
+};
 
 const STATUS_COLORS = {
   'OPEN': {
@@ -50,30 +78,7 @@ const CRITICALITY_COLORS = {
   }
 };
 
-// Generic TruncatedText component with tooltip
-const TruncatedText = ({ text, maxWidth = "max-w-[200px]" }) => {
-  if (!text) return '-';
-  
-  return (
-    <TooltipProvider>
-      <Tooltip delayDuration={300}>
-        <TooltipTrigger asChild>
-          <div className={`truncate ${maxWidth}`}>
-            {text}
-          </div>
-        </TooltipTrigger>
-        <TooltipContent 
-          side="top" 
-          className="max-w-sm bg-[#132337] text-white border-white/20"
-        >
-          <p className="text-xs">{text}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-};
-
-// FileViewer component for viewing uploaded files
+// File Viewer Component
 const FileViewer = ({ url, filename, onClose }) => (
   <Dialog open={true} onOpenChange={onClose}>
     <DialogContent className="max-w-4xl max-h-[90vh] bg-[#0B1623]">
@@ -96,8 +101,8 @@ const FileViewer = ({ url, filename, onClose }) => (
   </Dialog>
 );
 
-// FileList component for managing uploaded files
-const FileList = ({ files, onDelete, title, canDelete }) => {
+// File List Component
+const FileList = ({ files, onDelete, title }) => {
   const [selectedFile, setSelectedFile] = useState(null);
 
   const handleFileClick = async (file) => {
@@ -107,6 +112,7 @@ const FileList = ({ files, onDelete, title, canDelete }) => {
         .createSignedUrl(file.path, 3600); // 1 hour expiry
 
       if (error) throw error;
+
       setSelectedFile({ url: signedUrl, name: file.name });
     } catch (error) {
       console.error('Error getting signed URL:', error);
@@ -132,7 +138,7 @@ const FileList = ({ files, onDelete, title, canDelete }) => {
           >
             {file.name}
           </button>
-          {canDelete && onDelete && (
+          {onDelete && (
             <button
               onClick={() => onDelete(file)}
               className="text-red-400 hover:text-red-300 p-1 rounded-full hover:bg-red-500/20"
@@ -154,17 +160,64 @@ const FileList = ({ files, onDelete, title, canDelete }) => {
   );
 };
 
-// DefectRow component for rendering individual defect rows
-const DefectRow = ({ 
-  defect: initialDefect, 
-  index, 
-  onEditDefect, 
-  onDeleteDefect,
-  permissions,
-  allowedFields 
-}) => {
+const TruncatedText = ({ text, maxWidth = "max-w-[200px]" }) => {
+  if (!text) return '-';
+  
+  return (
+    <TooltipProvider>
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <div className={`truncate ${maxWidth}`}>
+            {text}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent 
+          side="top" 
+          className="max-w-sm bg-[#132337] text-white border-white/20"
+        >
+          <p className="text-xs">{text}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
+
+const renderCellContent = (field, value) => {
+  switch (field.type) {
+    case 'date':
+      return value ? new Date(value).toLocaleDateString('en-GB') : '-';
+    case 'status':
+      return (
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] 
+          ${STATUS_COLORS[value].bg} 
+          ${STATUS_COLORS[value].text}
+          ${STATUS_COLORS[value].glow}
+          transition-all duration-200`}
+        >
+          <span className="w-1 h-1 rounded-full bg-current mr-1"></span>
+          {value}
+        </span>
+      );
+    case 'criticality':
+      return (
+        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] 
+          ${CRITICALITY_COLORS[value]?.bg || 'bg-gray-500/20'} 
+          ${CRITICALITY_COLORS[value]?.text || 'text-gray-300'}`}
+        >
+          {value || 'N/A'}
+        </span>
+      );
+    default:
+      return <TruncatedText text={value} />;
+  }
+};
+
+const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect, permissions,
+  isExternal }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [defect, setDefect] = useState(initialDefect);
+  const canEdit = canPerformAction('update', permissions);
+  const canDelete = canPerformAction('delete', permissions);  
 
   const toggleExpand = (e) => {
     e.stopPropagation();
@@ -172,15 +225,6 @@ const DefectRow = ({
   };
 
   const handleDeleteFile = async (file) => {
-    if (!permissions?.can.update) {
-      toast({
-        title: "Permission Denied",
-        description: "You don't have permission to delete files",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
       // Delete from storage
       const { error: storageError } = await supabase.storage
@@ -223,178 +267,184 @@ const DefectRow = ({
     }
   };
 
-  // Only show fields that are in allowedFields
-  const showField = (fieldName) => allowedFields.includes(fieldName);
-
   return (
     <>
       <tr className="table-hover-row cursor-pointer border-b border-white/10 hover:bg-white/5">
-        <td className="px-3 py-1.5">
-          <button
-            onClick={toggleExpand}
-            className="p-0.5 hover:bg-white/10 rounded transition-colors"
-          >
-            <span className={`inline-block transition-transform duration-200 text-[#3BADE5] ${isExpanded ? 'rotate-0' : '-rotate-90'}`}>
-              ▼
-            </span>
-          </button>
-        </td>
-        <td className="px-3 py-1.5">{index + 1}</td>
-        {showField('vessel_name') && (
-          <td className="px-3 py-1.5" onClick={() => onEditDefect(defect)}>
-            {defect.vessel_name}
-          </td>
-        )}
-        {showField('Status (Vessel)') && (
-          <td className="px-3 py-1.5" onClick={() => onEditDefect(defect)}>
-            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] 
-              ${STATUS_COLORS[defect['Status (Vessel)']].bg} 
-              ${STATUS_COLORS[defect['Status (Vessel)']].text}
-              ${STATUS_COLORS[defect['Status (Vessel)']].glow}
-              transition-all duration-200`}
+        {getVisibleColumns(permissions, isExternal).map(([fieldId, field]) => {
+          if (field.isAction) {
+            if (fieldId === 'expandToggle') {
+              return (
+                <td key={fieldId} className="px-3 py-1.5">
+                  <button
+                    onClick={toggleExpand}
+                    className="p-0.5 hover:bg-white/10 rounded transition-colors"
+                  >
+                    <span className={`inline-block transition-transform duration-200 text-[#3BADE5] ${isExpanded ? 'rotate-0' : '-rotate-90'}`}>
+                      ▼
+                    </span>
+                  </button>
+                </td>
+              );
+            }
+            if (fieldId === 'actions' && canDelete) {
+              return (
+                <td key={fieldId} className="px-3 py-1.5">
+                  <div className="flex items-center justify-center">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteDefect(defect.id);
+                      }}
+                      className="p-1 hover:bg-red-500/20 text-red-400 rounded-full transition-colors"
+                      aria-label="Delete defect"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </td>
+              );
+            }
+            return <td key={fieldId} className="px-3 py-1.5"></td>;
+          }
+
+          let content;
+          switch (fieldId) {
+            case 'vessel':
+              content = defect.vessel_name;
+              break;
+            case 'status':
+              content = (
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] 
+                  ${STATUS_COLORS[defect['Status (Vessel)']].bg} 
+                  ${STATUS_COLORS[defect['Status (Vessel)']].text}
+                  ${STATUS_COLORS[defect['Status (Vessel)']].glow}
+                  transition-all duration-200`}
+                >
+                  <span className="w-1 h-1 rounded-full bg-current mr-1"></span>
+                  {defect['Status (Vessel)']}
+                </span>
+              );
+              break;
+            case 'criticality':
+              content = (
+                <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] 
+                  ${CRITICALITY_COLORS[defect.Criticality]?.bg || 'bg-gray-500/20'} 
+                  ${CRITICALITY_COLORS[defect.Criticality]?.text || 'text-gray-300'}`}
+                >
+                  {defect.Criticality || 'N/A'}
+                </span>
+              );
+              break;
+            case 'equipment':
+              content = <TruncatedText text={defect.Equipments} maxWidth="max-w-[150px]" />;
+              break;
+            case 'description':
+              content = <TruncatedText text={defect.Description} />;
+              break;
+            case 'actionPlanned':
+              content = <TruncatedText text={defect['Action Planned']} />;
+              break;
+            case 'dateReported':
+              content = defect['Date Reported'] ? new Date(defect['Date Reported']).toLocaleDateString('en-GB') : '-';
+              break;
+            case 'dateCompleted':
+              content = defect['Date Completed'] ? new Date(defect['Date Completed']).toLocaleDateString('en-GB') : '-';
+              break;
+            default:
+              content = defect[field.dbField] || '-';
+          }
+
+          return (
+            <td 
+              key={fieldId} 
+              className="px-3 py-1.5" 
+              onClick={() => canEdit && onEditDefect(defect)}
             >
-              <span className="w-1 h-1 rounded-full bg-current mr-1"></span>
-              {defect['Status (Vessel)']}
-            </span>
-          </td>
-        )}
-        {showField('Criticality') && (
-          <td className="px-3 py-1.5" onClick={() => onEditDefect(defect)}>
-            <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] 
-              ${CRITICALITY_COLORS[defect.Criticality]?.bg || 'bg-gray-500/20'} 
-              ${CRITICALITY_COLORS[defect.Criticality]?.text || 'text-gray-300'}`}
-            >
-              {defect.Criticality || 'N/A'}
-            </span>
-          </td>
-        )}
-        {showField('Equipments') && (
-          <td className="px-3 py-1.5" onClick={() => onEditDefect(defect)}>
-            <TruncatedText text={defect.Equipments} maxWidth="max-w-[150px]" />
-          </td>
-        )}
-        {showField('Description') && (
-          <td className="px-3 py-1.5" onClick={() => onEditDefect(defect)}>
-            <TruncatedText text={defect.Description} />
-          </td>
-        )}
-        {showField('Action Planned') && (
-          <td className="px-3 py-1.5" onClick={() => onEditDefect(defect)}>
-            <TruncatedText text={defect['Action Planned']} />
-          </td>
-        )}
-        {showField('Date Reported') && (
-          <td className="px-3 py-1.5" onClick={() => onEditDefect(defect)}>
-            {defect['Date Reported'] ? new Date(defect['Date Reported']).toLocaleDateString('en-GB') : '-'}
-          </td>
-        )}
-        {showField('Date Completed') && (
-          <td className="px-3 py-1.5" onClick={() => onEditDefect(defect)}>
-            {defect['Date Completed'] ? new Date(defect['Date Completed']).toLocaleDateString('en-GB') : '-'}
-          </td>
-        )}
-        {permissions?.can.delete && (
-          <td className="px-3 py-1.5">
-            <div className="flex items-center justify-center">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDeleteDefect(defect.id);
-                }}
-                className="p-1 hover:bg-red-500/20 text-red-400 rounded-full transition-colors"
-                aria-label="Delete defect"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          </td>
-        )}
+              {content}
+            </td>
+          );
+        })}
       </tr>
 
+     
       {isExpanded && (
         <tr className="bg-[#132337]/50">
-          <td colSpan="11" className="p-4 border-b border-white/10">
+          <td colSpan={getVisibleColumns(permissions, isExternal).length} className="p-4 border-b border-white/10">
             <div className="space-y-4">
               {/* Main Content in 3-column Grid */}
               <div className="grid grid-cols-3 gap-4">
-                {/* Show sections based on permissions */}
-                {showField('Description') && (
-                  <div className="bg-[#0B1623] rounded-md p-3">
-                    <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Description</h4>
-                    <div className="text-xs leading-relaxed text-white/90 break-words">
-                      {defect.Description || '-'}
-                    </div>
+                {/* Basic Details */}
+                <div className="bg-[#0B1623] rounded-md p-3">
+                  <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Description</h4>
+                  <div className="text-xs leading-relaxed text-white/90 break-words">
+                    {defect.Description || '-'}
                   </div>
-                )}
+                </div>
                 
-                {showField('Action Planned') && (
-                  <div className="bg-[#0B1623] rounded-md p-3">
-                    <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Action Planned</h4>
-                    <div className="text-xs leading-relaxed text-white/90 break-words">
-                      {defect['Action Planned'] || '-'}
-                    </div>
+                <div className="bg-[#0B1623] rounded-md p-3">
+                  <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Action Planned</h4>
+                  <div className="text-xs leading-relaxed text-white/90 break-words">
+                    {defect['Action Planned'] || '-'}
                   </div>
-                )}
+                </div>
       
-                {showField('Comments') && (
-                  <div className="bg-[#0B1623] rounded-md p-3">
-                    <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Comments</h4>
-                    <div className="text-xs leading-relaxed text-white/90 break-words">
-                      {defect.Comments || '-'}
-                    </div>
+                <div className="bg-[#0B1623] rounded-md p-3">
+                  <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Comments</h4>
+                  <div className="text-xs leading-relaxed text-white/90 break-words">
+                    {defect.Comments || '-'}
                   </div>
-                )}
+                </div>
       
                 {/* Initial Documentation */}
-                {showField('initial_files') && (
-                  <div className="bg-[#0B1623] rounded-md p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-xs font-medium text-[#3BADE5]">Initial Documentation</h4>
-                      <div className="text-[10px] text-white/60 px-2 py-0.5 bg-[#132337] rounded-full">
-                        {defect.initial_files?.length || 0} files
-                      </div>
+                <div className="bg-[#0B1623] rounded-md p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-xs font-medium text-[#3BADE5]">Initial Documentation</h4>
+                    <div className="text-[10px] text-white/60 px-2 py-0.5 bg-[#132337] rounded-full">
+                      {defect.initial_files?.length || 0} files
                     </div>
-                    <div className="max-h-32 overflow-y-auto custom-scrollbar pr-2">
+                  </div>
+                  <div className="max-h-32 overflow-y-auto custom-scrollbar pr-2">
+                    {defect.initial_files?.length > 0 ? (
                       <FileList
                         files={defect.initial_files}
                         onDelete={handleDeleteFile}
-                        canDelete={permissions?.can.update}
                         title=""
                       />
-                    </div>
+                    ) : (
+                      <div className="text-xs text-white/40 italic">No documentation available</div>
+                    )}
                   </div>
-                )}
+                </div>
       
                 {/* Show closure content only when status is CLOSED */}
                 {defect['Status (Vessel)'] === 'CLOSED' && (
                   <>
-                    {showField('closure_comments') && (
-                      <div className="bg-[#0B1623] rounded-md p-3">
-                        <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Closure Comments</h4>
-                        <div className="text-xs leading-relaxed text-white/90 break-words">
-                          {defect.closure_comments || '-'}
+                    <div className="bg-[#0B1623] rounded-md p-3">
+                      <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Closure Comments</h4>
+                      <div className="text-xs leading-relaxed text-white/90 break-words">
+                        {defect.closure_comments || '-'}
+                      </div>
+                    </div>
+      
+                    <div className="bg-[#0B1623] rounded-md p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-xs font-medium text-[#3BADE5]">Closure Documentation</h4>
+                        <div className="text-[10px] text-white/60 px-2 py-0.5 bg-[#132337] rounded-full">
+                          {defect.completion_files?.length || 0} files
                         </div>
                       </div>
-                    )}
-      
-                    {showField('completion_files') && (
-                      <div className="bg-[#0B1623] rounded-md p-3">
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="text-xs font-medium text-[#3BADE5]">Closure Documentation</h4>
-                          <div className="text-[10px] text-white/60 px-2 py-0.5 bg-[#132337] rounded-full">
-                            {defect.completion_files?.length || 0} files
-                          </div>
-                        </div>
-                        <div className="max-h-32 overflow-y-auto custom-scrollbar pr-2">
+                      <div className="max-h-32 overflow-y-auto custom-scrollbar pr-2">
+                        {defect.completion_files?.length > 0 ? (
                           <FileList
                             files={defect.completion_files}
                             onDelete={handleDeleteFile}
-                            canDelete={permissions?.can.update}
                             title=""
                           />
-                        </div>
+                        ) : (
+                          <div className="text-xs text-white/40 italic">No documentation available</div>
+                        )}
                       </div>
-                    )}
+                    </div>
                   </>
                 )}
               </div>
@@ -402,67 +452,65 @@ const DefectRow = ({
               {/* Bottom row with Raised By and Generate Report */}
               <div className="flex justify-between items-center">
                 {/* Raised By info */}
-                {showField('raised_by') && defect.raised_by && (
+                {defect.raised_by && (
                   <div className="text-xs text-white/60">
                     Defect Source: <span className="text-white/80">{defect.raised_by}</span>
                   </div>
                 )}
 
                 {/* Generate Report Button */}
-                {permissions?.can.read && (
-                  <button
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      try {
-                        const getSignedUrls = async (files) => {
-                          const urls = {};
-                          for (const file of files || []) {
-                            try {
-                              const { data: { signedUrl }, error } = await supabase.storage
-                                .from('defect-files')
-                                .createSignedUrl(file.path, 3600);
-                              
-                              if (error) {
-                                console.error('Error getting signed URL for file:', file.name, error);
-                                continue;
-                              }
-                              urls[file.path] = signedUrl;
-                            } catch (error) {
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    try {
+                      const getSignedUrls = async (files) => {
+                        const urls = {};
+                        for (const file of files || []) {
+                          try {
+                            const { data: { signedUrl }, error } = await supabase.storage
+                              .from('defect-files')
+                              .createSignedUrl(file.path, 3600);
+                            
+                            if (error) {
                               console.error('Error getting signed URL for file:', file.name, error);
+                              continue;
                             }
+                            urls[file.path] = signedUrl;
+                          } catch (error) {
+                            console.error('Error getting signed URL for file:', file.name, error);
                           }
-                          return urls;
-                        };
-                  
-                        const initialUrls = await getSignedUrls(defect.initial_files);
-                        const completionUrls = await getSignedUrls(defect.completion_files);
-                        
-                        const { generateDefectReport } = await import('../utils/generateDefectReport');
-                        await generateDefectReport(defect, {
-                          ...initialUrls,
-                          ...completionUrls
-                        });
-                  
-                        toast({
-                          title: "Success",
-                          description: "Report generated successfully",
-                        });
-                      } catch (error) {
-                        console.error('Error generating report:', error);
-                        toast({
-                          title: "Error",
-                          description: "Failed to generate report",
-                          variant: "destructive",
-                        });
-                      }
-                    }}
-                    className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md 
-                      text-white bg-[#3BADE5] hover:bg-[#3BADE5]/80 transition-colors shadow-sm"
-                  >
-                    <FileText className="h-3.5 w-3.5 mr-1.5" />
-                    Generate Report
-                  </button>
-                )}
+                        }
+                        return urls;
+                      };
+                
+                      const initialUrls = await getSignedUrls(defect.initial_files);
+                      const completionUrls = await getSignedUrls(defect.completion_files);
+                      
+                      const { generateDefectReport } = await import('../utils/generateDefectReport');
+                      await generateDefectReport(defect, {
+                        ...initialUrls,
+                        ...completionUrls
+                      });
+                
+                      toast({
+                        title: "Success",
+                        description: "Report generated successfully",
+                      });
+                    } catch (error) {
+                      console.error('Error generating report:', error);
+                      toast({
+                        title: "Error",
+                        description: "Failed to generate report",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                  className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md 
+                    text-white bg-[#3BADE5] hover:bg-[#3BADE5]/80 transition-colors shadow-sm"
+                >
+                  <FileText className="h-3.5 w-3.5 mr-1.5" />
+                  Generate Report
+                </button>
               </div>
             </div>
           </td>
@@ -470,34 +518,30 @@ const DefectRow = ({
       )}
     </>
   );
-}; 
+}; // End of DefectRow
 
-// Main DefectsTable component
+// Start of DefectsTable component
 const DefectsTable = ({ 
   data, 
   onAddDefect, 
   onEditDefect,
   onDeleteDefect,
   loading,
-  permissions,
   searchTerm = '',
   statusFilter = '',
-  criticalityFilter = '' 
+  criticalityFilter = '',
+  permissions, // Add this
+  isExternal  
 }) => {
   const [sortConfig, setSortConfig] = useState({
     key: 'Date Reported',
     direction: 'desc'
   });
 
-  // Only show columns that user has permission to view
-  const allowedFields = React.useMemo(() => {
-    if (!permissions?.fieldPermissions) return [];
-    return Object.keys(permissions.fieldPermissions).filter(field => 
-      permissions.fieldPermissions[field]
-    );
-  }, [permissions?.fieldPermissions]);
-
   const handleSort = (key) => {
+    // Only allow sorting on visible columns
+    if (!isColumnVisible(key, permissions)) return;
+  
     setSortConfig(prevConfig => ({
       key,
       direction: prevConfig.key === key 
@@ -532,14 +576,6 @@ const DefectsTable = ({
   };
 
   const handleExport = () => {
-    if (!permissions?.can.read) {
-      toast({
-        title: "Permission Denied",
-        description: "You don't have permission to export data",
-        variant: "destructive",
-      });
-      return;
-    }
     exportToCSV(getSortedData(), {
       search: searchTerm,
       status: statusFilter,
@@ -558,7 +594,6 @@ const DefectsTable = ({
       : <ChevronDown className="h-3 w-3" />;
   };
 
-  // Define columns based on permissions
   const columns = [
     { key: 'vessel_name', label: 'Vessel' },
     { key: 'Status (Vessel)', label: 'Status' },
@@ -568,15 +603,15 @@ const DefectsTable = ({
     { key: 'Action Planned', label: 'Action Planned' },
     { key: 'Date Reported', label: 'Reported' },
     { key: 'Date Completed', label: 'Completed' }
-  ].filter(column => allowedFields.includes(column.key));
+  ];
 
   return (
     <div className="glass-card rounded-[4px]">
       <div className="flex justify-between items-center px-3 py-2 border-b border-white/10">
         <h2 className="text-sm font-medium text-[#f4f4f4]">Defects Register</h2>
         <div className="flex items-center gap-2">
-          {permissions?.can.read && <ExportButton onClick={handleExport} />}
-          {permissions?.can.create && (
+          <ExportButton onClick={handleExport} />
+          {canPerformAction('create', permissions) && (
             <button 
               onClick={onAddDefect}
               className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-[4px] 
@@ -592,33 +627,31 @@ const DefectsTable = ({
         <table className="w-full text-xs">
           <thead>
             <tr className="bg-[#132337] border-b border-white/10">
-              <th className="px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 w-8"></th>
-              <th className="px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 w-12">#</th>
-              {columns.map(column => (
+              {getVisibleColumns(permissions, isExternal).map(([fieldId, field]) => (
                 <th 
-                  key={column.key}
-                  onClick={() => handleSort(column.key)}
-                  className="px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 cursor-pointer hover:bg-white/5"
+                  key={fieldId}
+                  onClick={() => !field.isAction && handleSort(field.dbField)}
+                  className={`px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 ${
+                    field.isAction ? '' : 'cursor-pointer hover:bg-white/5'
+                  }`}
+                  style={{ width: field.width, minWidth: field.minWidth }}
                 >
                   <div className="flex items-center gap-1">
-                    {column.label}
-                    {renderSortIcon(column.key)}
+                    {field.label}
+                    {!field.isAction && renderSortIcon(field.dbField)}
                   </div>
                 </th>
               ))}
-              {permissions?.can.delete && (
-                <th className="px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 w-16">Actions</th>
-              )}
             </tr>
           </thead>
           <tbody className="text-[#f4f4f4]">
             {loading ? (
               <tr>
-                <td colSpan={columns.length + 3} className="px-3 py-2 text-center">Loading...</td>
+                <td colSpan="11" className="px-3 py-2 text-center">Loading...</td>
               </tr>
             ) : sortedData.length === 0 ? (
               <tr>
-                <td colSpan={columns.length + 3} className="px-3 py-2 text-center">No defects found</td>
+                <td colSpan="11" className="px-3 py-2 text-center">No defects found</td>
               </tr>
             ) : (
               sortedData.map((defect, index) => (
@@ -629,7 +662,7 @@ const DefectsTable = ({
                   onEditDefect={onEditDefect}
                   onDeleteDefect={onDeleteDefect}
                   permissions={permissions}
-                  allowedFields={allowedFields}
+                  isExternal={isExternal}
                 />
               ))
             )}

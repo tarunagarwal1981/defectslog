@@ -1,58 +1,27 @@
-import { supabase } from '../supabaseClient';
+// src/utils/permissionUtils.js
 
-export const fetchUserPermissions = async (userId, roleId) => {
-  try {
-    // Fetch field permissions
-    const { data: fieldPermissions, error: fieldError } = await supabase
-      .from('role_field_permissions')
-      .select('*')
-      .eq('role_id', roleId);
+export const checkPermission = (permissions, action, field = null) => {
+  if (!permissions) return false;
 
-    if (fieldError) throw fieldError;
-
-    // Fetch action permissions
-    const { data: actionPermissions, error: actionError } = await supabase
-      .from('action_permissions')
-      .select('*')
-      .eq('role_id', roleId);
-
-    if (actionError) throw actionError;
-
-    // Process permissions
-    const allowedFields = fieldPermissions.map(perm => perm.field_name);
-    const actions = actionPermissions.reduce((acc, perm) => {
-      acc[perm.action_name] = perm.is_allowed;
-      return acc;
-    }, {});
-
-    return {
-      allowedFields,
-      actions,
-    };
-  } catch (error) {
-    console.error('Error fetching permissions:', error);
-    throw error;
+  // Check action permission
+  if (action && !permissions.actions[action]) {
+    return false;
   }
+
+  // Check field permission if provided
+  if (field && !permissions.fields[field]?.visible) {
+    return false;
+  }
+
+  return true;
 };
 
-export const filterDefectsByPermissions = (defects, userRole, permissions) => {
-  return defects.filter(defect => {
-    // For external users, only show defects with external_visibility = true
-    if (userRole === 'external' && !defect.external_visibility) {
-      return false;
-    }
-    return true;
-  });
+export const canEdit = (permissions, field) => {
+  if (!permissions?.fields[field]) return false;
+  return permissions.fields[field].editable;
 };
 
-export const filterDefectFieldsByPermissions = (defect, allowedFields) => {
-  if (!allowedFields) return defect;
-  
-  const filteredDefect = {};
-  allowedFields.forEach(field => {
-    if (defect.hasOwnProperty(field)) {
-      filteredDefect[field] = defect[field];
-    }
-  });
-  return filteredDefect;
+export const getVisibleFields = (permissions, fields) => {
+  if (!permissions?.fields) return [];
+  return fields.filter(field => permissions.fields[field.id]?.visible);
 };

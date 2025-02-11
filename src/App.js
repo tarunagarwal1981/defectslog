@@ -9,9 +9,10 @@ import SearchBar from './components/SearchBar';
 import DefectsTable from './components/DefectsTable';
 import DefectDialog from './components/DefectDialog';
 import ChatBot from './components/ChatBot/ChatBot';
-import { supabase, getUserPermissions } from './supabaseClient';
+import { supabase } from './supabaseClient';
+import { CORE_FIELDS } from './config/fieldMappings';
+import { getUserPermissions, isExternalUser } from './supabaseClient';
 
-// Fetch user's vessels (unchanged)
 const getUserVessels = async (userId) => {
   try {
     const { data, error } = await supabase
@@ -35,12 +36,9 @@ const getUserVessels = async (userId) => {
 
 function App() {
   const { toast } = useToast();
-  
-  // User and auth states
-  const [session, setSession] = useState(null);
   const [userPermissions, setUserPermissions] = useState(null);
-  
-  // Data states
+  const [isExternal, setIsExternal] = useState(false);
+  const [session, setSession] = useState(null);
   const [data, setData] = useState([]);
   const [assignedVessels, setAssignedVessels] = useState([]);
   const [vesselNames, setVesselNames] = useState({});
@@ -48,18 +46,20 @@ function App() {
   const [isPdfGenerating, setIsPdfGenerating] = useState(false);
   const [dateRange, setDateRange] = useState({ from: '', to: '' });
   
-  // Filter states (unchanged)
   const [currentVessel, setCurrentVessel] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState(['OPEN', 'IN PROGRESS']);
-  const [criticalityFilter, setCriticalityFilter] = useState([]);
+  const [criticalityFilter, setCriticalityFilter] = useState([]); 
   const [raisedByFilter, setRaisedByFilter] = useState([]);
-  
-  // Dialog states
+    
   const [isDefectDialogOpen, setIsDefectDialogOpen] = useState(false);
   const [currentDefect, setCurrentDefect] = useState(null);
 
-  // Initialize auth and permissions
+  // Get unique raised by options
+  const raisedByOptions = React.useMemo(() => {
+    return [...new Set(data.map(defect => defect.raised_by).filter(Boolean))].sort();
+  }, [data]);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -67,38 +67,31 @@ function App() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (session?.user) {
-        // Fetch user permissions when auth state changes
-        try {
-          const permissions = await getUserPermissions(session.user.id);
-          setUserPermissions(permissions);
-        } catch (error) {
-          console.error('Error fetching permissions:', error);
-          toast({
-            title: "Error",
-            description: "Failed to load user permissions",
-            variant: "destructive",
-          });
-        }
-      } else {
-        setUserPermissions(null);
-      }
     });
 
     return () => subscription.unsubscribe();
-  }, [toast]);
+  }, []);
 
-  // Fetch user data with permissions
   const fetchUserData = useCallback(async () => {
-    if (!session?.user?.id || !userPermissions) return;
+    if (!session?.user?.id) return;
 
     try {
       setLoading(true);
       
+      // Fetch permissions first
+      const permissions = await getUserPermissions(session.user.id);
+      setUserPermissions(permissions);
+      
+      // Check if external user
+      const external = await isExternalUser(session.user.id);
+      setIsExternal(external);
+      
+      // Get user's vessels with names
       const userVessels = await getUserVessels(session.user.id);
       
+      // Your existing vessel logic...
       const vesselIds = userVessels.map(v => v.vessel_id);
       const vesselsMap = userVessels.reduce((acc, v) => {
         if (v.vessels) {
@@ -107,15 +100,15 @@ function App() {
         return acc;
       }, {});
 
+      // Modify defects query for external users
       let query = supabase
         .from('defects register')
         .select('*')
-        .eq('is_deleted', false)
         .in('vessel_id', vesselIds)
         .order('Date Reported', { ascending: false });
 
-      // Add external visibility filter if user is external
-      if (userPermissions.isExternal) {
+      // Add external visibility filter for external users
+      if (external) {
         query = query.eq('external_visibility', true);
       }
 
@@ -137,29 +130,59 @@ function App() {
     } finally {
       setLoading(false);
     }
-  }, [session?.user?.id, userPermissions, toast]);
+  }, [session?.user?.id, toast]);
 
   useEffect(() => {
-    if (session?.user && userPermissions) {
+    if (session?.user) {
       fetchUserData();
     } else {
       setData([]);
       setAssignedVessels([]);
       setVesselNames({});
     }
-  }, [session?.user, userPermissions, fetchUserData]);
+  }, [session?.user, fetchUserData]);
 
-  // Handle defect operations with permission checks
-  const handleAddDefect = () => {
-    if (!userPermissions?.can.create) {
+  const filteredData = React.useMemo(() => {
+    return data.filter(defect => {
+      const defectDate = new Date(defect['Date Reported']);
+      
+      // Check if defect matches any of the selected filters (or all if none selected)
+      const matchesVessel = currentVessel.length === 0 || currentVessel.includes(defect.vessel_id);
+      const matchesStatus = statusFilter.length === 0 || statusFilter.includes(defect['Status (Vessel)']);
+      const matchesCriticality = criticalityFilter.length === 0 || criticalityFilter.includes(defect.Criticality);
+      const matchesRaisedBy = raisedByFilter.length === 0 || raisedByFilter.includes(defect.raised_by);
+      
+      const matchesSearch = !searchTerm || 
+        Object.values(defect).some(value => 
+          String(value).toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        
+      const matchesDateRange = 
+        (!dateRange.from || defectDate >= new Date(dateRange.from)) &&
+        (!dateRange.to || defectDate <= new Date(dateRange.to));
+  
+      return matchesVessel && matchesStatus && matchesCriticality && 
+             matchesRaisedBy && matchesSearch && matchesDateRange;
+    });
+  }, [data, currentVessel, statusFilter, criticalityFilter, raisedByFilter, 
+      searchTerm, dateRange]);
+  const handleGeneratePdf = useCallback(async () => {
+    setIsPdfGenerating(true);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    } catch (error) {
       toast({
-        title: "Permission Denied",
-        description: "You don't have permission to create defects",
+        title: "Error",
+        description: "Failed to generate PDF. Please try again.",
         variant: "destructive",
       });
-      return;
+    } finally {
+      setIsPdfGenerating(false);
     }
+  }, [toast]);
 
+  const handleAddDefect = () => {
+    console.log('Opening dialog');
     if (assignedVessels.length === 0) {
       toast({
         title: "Error",
@@ -188,24 +211,6 @@ function App() {
   };
 
   const handleSaveDefect = async (updatedDefect) => {
-    if (!userPermissions?.can.update && !updatedDefect.id?.startsWith('temp-')) {
-      toast({
-        title: "Permission Denied",
-        description: "You don't have permission to update defects",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!userPermissions?.can.create && updatedDefect.id?.startsWith('temp-')) {
-      toast({
-        title: "Permission Denied",
-        description: "You don't have permission to create defects",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
       if (!assignedVessels.includes(updatedDefect.vessel_id)) {
         throw new Error("Not authorized for this vessel");
@@ -227,8 +232,7 @@ function App() {
         initial_files: updatedDefect.initial_files || [],
         completion_files: updatedDefect.completion_files || [],
         closure_comments: updatedDefect.closure_comments || null,
-        raised_by: updatedDefect.raised_by || '',
-        external_visibility: updatedDefect.external_visibility || false
+        raised_by: updatedDefect.raised_by || ''
       };
 
       let result;
@@ -279,17 +283,55 @@ function App() {
   };
 
   const handleDeleteDefect = async (defectId) => {
-    if (!userPermissions?.can.delete) {
-      toast({
-        title: "Permission Denied",
-        description: "You don't have permission to delete defects",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
-      // ... rest of delete logic remains the same ...
+      if (!session?.user?.id) {
+        throw new Error("User not authenticated");
+      }
+
+      const defect = data.find(d => d.id === defectId);
+      const hasFiles = (defect?.initial_files?.length || 0) + (defect?.completion_files?.length || 0) > 0;
+      
+      const confirmed = window.confirm(
+        hasFiles 
+          ? "Are you sure you want to delete this defect? This will also delete all associated files."
+          : "Are you sure you want to delete this defect?"
+      );
+      
+      if (!confirmed) return;
+
+      setLoading(true);
+
+      if (hasFiles) {
+        const allFiles = [
+          ...(defect.initial_files || []),
+          ...(defect.completion_files || [])
+        ];
+
+        const { error: storageError } = await supabase.storage
+          .from('defect-files')
+          .remove(allFiles.map(file => file.path));
+
+        if (storageError) throw storageError;
+      }
+
+      const { error } = await supabase
+        .from('defects register')
+        .update({
+          is_deleted: true,
+          deleted_by: session.user.id,
+          deleted_at: new Date().toISOString()
+        })
+        .eq('id', defectId);
+
+      if (error) throw error;
+
+      setData(prevData => prevData.filter(d => d.id !== defectId));
+
+      toast({
+        title: "Defect Deleted",
+        description: "Successfully deleted the defect record",
+      });
+
     } catch (error) {
       console.error("Error deleting defect:", error);
       toast({
@@ -297,6 +339,8 @@ function App() {
         description: error.message || "Failed to delete defect",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -304,7 +348,6 @@ function App() {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      setUserPermissions(null);
     } catch (error) {
       console.error("Error logging out:", error);
       toast({
@@ -315,30 +358,6 @@ function App() {
     }
   };
 
-  const handleGeneratePdf = useCallback(async () => {
-    if (!userPermissions?.can.read) {
-      toast({
-        title: "Permission Denied",
-        description: "You don't have permission to generate reports",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsPdfGenerating(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to generate PDF. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsPdfGenerating(false);
-    }
-  }, [userPermissions, toast]);
-
   const getSelectedVesselsDisplay = () => {
     if (currentVessel.length === 0) return 'All Vessels';
     if (currentVessel.length === 1) {
@@ -346,37 +365,6 @@ function App() {
     }
     return `${currentVessel.length} Vessels Selected`;
   };
-
-  // Get unique raised by options
-  const raisedByOptions = React.useMemo(() => {
-    return [...new Set(data.map(defect => defect.raised_by).filter(Boolean))].sort();
-  }, [data]);
-
-  // Filter data based on all criteria
-  const filteredData = React.useMemo(() => {
-    return data.filter(defect => {
-      const defectDate = new Date(defect['Date Reported']);
-      
-      // Check if defect matches any of the selected filters (or all if none selected)
-      const matchesVessel = currentVessel.length === 0 || currentVessel.includes(defect.vessel_id);
-      const matchesStatus = statusFilter.length === 0 || statusFilter.includes(defect['Status (Vessel)']);
-      const matchesCriticality = criticalityFilter.length === 0 || criticalityFilter.includes(defect.Criticality);
-      const matchesRaisedBy = raisedByFilter.length === 0 || raisedByFilter.includes(defect.raised_by);
-      
-      const matchesSearch = !searchTerm || 
-        Object.values(defect).some(value => 
-          String(value).toLowerCase().includes(searchTerm.toLowerCase())
-        );
-        
-      const matchesDateRange = 
-        (!dateRange.from || defectDate >= new Date(dateRange.from)) &&
-        (!dateRange.to || defectDate <= new Date(dateRange.to));
-  
-      return matchesVessel && matchesStatus && matchesCriticality && 
-             matchesRaisedBy && matchesSearch && matchesDateRange;
-    });
-  }, [data, currentVessel, statusFilter, criticalityFilter, raisedByFilter, 
-      searchTerm, dateRange]);
 
   return (
     <ToastProvider>
@@ -389,8 +377,6 @@ function App() {
               currentVessel={currentVessel}
               onVesselChange={setCurrentVessel}
               onLogout={handleLogout}
-              dateRange={dateRange}
-              onDateRangeChange={setDateRange}
             />
             
             <main className="container mx-auto pt-20">
@@ -400,31 +386,21 @@ function App() {
                 onSearch={setSearchTerm}
                 onFilterStatus={setStatusFilter}
                 onFilterCriticality={setCriticalityFilter}
-                onFilterRaisedBy={setRaisedByFilter}
                 status={statusFilter}
                 criticality={criticalityFilter}
-                raisedBy={raisedByFilter}
-                raisedByOptions={raisedByOptions}
               />
               
               <DefectsTable
                 data={filteredData}
                 onAddDefect={handleAddDefect}
                 onEditDefect={(defect) => {
-                  if (!userPermissions?.can.update) {
-                    toast({
-                      title: "Permission Denied",
-                      description: "You don't have permission to edit defects",
-                      variant: "destructive",
-                    });
-                    return;
-                  }
                   setCurrentDefect(defect);
                   setIsDefectDialogOpen(true);
                 }}
                 onDeleteDefect={handleDeleteDefect}
                 loading={loading}
                 permissions={userPermissions}
+                isExternal={isExternal}
               />
 
               <DefectDialog
@@ -441,6 +417,7 @@ function App() {
                 vessels={vesselNames}
                 isNew={currentDefect?.id?.startsWith('temp-')}
                 permissions={userPermissions}
+                isExternal={isExternal}
               />
 
               <ChatBot 

@@ -5,36 +5,39 @@ const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Get user's role from users table
+// Get user's role
 export const getUserRole = async (userId) => {
   try {
     const { data, error } = await supabase
       .from('users')
-      .select('role')
+      .select('role_id')
       .eq('id', userId)
       .single();
 
     if (error) throw error;
-    return data?.role;
+    return data?.role_id;
   } catch (error) {
     console.error('Error fetching user role:', error);
     throw error;
   }
 };
 
-// Get field permissions for a role
-export const getFieldPermissions = async (roleName) => {
+// Get user's field permissions
+export const getFieldPermissions = async (userRole) => {
   try {
     const { data, error } = await supabase
-      .from('role_field_permissions')
-      .select('field_name')
-      .eq('role_name', roleName);
+      .from('field_permissions')
+      .select('*')
+      .eq('role_name', userRole);
 
     if (error) throw error;
     
-    // Convert to a map of field names
-    return data.reduce((acc, { field_name }) => {
-      acc[field_name] = true;
+    // Transform into an easily accessible format
+    return data.reduce((acc, perm) => {
+      acc[perm.field_name] = {
+        visible: true,
+        editable: true
+      };
       return acc;
     }, {});
   } catch (error) {
@@ -43,19 +46,20 @@ export const getFieldPermissions = async (roleName) => {
   }
 };
 
-// Get action permissions for a role
-export const getActionPermissions = async (roleName) => {
+// Get user's action permissions
+export const getActionPermissions = async (userRole) => {
   try {
     const { data, error } = await supabase
-      .from('action_permissions')
-      .select('action_name')
-      .eq('role_name', roleName);
+      .from('permissions')
+      .select('*')
+      .eq('role', userRole)
+      .eq('resource', 'defects');
 
     if (error) throw error;
-    
-    // Convert to a map of action names
-    return data.reduce((acc, { action_name }) => {
-      acc[action_name] = true;
+
+    // Transform into an easily accessible format
+    return data.reduce((acc, perm) => {
+      acc[perm.action] = true;
       return acc;
     }, {});
   } catch (error) {
@@ -64,42 +68,180 @@ export const getActionPermissions = async (roleName) => {
   }
 };
 
-// Get all permissions for a user (combines all permission checks)
+// Get all user permissions
 export const getUserPermissions = async (userId) => {
   try {
-    // Get user's role
+    // First get user's role
     const userRole = await getUserRole(userId);
     if (!userRole) throw new Error('User role not found');
 
-    // Get permissions in parallel
-    const [fieldPermissions, actionPermissions] = await Promise.all([
-      getFieldPermissions(userRole),
-      getActionPermissions(userRole)
-    ]);
+    // Get field permissions
+    const fieldPermissions = await getFieldPermissions(userRole);
 
-    // Determine if user is external
-    const isExternal = userRole === 'external';
+    // Get action permissions
+    const actionPermissions = await getActionPermissions(userRole);
 
     return {
       role: userRole,
       fieldPermissions,
-      actionPermissions,
-      isExternal,
-      // Map common actions to permissions
-      can: {
-        read: actionPermissions['read'] || false,
-        create: actionPermissions['create'] || false,
-        update: actionPermissions['update'] || false,
-        delete: actionPermissions['delete'] || false
-      }
+      actionPermissions
     };
+
   } catch (error) {
     console.error('Error fetching user permissions:', error);
     throw error;
   }
 };
 
-// Helper to check if a defect is visible to external users
-export const isDefectVisibleToExternal = (defect) => {
-  return defect.external_visibility === true;
+// Check if user is external
+export const isExternalUser = async (userId) => {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('role_id')
+      .eq('id', userId)
+      .single();
+
+    if (error) throw error;
+    return data.role_id === 'external';
+  } catch (error) {
+    console.error('Error checking user role:', error);
+    throw error;
+  }
+};
+
+// Get vessels assigned to user
+export const getUserVessels = async (userId) => {
+  try {
+    const { data, error } = await supabase
+      .from('user_vessels')
+      .select(`
+        vessel_id,
+        vessels!inner (
+          vessel_id,
+          vessel_name
+        )
+      `)
+      .eq('user_id', userId);
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error fetching user vessels:', error);
+    throw error;
+  }
+};
+
+// Check specific permission
+export const checkPermission = async (userId, action, field = null) => {
+  try {
+    const permissions = await getUserPermissions(userId);
+    
+    // Check action permission
+    if (action && !permissions.actionPermissions[action]) {
+      return false;
+    }
+
+    // Check field permission if provided
+    if (field && !permissions.fieldPermissions[field]?.visible) {
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error checking permission:', error);
+    throw error;
+  }
+};
+
+// Get defects based on user permissions
+export const getDefects = async (userId, vesselIds) => {
+  try {
+    const isExternal = await isExternalUser(userId);
+
+    let query = supabase
+      .from('defects register')
+      .select('*')
+      .eq('is_deleted', false)
+      .in('vessel_id', vesselIds)
+      .order('Date Reported', { ascending: false });
+
+    // Add external visibility filter for external users
+    if (isExternal) {
+      query = query.eq('external_visibility', true);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+    return data;
+
+  } catch (error) {
+    console.error('Error fetching defects:', error);
+    throw error;
+  }
+};
+
+// Save defect with permission check
+export const saveDefect = async (userId, defectData, isNew = false) => {
+  try {
+    // Check permissions
+    const canPerformAction = await checkPermission(
+      userId, 
+      isNew ? 'create' : 'update'
+    );
+
+    if (!canPerformAction) {
+      throw new Error('Permission denied');
+    }
+
+    if (isNew) {
+      const { data, error } = await supabase
+        .from('defects register')
+        .insert([defectData])
+        .select('*')
+        .single();
+
+      if (error) throw error;
+      return data;
+    } else {
+      const { data, error } = await supabase
+        .from('defects register')
+        .update(defectData)
+        .eq('id', defectData.id)
+        .select('*')
+        .single();
+
+      if (error) throw error;
+      return data;
+    }
+  } catch (error) {
+    console.error('Error saving defect:', error);
+    throw error;
+  }
+};
+
+// Delete defect with permission check
+export const deleteDefect = async (userId, defectId) => {
+  try {
+    const canDelete = await checkPermission(userId, 'delete');
+    if (!canDelete) {
+      throw new Error('Permission denied');
+    }
+
+    const { error } = await supabase
+      .from('defects register')
+      .update({
+        is_deleted: true,
+        deleted_by: userId,
+        deleted_at: new Date().toISOString()
+      })
+      .eq('id', defectId);
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Error deleting defect:', error);
+    throw error;
+  }
 };
