@@ -481,5 +481,5 @@ const DefectDialog = ({
       </DialogContent>
     </Dialog>
   );
-
+};
 export default DefectDialog;
