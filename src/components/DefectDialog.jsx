@@ -473,6 +473,13 @@ const DefectDialog = ({
                     </div>
                   </div>
                 );
+
+              default:
+                return (
+                  <div key={fieldId} className="text-xs text-white/60">
+                    Unsupported field type: {field.type}
+                  </div>
+                );  
             }
           })}
 
