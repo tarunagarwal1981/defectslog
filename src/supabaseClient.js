@@ -50,7 +50,7 @@ export const getFieldPermissions = async (userRole) => {
 export const getActionPermissions = async (userRole) => {
   try {
     const { data, error } = await supabase
-      .from('permissions')
+      .from('action_permissions')
       .select('*')
       .eq('role', userRole)
       .eq('resource', 'defects');

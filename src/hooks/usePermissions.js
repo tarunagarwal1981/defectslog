@@ -24,7 +24,7 @@ export const usePermissions = (userRole) => {
 
         // Fetch action permissions
         const { data: actionPerms, error: actionError } = await supabase
-          .from('permissions')
+          .from('action_permissions')
           .select('*')
           .eq('role', userRole)
           .eq('resource', 'defects');
