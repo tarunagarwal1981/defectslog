@@ -152,8 +152,8 @@ export const CORE_FIELDS = {
         displayOrder: 11,
         width: 'full',
         rows: 3,
-        conditionalDisplay: (values) => values.status === 'CLOSED',
-        conditionalRequired: (values) => values.status === 'CLOSED'
+        conditionalDisplay: (values) => values?.status === 'CLOSED' || values?.['Status (Vessel)'] === 'CLOSED',
+        conditionalRequired: (values) => values?.status === 'CLOSED' || values?.['Status (Vessel)'] === 'CLOSED'
       },
       initialFiles: {
         id: 'initialFiles',

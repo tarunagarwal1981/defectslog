@@ -58,15 +58,16 @@ const DefectDialog = ({
         if (!isFieldVisible(fieldId)) return false;
         
         // Check conditional display
+        if (field.conditionalDisplay && !defect) return false;
         if (field.conditionalDisplay && !field.conditionalDisplay(defect)) {
           return false;
         }
-
+  
         // External users special handling
         if (isExternal && field.restrictedToInternal) {
           return false;
         }
-
+  
         return true;
       })
       .sort((a, b) => a[1].displayOrder - b[1].displayOrder);
