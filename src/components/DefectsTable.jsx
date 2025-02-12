@@ -249,7 +249,7 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
               return (
                 <td 
                   key={fieldId} 
-                  className={`px-3 py-1.5 sticky left-0 z-10 bg-[#0B1623]`}
+                  className={`px-3 py-1.5 sticky left-0 z-10`}
                 >
                   <button
                     onClick={toggleExpand}
@@ -266,7 +266,7 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
               return (
                 <td 
                   key={fieldId} 
-                  className={`px-3 py-1.5 sticky right-0 z-10 bg-[#0B1623]`}
+                  className={`px-3 py-1.5 sticky right-0 z-10`}
                 >
                   <div className="flex items-center justify-center">
                     <button
