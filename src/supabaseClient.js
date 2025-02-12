@@ -10,12 +10,12 @@ export const getUserRole = async (userId) => {
   try {
     const { data, error } = await supabase
       .from('users')
-      .select('role_id')
+      .select('role')
       .eq('id', userId)
       .single();
 
     if (error) throw error;
-    return data?.role_id;
+    return data?.role;
   } catch (error) {
     console.error('Error fetching user role:', error);
     throw error;
@@ -26,7 +26,7 @@ export const getUserRole = async (userId) => {
 export const getFieldPermissions = async (userRole) => {
   try {
     const { data, error } = await supabase
-      .from('field_permissions')
+      .from('role_field_permissions')
       .select('*')
       .eq('role_name', userRole);
 
@@ -98,12 +98,12 @@ export const isExternalUser = async (userId) => {
   try {
     const { data, error } = await supabase
       .from('users')
-      .select('role_id')
+      .select('role')
       .eq('id', userId)
       .single();
 
     if (error) throw error;
-    return data.role_id === 'external';
+    return data.role === 'external';
   } catch (error) {
     console.error('Error checking user role:', error);
     throw error;
