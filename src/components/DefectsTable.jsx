@@ -10,7 +10,12 @@ import ExportButton from './ui/ExportButton';
 import { exportToCSV } from '../utils/exportToCSV';
 import { supabase } from '../supabaseClient';
 import { toast } from './ui/use-toast';
-
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from './ui/tooltip';
 import { CORE_FIELDS } from '../config/fieldMappings';
 
 const isColumnVisible = (fieldId, permissions) => {
@@ -39,7 +44,20 @@ const getVisibleColumns = (permissions, isExternal) => {
     })
     .sort((a, b) => a[1].priority - b[1].priority);
 };
-
+const CRITICALITY_COLORS = {
+  'High': {
+    bg: 'bg-red-500/20',
+    text: 'text-red-300'
+  },
+  'Medium': {
+    bg: 'bg-yellow-500/20',
+    text: 'text-yellow-300'
+  },
+  'Low': {
+    bg: 'bg-blue-500/20',
+    text: 'text-blue-300'
+  }
+};
 const STATUS_COLORS = {
   'OPEN': {
     bg: 'bg-red-500/20',
@@ -58,7 +76,27 @@ const STATUS_COLORS = {
   }
 };
 
-
+const TruncatedText = ({ text, maxWidth = "max-w-[200px]" }) => {
+  if (!text) return '-';
+  
+  return (
+    <TooltipProvider>
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <div className={`truncate ${maxWidth}`}>
+            {text}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent 
+          side="top" 
+          className="max-w-sm bg-[#132337] text-white border-white/20"
+        >
+          <p className="text-xs">{text}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
 
 // File Viewer Component
 const FileViewer = ({ url, filename, onClose }) => (
@@ -269,7 +307,47 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
                 </span>
               );
               break;
-            // ... rest of the cases ...
+            case 'criticality':
+              content = (
+                <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] 
+                  ${CRITICALITY_COLORS[defect.Criticality]?.bg || 'bg-gray-500/20'} 
+                  ${CRITICALITY_COLORS[defect.Criticality]?.text || 'text-gray-300'}`}
+                >
+                  {defect.Criticality || 'N/A'}
+                </span>
+              );
+              break;
+            case 'equipments':
+              content = <TruncatedText text={defect.Equipments} maxWidth="max-w-[150px]" />;
+              break;
+            case 'description':
+              content = <TruncatedText text={defect.Description} />;
+              break;
+            case 'actionPlanned':
+              content = <TruncatedText text={defect['Action Planned']} />;
+              break;
+            case 'dateReported':
+              content = defect['Date Reported'] 
+                ? new Date(defect['Date Reported']).toLocaleDateString('en-GB') 
+                : '-';
+              break;
+            case 'dateCompleted':
+              content = defect['Date Completed'] 
+                ? new Date(defect['Date Completed']).toLocaleDateString('en-GB') 
+                : '-';
+              break;
+            case 'raisedBy':
+              content = defect.raised_by || '-';
+              break;
+            case 'comments':
+              content = <TruncatedText text={defect.Comments} />;
+              break;
+            case 'closureComments':
+              content = <TruncatedText text={defect.closure_comments} />;
+              break;
+            case 'index':
+              content = index + 1;
+              break;
             default:
               content = defect[field.dbField] || '-';
           }
