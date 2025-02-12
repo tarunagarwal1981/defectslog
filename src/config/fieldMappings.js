@@ -284,7 +284,7 @@ export const CORE_FIELDS = {
         label: 'Actions',
         width: '80px',
         minWidth: '80px',
-        priority: 1,
+        priority: 99,
         isAction: true,
         fixedRight: true
       }
