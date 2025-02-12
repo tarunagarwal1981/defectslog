@@ -16,7 +16,7 @@ export const usePermissions = (userRole) => {
       try {
         // Fetch field permissions
         const { data: fieldPerms, error: fieldError } = await supabase
-          .from('field_permissions')
+          .from('role_field_permissions')
           .select('*')
           .eq('role_name', userRole);
 
