@@ -345,6 +345,15 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
             case 'closureComments':
               content = <TruncatedText text={defect.closure_comments} />;
               break;
+            case 'silentMode':
+              content = (
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] 
+                  ${defect.external_visibility ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}
+                >
+                  {defect.external_visibility ? 'Visible' : 'Hidden'}
+                </span>
+              );
+              break;  
             case 'index':
               content = index + 1;
               break;
