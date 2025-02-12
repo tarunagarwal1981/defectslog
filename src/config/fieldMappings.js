@@ -285,7 +285,7 @@ export const CORE_FIELDS = {
         width: '80px',
         minWidth: '80px',
         priority: 1,
-        isAction: true
+        isAction: true,
         fixedRight: true
       }
     },
