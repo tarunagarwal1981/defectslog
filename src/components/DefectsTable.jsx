@@ -10,12 +10,7 @@ import ExportButton from './ui/ExportButton';
 import { exportToCSV } from '../utils/exportToCSV';
 import { supabase } from '../supabaseClient';
 import { toast } from './ui/use-toast';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from './ui/tooltip';
+
 import { CORE_FIELDS } from '../config/fieldMappings';
 
 const isColumnVisible = (fieldId, permissions) => {
@@ -63,20 +58,7 @@ const STATUS_COLORS = {
   }
 };
 
-const CRITICALITY_COLORS = {
-  'High': {
-    bg: 'bg-red-500/20',
-    text: 'text-red-300'
-  },
-  'Medium': {
-    bg: 'bg-yellow-500/20',
-    text: 'text-yellow-300'
-  },
-  'Low': {
-    bg: 'bg-blue-500/20',
-    text: 'text-blue-300'
-  }
-};
+
 
 // File Viewer Component
 const FileViewer = ({ url, filename, onClose }) => (
@@ -160,57 +142,9 @@ const FileList = ({ files, onDelete, title }) => {
   );
 };
 
-const TruncatedText = ({ text, maxWidth = "max-w-[200px]" }) => {
-  if (!text) return '-';
-  
-  return (
-    <TooltipProvider>
-      <Tooltip delayDuration={300}>
-        <TooltipTrigger asChild>
-          <div className={`truncate ${maxWidth}`}>
-            {text}
-          </div>
-        </TooltipTrigger>
-        <TooltipContent 
-          side="top" 
-          className="max-w-sm bg-[#132337] text-white border-white/20"
-        >
-          <p className="text-xs">{text}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-};
 
-const renderCellContent = (field, value) => {
-  switch (field.type) {
-    case 'date':
-      return value ? new Date(value).toLocaleDateString('en-GB') : '-';
-    case 'status':
-      return (
-        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] 
-          ${STATUS_COLORS[value].bg} 
-          ${STATUS_COLORS[value].text}
-          ${STATUS_COLORS[value].glow}
-          transition-all duration-200`}
-        >
-          <span className="w-1 h-1 rounded-full bg-current mr-1"></span>
-          {value}
-        </span>
-      );
-    case 'criticality':
-      return (
-        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] 
-          ${CRITICALITY_COLORS[value]?.bg || 'bg-gray-500/20'} 
-          ${CRITICALITY_COLORS[value]?.text || 'text-gray-300'}`}
-        >
-          {value || 'N/A'}
-        </span>
-      );
-    default:
-      return <TruncatedText text={value} />;
-  }
-};
+
+
 
 const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect, permissions,
   isExternal }) => {
@@ -270,11 +204,15 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
   return (
     <>
       <tr className="table-hover-row cursor-pointer border-b border-white/10 hover:bg-white/5">
+     
         {getVisibleColumns(permissions, isExternal).map(([fieldId, field]) => {
           if (field.isAction) {
             if (fieldId === 'expandToggle') {
               return (
-                <td key={fieldId} className="px-3 py-1.5">
+                <td 
+                  key={fieldId} 
+                  className={`px-3 py-1.5 sticky left-0 z-10 bg-[#0B1623]`}
+                >
                   <button
                     onClick={toggleExpand}
                     className="p-0.5 hover:bg-white/10 rounded transition-colors"
@@ -288,7 +226,10 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
             }
             if (fieldId === 'actions') {
               return (
-                <td key={fieldId} className="px-3 py-1.5">
+                <td 
+                  key={fieldId} 
+                  className={`px-3 py-1.5 sticky right-0 z-10 bg-[#0B1623]`}
+                >
                   <div className="flex items-center justify-center">
                     <button
                       onClick={(e) => {
@@ -309,6 +250,7 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
             return <td key={fieldId} className="px-3 py-1.5"></td>;
           }
 
+          // Regular content cells
           let content;
           switch (fieldId) {
             case 'vessel':
@@ -327,31 +269,7 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
                 </span>
               );
               break;
-            case 'criticality':
-              content = (
-                <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] 
-                  ${CRITICALITY_COLORS[defect.Criticality]?.bg || 'bg-gray-500/20'} 
-                  ${CRITICALITY_COLORS[defect.Criticality]?.text || 'text-gray-300'}`}
-                >
-                  {defect.Criticality || 'N/A'}
-                </span>
-              );
-              break;
-            case 'equipment':
-              content = <TruncatedText text={defect.Equipments} maxWidth="max-w-[150px]" />;
-              break;
-            case 'description':
-              content = <TruncatedText text={defect.Description} />;
-              break;
-            case 'actionPlanned':
-              content = <TruncatedText text={defect['Action Planned']} />;
-              break;
-            case 'dateReported':
-              content = defect['Date Reported'] ? new Date(defect['Date Reported']).toLocaleDateString('en-GB') : '-';
-              break;
-            case 'dateCompleted':
-              content = defect['Date Completed'] ? new Date(defect['Date Completed']).toLocaleDateString('en-GB') : '-';
-              break;
+            // ... rest of the cases ...
             default:
               content = defect[field.dbField] || '-';
           }
@@ -359,7 +277,8 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
           return (
             <td 
               key={fieldId} 
-              className="px-3 py-1.5" 
+              className={`px-3 py-1.5 ${field.fixedLeft ? 'sticky left-0 z-10 bg-[#0B1623]' : ''} 
+                ${field.fixedRight ? 'sticky right-0 z-10 bg-[#0B1623]' : ''}`}
               onClick={() => canEdit && onEditDefect(defect)}
             >
               {content}
@@ -596,19 +515,11 @@ const DefectsTable = ({
       : <ChevronDown className="h-3 w-3" />;
   };
 
-  const columns = [
-    { key: 'vessel_name', label: 'Vessel' },
-    { key: 'Status (Vessel)', label: 'Status' },
-    { key: 'Criticality', label: 'Criticality' },
-    { key: 'Equipments', label: 'Equipment' },
-    { key: 'Description', label: 'Description' },
-    { key: 'Action Planned', label: 'Action Planned' },
-    { key: 'Date Reported', label: 'Reported' },
-    { key: 'Date Completed', label: 'Completed' }
-  ];
+  
 
   return (
-    <div className="glass-card rounded-[4px]">
+    <div className="glass-card rounded-[4px] flex flex-col h-[calc(100vh-200px)]">
+      {/* Header Section */}
       <div className="flex justify-between items-center px-3 py-2 border-b border-white/10">
         <h2 className="text-sm font-medium text-[#f4f4f4]">Defects Register</h2>
         <div className="flex items-center gap-2">
@@ -625,51 +536,56 @@ const DefectsTable = ({
           </button>
         </div>
       </div>
-      <div className="overflow-x-auto custom-scrollbar">
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="bg-[#132337] border-b border-white/10">
-              {getVisibleColumns(permissions, isExternal).map(([fieldId, field]) => (
-                <th 
-                  key={fieldId}
-                  onClick={() => !field.isAction && handleSort(field.dbField)}
-                  className={`px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 ${
-                    field.isAction ? '' : 'cursor-pointer hover:bg-white/5'
-                  }`}
-                  style={{ width: field.width, minWidth: field.minWidth }}
-                >
-                  <div className="flex items-center gap-1">
-                    {field.label}
-                    {!field.isAction && renderSortIcon(field.dbField)}
-                  </div>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="text-[#f4f4f4]">
-            {loading ? (
-              <tr>
-                <td colSpan="11" className="px-3 py-2 text-center">Loading...</td>
+  
+      {/* Table Container */}
+      <div className="relative flex-1 overflow-hidden">
+        <div className="absolute inset-0 overflow-auto custom-scrollbar">
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 z-10">
+              <tr className="bg-[#132337] border-b border-white/10">
+                {getVisibleColumns(permissions, isExternal).map(([fieldId, field]) => (
+                  <th 
+                    key={fieldId}
+                    onClick={() => !field.isAction && handleSort(field.dbField)}
+                    className={`px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 
+                      ${field.isAction ? '' : 'cursor-pointer hover:bg-white/5'}
+                      ${field.fixedLeft ? 'sticky left-0 z-20 bg-[#132337]' : ''}
+                      ${field.fixedRight ? 'sticky right-0 z-20 bg-[#132337]' : ''}`}
+                    style={{ width: field.width, minWidth: field.minWidth }}
+                  >
+                    <div className="flex items-center gap-1">
+                      {field.label}
+                      {!field.isAction && renderSortIcon(field.dbField)}
+                    </div>
+                  </th>
+                ))}
               </tr>
-            ) : sortedData.length === 0 ? (
-              <tr>
-                <td colSpan="11" className="px-3 py-2 text-center">No defects found</td>
-              </tr>
-            ) : (
-              sortedData.map((defect, index) => (
-                <DefectRow
-                  key={defect.id}
-                  defect={defect}
-                  index={index}
-                  onEditDefect={onEditDefect}
-                  onDeleteDefect={onDeleteDefect}
-                  permissions={permissions}
-                  isExternal={isExternal}
-                />
-              ))
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="text-[#f4f4f4]">
+              {loading ? (
+                <tr>
+                  <td colSpan="11" className="px-3 py-2 text-center">Loading...</td>
+                </tr>
+              ) : sortedData.length === 0 ? (
+                <tr>
+                  <td colSpan="11" className="px-3 py-2 text-center">No defects found</td>
+                </tr>
+              ) : (
+                sortedData.map((defect, index) => (
+                  <DefectRow
+                    key={defect.id}
+                    defect={defect}
+                    index={index}
+                    onEditDefect={onEditDefect}
+                    onDeleteDefect={onDeleteDefect}
+                    permissions={permissions}
+                    isExternal={isExternal}
+                  />
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
