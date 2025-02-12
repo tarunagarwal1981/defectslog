@@ -286,17 +286,19 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
                 </td>
               );
             }
-            if (fieldId === 'actions' && canDelete) {
+            if (fieldId === 'actions') {
               return (
                 <td key={fieldId} className="px-3 py-1.5">
                   <div className="flex items-center justify-center">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        onDeleteDefect(defect.id);
+                        canDelete && onDeleteDefect(defect.id);
                       }}
-                      className="p-1 hover:bg-red-500/20 text-red-400 rounded-full transition-colors"
+                      className={`p-1 text-red-400 rounded-full transition-colors
+                        ${canDelete ? 'hover:bg-red-500/20' : 'opacity-50 cursor-not-allowed'}`}
                       aria-label="Delete defect"
+                      disabled={!canDelete}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -611,16 +613,16 @@ const DefectsTable = ({
         <h2 className="text-sm font-medium text-[#f4f4f4]">Defects Register</h2>
         <div className="flex items-center gap-2">
           <ExportButton onClick={handleExport} />
-          {canPerformAction('create', permissions) && (
-            <button 
-              onClick={onAddDefect}
-              className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-[4px] 
-                text-white bg-[#3BADE5] hover:bg-[#3BADE5]/80 transition-colors"
-            >
-              <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
-              Add Defect
-            </button>
-          )}
+          <button 
+            onClick={onAddDefect}
+            disabled={!canPerformAction('create', permissions)}
+            className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-[4px] 
+              text-white bg-[#3BADE5] transition-colors
+              ${canPerformAction('create', permissions) ? 'hover:bg-[#3BADE5]/80' : 'opacity-50 cursor-not-allowed'}`}
+          >
+            <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
+            Add Defect
+          </button>
         </div>
       </div>
       <div className="overflow-x-auto custom-scrollbar">
