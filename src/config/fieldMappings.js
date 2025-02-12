@@ -43,6 +43,18 @@ export const CORE_FIELDS = {
           "Others"
         ]
       },
+
+      silentMode: {
+        id: 'silentMode',
+        label: 'Silent Mode',
+        dbField: 'external_visibility',
+        type: 'checkbox',
+        required: false,
+        section: 'basic',
+        displayOrder: 3,
+        width: 'full',
+        defaultValue: true,
+      },
       description: {
         id: 'description',
         label: 'Description',
@@ -321,6 +333,12 @@ export const CORE_FIELDS = {
         id: 'raisedBy',
         label: 'Defect Source',
         dbField: 'raised_by',
+        section: 'metadata'
+      },
+      silentMode: {
+        id: 'silentMode',
+        label: 'Silent Mode',
+        dbField: 'external_visibility',
         section: 'metadata'
       }
     }
