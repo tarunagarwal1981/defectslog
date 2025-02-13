@@ -481,7 +481,7 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
                   )}
                   
                   {/* External Visibility indicator */}
-                  {isColumnVisible('silentMode', permissions) && !isExternal && (
+                  {isColumnVisible('silentMode', permissions) && (
                     <div className="text-xs text-white/60">
                       External Visibility: 
                       <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] 
