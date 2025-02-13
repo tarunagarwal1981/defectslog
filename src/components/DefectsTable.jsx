@@ -471,12 +471,25 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
       
               {/* Bottom row with Raised By and Generate Report */}
               <div className="flex justify-between items-center">
-                {/* Raised By info */}
-                {defect.raised_by && (
+                {/* Left section with Raised By and External Visibility */}
+                <div className="flex items-center gap-4">
+                  {/* Raised By info */}
+                  {defect.raised_by && (
+                    <div className="text-xs text-white/60">
+                      Defect Source: <span className="text-white/80">{defect.raised_by}</span>
+                    </div>
+                  )}
+                  
+                  {/* External Visibility indicator */}
                   <div className="text-xs text-white/60">
-                    Defect Source: <span className="text-white/80">{defect.raised_by}</span>
+                    External Visibility: 
+                    <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] 
+                      ${defect.external_visibility ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}
+                    >
+                      {defect.external_visibility ? 'Visible' : 'Hidden'}
+                    </span>
                   </div>
-                )}
+                </div>
 
                 {/* Generate Report Button */}
                 <button
