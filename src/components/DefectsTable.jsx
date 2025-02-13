@@ -403,7 +403,7 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
                   </div>
                 </div>
 
-                <div className="bg-[#0B1623] rounded-md p-3">
+                {/* <div className="bg-[#0B1623] rounded-md p-3">
                   <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Visibility Settings</h4>
                   <div className="text-xs leading-relaxed text-white/90 break-words flex items-center gap-2">
                     <span className="text-white/60">External Visibility:</span>
@@ -413,7 +413,7 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
                       {defect.external_visibility ? 'Visible to External Users' : 'Hidden from External Users'}
                     </span>
                   </div>
-                </div>
+                </div> */}
 
                 {/* Initial Documentation */}
                 <div className="bg-[#0B1623] rounded-md p-3">
