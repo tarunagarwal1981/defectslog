@@ -402,7 +402,19 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
                     {defect.Comments || '-'}
                   </div>
                 </div>
-      
+
+                <div className="bg-[#0B1623] rounded-md p-3">
+                  <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Visibility Settings</h4>
+                  <div className="text-xs leading-relaxed text-white/90 break-words flex items-center gap-2">
+                    <span className="text-white/60">External Visibility:</span>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] 
+                      ${defect.external_visibility ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}
+                    >
+                      {defect.external_visibility ? 'Visible to External Users' : 'Hidden from External Users'}
+                    </span>
+                  </div>
+                </div>
+
                 {/* Initial Documentation */}
                 <div className="bg-[#0B1623] rounded-md p-3">
                   <div className="flex items-center justify-between mb-2">
