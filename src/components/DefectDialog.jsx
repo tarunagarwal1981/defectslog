@@ -12,6 +12,38 @@ import { formatDateForInput, formatDateDisplay } from '../utils/dateUtils';
 import { CORE_FIELDS } from '../config/fieldMappings';
 //import { checkPermission } from '../utils/permissionUtils';
 
+const handleSilentModeChange = async (checked) => {
+  try {
+    // Update local state immediately for responsive UI
+    onChange('external_visibility', !checked); // Note the inversion: checked means hidden
+
+    if (!isNew) {
+      // Update database if this is an existing defect
+      const { error } = await supabase
+        .from('defects register')
+        .update({ external_visibility: !checked })
+        .eq('id', defect.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: `Defect is now ${!checked ? 'visible to' : 'hidden from'} external users`,
+      });
+    }
+  } catch (error) {
+    console.error('Error updating visibility:', error);
+    // Revert local state on error
+    onChange('external_visibility', defect.external_visibility);
+    
+    toast({
+      title: "Error",
+      description: "Failed to update visibility setting",
+      variant: "destructive",
+    });
+  }
+};
+
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 5MB
 const ALLOWED_FILE_TYPES = [
   'image/jpeg',
@@ -345,11 +377,27 @@ const DefectDialog = ({
                       <input
                         type="checkbox"
                         className="h-4 w-4 rounded border-gray-300 text-[#3BADE5] focus:ring-[#3BADE5]"
-                        checked={defect?.[field.dbField] ?? field.defaultValue}
-                        onChange={(e) => onChange(field.dbField, e.target.checked)}
+                        checked={fieldId === 'silentMode' 
+                          ? !defect?.[field.dbField] // Invert for silent mode
+                          : defect?.[field.dbField] ?? field.defaultValue}
+                        onChange={(e) => {
+                          if (fieldId === 'silentMode') {
+                            handleSilentModeChange(e.target.checked);
+                          } else {
+                            onChange(field.dbField, e.target.checked);
+                          }
+                        }}
                         disabled={!isFieldEditable(fieldId)}
+                        id={fieldId}
                       />
-                      <span className="text-xs font-medium text-white/80">{field.label}</span>
+                      <span className="text-xs font-medium text-white/80">
+                        {field.label}
+                        {fieldId === 'silentMode' && (
+                          <span className="ml-2 text-xs text-white/60">
+                            ({!defect?.[field.dbField] ? 'Hidden from external users' : 'Visible to external users'})
+                          </span>
+                        )}
+                      </span>
                     </label>
                   </div>
                 );

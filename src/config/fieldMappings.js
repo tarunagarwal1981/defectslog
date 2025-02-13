@@ -336,11 +336,12 @@ export const CORE_FIELDS = {
         dbField: 'raised_by',
         section: 'metadata'
       },
-      silentMode: {
-        id: 'silentMode',
-        label: 'Silent Mode',
+      'silentMode': {
+        type: 'checkbox',
+        label: 'Silent Mode (Hide from external users)',
         dbField: 'external_visibility',
-        section: 'metadata'
+        displayOrder: 25,
+        defaultValue: true
       }
     }
   };
