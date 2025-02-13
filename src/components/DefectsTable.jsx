@@ -481,14 +481,16 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
                   )}
                   
                   {/* External Visibility indicator */}
-                  <div className="text-xs text-white/60">
-                    External Visibility: 
-                    <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] 
-                      ${defect.external_visibility ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}
-                    >
-                      {defect.external_visibility ? 'Visible' : 'Hidden'}
-                    </span>
-                  </div>
+                  {isColumnVisible('silentMode', permissions) && !isExternal && (
+                    <div className="text-xs text-white/60">
+                      External Visibility: 
+                      <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] 
+                        ${defect.external_visibility ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}
+                      >
+                        {defect.external_visibility ? 'Visible' : 'Hidden'}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Generate Report Button */}
