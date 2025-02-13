@@ -356,32 +356,51 @@ const DefectDialog = ({
               
               
               
-                case 'select':
-                  return (
-                    <div key={fieldId} className="grid gap-1.5">
-                      <label htmlFor={fieldId} className="text-xs font-medium text-white/80">
-                        {field.label} {field.required && <span className="text-red-400">*</span>}
-                      </label>
-                      <select
-                        id={fieldId}
-                        className="flex h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
-                        value={defect?.[field.dbField] || ''}
-                        onChange={(e) => onChange(field.dbField, e.target.value)}
-                        required={field.required}
-                        disabled={!isEditable}
-                        aria-required={field.required}
-                      >
-                        <option value="">Select {field.label}</option>
-                        {field.dbField === 'vessel_id' 
-                          ? Object.entries(vessels).map(([id, name]) => (
-                              <option key={id} value={id}>{name}</option>
-                            ))
-                          : field.options?.map(option => (
-                              <option key={option} value={option}>{option}</option>
-                            ))}
-                      </select>
-                    </div>
-                  );
+              case 'select':
+                return (
+                  <div key={fieldId} className="grid gap-1.5">
+                    <label htmlFor={fieldId} className="text-xs font-medium text-white/80">
+                      {field.label} {field.required && <span className="text-red-400">*</span>}
+                    </label>
+                    <select
+                      id={fieldId}
+                      className="flex h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
+                      value={defect?.[field.dbField] || ''}
+                      onChange={(e) => onChange(field.dbField, e.target.value)}
+                      required={field.required}
+                      disabled={!isEditable}
+                      aria-required={field.required}
+                    >
+                      <option value="">Select {field.label}</option>
+                      {field.dbField === 'vessel_id' 
+                        ? Object.entries(vessels).map(([id, name]) => (
+                            <option key={id} value={id}>{name}</option>
+                          ))
+                        : field.options?.map(option => (
+                            <option key={option} value={option}>{option}</option>
+                          ))}
+                    </select>
+                  </div>
+                );
+
+              case 'textarea':
+                return (
+                  <div key={fieldId} className="grid gap-1.5">
+                    <label htmlFor={fieldId} className="text-xs font-medium text-white/80">
+                      {field.label} {field.required && <span className="text-red-400">*</span>}
+                    </label>
+                    <textarea
+                      id={fieldId}
+                      className="flex h-24 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
+                      value={defect?.[field.dbField] || ''}
+                      onChange={(e) => onChange(field.dbField, e.target.value)}
+                      placeholder={`Enter ${field.label.toLowerCase()}`}
+                      required={field.required}
+                      disabled={!isEditable}
+                      rows={field.rows || 3}
+                    />
+                  </div>
+                );
 
               case 'date':
                 return (
