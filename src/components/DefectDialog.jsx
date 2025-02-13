@@ -12,37 +12,6 @@ import { formatDateForInput, formatDateDisplay } from '../utils/dateUtils';
 import { CORE_FIELDS } from '../config/fieldMappings';
 //import { checkPermission } from '../utils/permissionUtils';
 
-const handleSilentModeChange = async (checked) => {
-  try {
-    // Update local state immediately for responsive UI
-    onChange('external_visibility', !checked); // Note the inversion: checked means hidden
-
-    if (!isNew) {
-      // Update database if this is an existing defect
-      const { error } = await supabase
-        .from('defects register')
-        .update({ external_visibility: !checked })
-        .eq('id', defect.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: `Defect is now ${!checked ? 'visible to' : 'hidden from'} external users`,
-      });
-    }
-  } catch (error) {
-    console.error('Error updating visibility:', error);
-    // Revert local state on error
-    onChange('external_visibility', defect.external_visibility);
-    
-    toast({
-      title: "Error",
-      description: "Failed to update visibility setting",
-      variant: "destructive",
-    });
-  }
-};
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 5MB
 const ALLOWED_FILE_TYPES = [
@@ -75,6 +44,39 @@ const DefectDialog = ({
     if (!permissions?.fieldPermissions) return true;
     return permissions.fieldPermissions[fieldId]?.visible;
   };
+
+  const handleSilentModeChange = async (checked) => {
+    try {
+      // Update local state immediately for responsive UI
+      onChange('external_visibility', !checked); // Note the inversion: checked means hidden
+  
+      if (!isNew) {
+        // Update database if this is an existing defect
+        const { error } = await supabase
+          .from('defects register')
+          .update({ external_visibility: !checked })
+          .eq('id', defect.id);
+  
+        if (error) throw error;
+  
+        toast({
+          title: "Success",
+          description: `Defect is now ${!checked ? 'visible to' : 'hidden from'} external users`,
+        });
+      }
+    } catch (error) {
+      console.error('Error updating visibility:', error);
+      // Revert local state on error
+      onChange('external_visibility', defect.external_visibility);
+      
+      toast({
+        title: "Error",
+        description: "Failed to update visibility setting",
+        variant: "destructive",
+      });
+    }
+  };
+  
 
   // Add this function to check if field is editable
   const isFieldEditable = (fieldId) => {
