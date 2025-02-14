@@ -306,7 +306,7 @@ export const CORE_FIELDS = {
       },
       comments: {
         id: 'comments',
-        label: 'Comments',
+        label: 'Follow-Up',
         dbField: 'Comments',
         section: 'details'
       },

@@ -340,7 +340,7 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
               content = defect.raised_by || '-';
               break;
             case 'comments':
-              content = <TruncatedText text={defect.Comments} />;
+              content = <TruncatedText text={defect.Comments} title="Follow-Up" />;
               break;
             case 'closureComments':
               content = <TruncatedText text={defect.closure_comments} />;
@@ -397,7 +397,7 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
                 </div>
       
                 <div className="bg-[#0B1623] rounded-md p-3">
-                  <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Comments</h4>
+                  <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Follow-Up</h4>
                   <div className="text-xs leading-relaxed text-white/90 break-words">
                     {defect.Comments || '-'}
                   </div>
