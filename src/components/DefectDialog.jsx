@@ -182,8 +182,7 @@ const DefectDialog = ({
         'Date Reported': 'Date Reported',
         'raised_by': 'Defect Source',
         'closure_comments': 'Closure Comments',
-        'Action Planned': 'Action Planned',
-        'comments': 'Follow-Up'
+        'Action Planned': 'Action Planned'
       };
   
       const missingFieldLabels = missing.map(field => fieldLabels[field] || field);
