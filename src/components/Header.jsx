@@ -1,7 +1,6 @@
 import { User, LogOut, ChevronDown, Calendar } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 
-
 const Header = ({ 
   user, 
   vessels = [], 
@@ -81,22 +80,26 @@ const Header = ({
   };
 
   const handleClickOutside = (event) => {
-    // Check if the clicked element is outside of the date picker
-    if (!event.target.closest('.date-picker-container') && !event.target.closest('.date-picker-input')) {
+    if (!event.target.closest('.date-picker-dropdown') && 
+        !event.target.closest('.date-picker-button')) {
       setIsDatePickerOpen(false);
     }
+    if (!event.target.closest('.vessel-dropdown') && 
+        !event.target.closest('.vessel-button')) {
+      setIsVesselDropdownOpen(false);
+    }
+    if (!event.target.closest('.user-dropdown') && 
+        !event.target.closest('.user-button')) {
+      setIsUserDropdownOpen(false);
+    }
   };
-  
-  // Add event listener for clicks
+
   useEffect(() => {
-    document.addEventListener('click', handleClickOutside);
-    
+    document.addEventListener('mousedown', handleClickOutside);
     return () => {
-      document.removeEventListener('click', handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
-
-
 
   return (
     <header className="fixed top-0 left-0 right-0 z-10 bg-background border-b">
@@ -108,7 +111,7 @@ const Header = ({
           {vesselList.length > 0 && (
             <div className="relative">
               <button
-                className="flex items-center space-x-2 bg-background border rounded-md px-2 py-1 text-xs focus:outline-none focus:ring-1 hover:bg-accent/50"
+                className="vessel-button flex items-center space-x-2 bg-background border rounded-md px-2 py-1 text-xs focus:outline-none focus:ring-1 hover:bg-accent/50"
                 onClick={(e) => {
                   e.stopPropagation();
                   setIsVesselDropdownOpen(!isVesselDropdownOpen);
@@ -119,7 +122,7 @@ const Header = ({
               </button>
               
               {isVesselDropdownOpen && (
-                <div className="absolute top-full left-0 mt-1 w-48 bg-background border rounded-md shadow-lg p-1.5 z-20">
+                <div className="vessel-dropdown absolute top-full left-0 mt-1 w-48 bg-background border rounded-md shadow-lg p-1.5 z-50">
                   <div className="text-xs text-muted-foreground px-2 py-0.5">Select Vessels</div>
                   <div className="h-px bg-border my-1" />
                   <div className="max-h-[240px] overflow-y-auto">
@@ -155,7 +158,7 @@ const Header = ({
           {/* Date Range Selector */}
           <div className="relative">
             <button
-              className="flex items-center space-x-2 bg-[#132337] border border-[#3BADE5]/20 rounded-md px-2 py-1 text-xs focus:outline-none focus:ring-1 hover:bg-[#1c3251] hover:border-[#3BADE5]/40"
+              className="date-picker-button flex items-center space-x-2 bg-[#132337] border border-[#3BADE5]/20 rounded-md px-2 py-1 text-xs focus:outline-none focus:ring-1 hover:bg-[#1c3251] hover:border-[#3BADE5]/40"
               onClick={(e) => {
                 e.stopPropagation();
                 setIsDatePickerOpen(!isDatePickerOpen);
@@ -166,7 +169,7 @@ const Header = ({
             </button>
           
             {isDatePickerOpen && (
-              <div className="absolute top-full left-0 mt-1 bg-[#0B1623] border border-[#3BADE5]/20 rounded-md shadow-lg p-2 z-20 w-[280px]">
+              <div className="date-picker-dropdown absolute top-full left-0 mt-1 bg-[#0B1623] border border-[#3BADE5]/20 rounded-md shadow-lg p-2 z-50 w-[280px]">
                 <div className="grid gap-2">
                   <div className="flex gap-2">
                     <div className="grid gap-1">
@@ -175,7 +178,10 @@ const Header = ({
                         type="date"
                         className="w-32 px-1.5 py-0.5 text-xs border rounded-md bg-background"
                         value={dateRange?.from || ''}
-                        onChange={(e) => onDateRangeChange({ ...dateRange, from: e.target.value })}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          onDateRangeChange({ ...dateRange, from: e.target.value });
+                        }}
                       />
                     </div>
                     <div className="grid gap-1">
@@ -184,7 +190,10 @@ const Header = ({
                         type="date"
                         className="w-32 px-1.5 py-0.5 text-xs border rounded-md bg-background"
                         value={dateRange?.to || ''}
-                        onChange={(e) => onDateRangeChange({ ...dateRange, to: e.target.value })}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          onDateRangeChange({ ...dateRange, to: e.target.value });
+                        }}
                         min={dateRange?.from || ''}
                       />
                     </div>
@@ -236,7 +245,7 @@ const Header = ({
         {user && (
           <div className="relative">
             <button
-              className="flex items-center space-x-2 hover:bg-accent rounded-full p-1.5"
+              className="user-button flex items-center space-x-2 hover:bg-accent rounded-full p-1.5"
               onClick={(e) => {
                 e.stopPropagation();
                 setIsUserDropdownOpen(!isUserDropdownOpen);
@@ -247,7 +256,7 @@ const Header = ({
             </button>
 
             {isUserDropdownOpen && (
-              <div className="absolute top-full right-0 mt-1 bg-background border rounded-md shadow-lg z-20">
+              <div className="user-dropdown absolute top-full right-0 mt-1 bg-background border rounded-md shadow-lg z-50">
                 <button
                   onClick={() => {
                     onLogout();
@@ -267,7 +276,7 @@ const Header = ({
       {/* Click outside handlers */}
       {(isVesselDropdownOpen || isDatePickerOpen || isUserDropdownOpen) && (
         <div
-          className="fixed inset-0 z-10"
+          className="fixed inset-0 z-40"
           onClick={handleClickOutside}
         />
       )}
