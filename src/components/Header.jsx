@@ -80,10 +80,21 @@ const Header = ({
   };
 
   const handleClickOutside = (event) => {
-    if (!event.target.closest('.date-picker-container')) {
+    // Check if the clicked element is outside of the date picker
+    if (!event.target.closest('.date-picker-container') && !event.target.closest('.date-picker-input')) {
       setIsDatePickerOpen(false);
     }
   };
+  
+  // Add event listener for clicks
+  useEffect(() => {
+    document.addEventListener('click', handleClickOutside);
+    
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, []);
+
 
 
   return (
