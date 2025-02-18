@@ -80,10 +80,13 @@ const Header = ({
   };
 
   const handleClickOutside = () => {
-    setIsVesselDropdownOpen(false);
-    setIsDatePickerOpen(false);
-    setIsUserDropdownOpen(false);
+    setTimeout(() => {
+      setIsVesselDropdownOpen(false);
+      setIsDatePickerOpen(false);
+      setIsUserDropdownOpen(false);
+    }, 100);
   };
+
 
   return (
     <header className="fixed top-0 left-0 right-0 z-10 bg-background border-b">
