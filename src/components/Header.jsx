@@ -102,15 +102,15 @@ const Header = ({
 
   return (
     <header className="fixed top-0 left-0 right-0 z-10 bg-background border-b">
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+      <div className="container mx-auto px-4 h-12 flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <h1 className="text-xl font-bold">Defects Manager</h1>
+          <h1 className="text-lg font-bold">Defects Manager</h1>
           
           {/* Vessel Selector */}
           {vesselList.length > 0 && (
             <div className="relative" ref={vesselDropdownRef}>
               <button
-                className="flex items-center space-x-2 bg-background border rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 hover:bg-accent/50"
+                className="flex items-center space-x-2 bg-background border rounded-md px-2 py-1 text-xs focus:outline-none focus:ring-2 hover:bg-accent/50"
                 onClick={() => setIsVesselDropdownOpen(!isVesselDropdownOpen)}
               >
                 <span>{getVesselDisplayText()}</span>
@@ -118,18 +118,18 @@ const Header = ({
               </button>
               
               {isVesselDropdownOpen && (
-                <div className="absolute top-full left-0 mt-1 w-56 bg-background border rounded-md shadow-lg">
+                <div className="absolute top-full left-0 mt-1 w-48 bg-background border rounded-md shadow-lg">
                   <div className="p-2">
                     <div className="text-xs text-muted-foreground mb-1">Select Vessels</div>
                     <div className="max-h-[300px] overflow-y-auto">
                       <label className="flex items-center px-2 py-1.5 hover:bg-accent/50 rounded-sm cursor-pointer">
                         <input
                           type="checkbox"
-                          className="mr-2 h-4 w-4 rounded border-gray-300"
+                          className="mr-2 h-3 w-3 rounded border-gray-300"
                           checked={selectedVessels.length === 0}
                           onChange={() => handleVesselToggle('')}
                         />
-                        <span className="text-sm">All Vessels</span>
+                        <span className="text-xs">All Vessels</span>
                       </label>
                       {vesselList.map(([id, name]) => (
                         <label
@@ -164,14 +164,14 @@ const Header = ({
             </button>
           
             {isDatePickerOpen && (
-              <div className="absolute top-full left-0 mt-1 w-[320px] bg-background border rounded-md shadow-lg">
+              <div className="absolute top-full left-0 mt-1 w-[280px] bg-background border rounded-md shadow-lg">
                 <div className="p-3 space-y-3">
                   <div className="flex gap-3">
                     <div className="flex-1 space-y-1">
                       <label className="text-xs text-muted-foreground">From</label>
                       <input
                         type="date"
-                        className="w-full px-2 py-1 text-sm border rounded-md bg-background"
+                        className="w-full px-1.5 py-0.5 text-xs border rounded-md bg-background"
                         value={dateRange?.from || ''}
                         onChange={(e) => onDateRangeChange({ ...dateRange, from: e.target.value })}
                       />
@@ -234,11 +234,11 @@ const Header = ({
         {user && (
           <div className="relative" ref={userDropdownRef}>
             <button
-              className="flex items-center space-x-2 hover:bg-accent rounded-full p-2"
+              className="flex items-center space-x-2 hover:bg-accent rounded-full p-1.5"
               onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
             >
               <User className="h-5 w-5" />
-              <span className="text-sm font-medium">{user.email}</span>
+              <span className="text-xs font-medium">{user.email}</span>
             </button>
 
             {isUserDropdownOpen && (
@@ -248,7 +248,7 @@ const Header = ({
                     onLogout();
                     setIsUserDropdownOpen(false);
                   }}
-                  className="flex items-center space-x-2 w-full px-3 py-2 text-sm text-red-500 hover:bg-accent/50"
+                  className="flex items-center space-x-2 w-full px-3 py-1.5 text-sm text-red-500 hover:bg-accent/50"
                 >
                   <LogOut className="h-4 w-4" />
                   <span>Logout</span>
