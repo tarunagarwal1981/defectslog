@@ -79,13 +79,11 @@ const Header = ({
     return `${dateRange.from} to ${dateRange.to}`;
   };
 
-  const handleClickOutside = () => {
-    setTimeout(() => {
-      setIsVesselDropdownOpen(false);
+  const handleClickOutside = (event) => {
+    if (!event.target.closest('.date-picker-container')) {
       setIsDatePickerOpen(false);
-      setIsUserDropdownOpen(false);
-    }, 10000);
-  };
+    }
+  };;
 
 
   return (
