@@ -10,6 +10,9 @@ import DefectsTable from './components/DefectsTable';
 import DefectDialog from './components/DefectDialog';
 import ChatBot from './components/ChatBot/ChatBot';
 import { supabase } from './supabaseClient';
+import { CORE_FIELDS } from './config/fieldMappings';
+import { getUserPermissions, isExternalUser } from './supabaseClient';
+
 
 const getUserVessels = async (userId) => {
   try {
@@ -34,7 +37,8 @@ const getUserVessels = async (userId) => {
 
 function App() {
   const { toast } = useToast();
-  
+  const [userPermissions, setUserPermissions] = useState(null);
+  const [isExternal, setIsExternal] = useState(false);
   const [session, setSession] = useState(null);
   const [data, setData] = useState([]);
   const [assignedVessels, setAssignedVessels] = useState([]);
@@ -46,9 +50,9 @@ function App() {
   const [currentVessel, setCurrentVessel] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState(['OPEN', 'IN PROGRESS']);
-const [criticalityFilter, setCriticalityFilter] = useState([]); 
-const [raisedByFilter, setRaisedByFilter] = useState([]);
-  
+  const [criticalityFilter, setCriticalityFilter] = useState([]); 
+  const [raisedByFilter, setRaisedByFilter] = useState([]);
+    
   const [isDefectDialogOpen, setIsDefectDialogOpen] = useState(false);
   const [currentDefect, setCurrentDefect] = useState(null);
 
@@ -77,8 +81,18 @@ const [raisedByFilter, setRaisedByFilter] = useState([]);
     try {
       setLoading(true);
       
+      // Fetch permissions first
+      const permissions = await getUserPermissions(session.user.id);
+      setUserPermissions(permissions);
+      
+      // Check if external user
+      const external = await isExternalUser(session.user.id);
+      setIsExternal(external);
+      
+      // Get user's vessels with names
       const userVessels = await getUserVessels(session.user.id);
       
+      // Your existing vessel logic...
       const vesselIds = userVessels.map(v => v.vessel_id);
       const vesselsMap = userVessels.reduce((acc, v) => {
         if (v.vessels) {
@@ -87,12 +101,19 @@ const [raisedByFilter, setRaisedByFilter] = useState([]);
         return acc;
       }, {});
 
-      const { data: defects, error: defectsError } = await supabase
+      // Modify defects query for external users
+      let query = supabase
         .from('defects register')
         .select('*')
-        .eq('is_deleted', false)
         .in('vessel_id', vesselIds)
         .order('Date Reported', { ascending: false });
+
+      // Add external visibility filter for external users
+      if (external) {
+        query = query.eq('external_visibility', true);
+      }
+
+      const { data: defects, error: defectsError } = await query;
 
       if (defectsError) throw defectsError;
 
@@ -124,7 +145,7 @@ const [raisedByFilter, setRaisedByFilter] = useState([]);
 
   const filteredData = React.useMemo(() => {
     return data.filter(defect => {
-      const defectDate = new Date(defect['Date Reported']);
+      
       
       // Check if defect matches any of the selected filters (or all if none selected)
       const matchesVessel = currentVessel.length === 0 || currentVessel.includes(defect.vessel_id);
@@ -137,9 +158,22 @@ const [raisedByFilter, setRaisedByFilter] = useState([]);
           String(value).toLowerCase().includes(searchTerm.toLowerCase())
         );
         
-      const matchesDateRange = 
-        (!dateRange.from || defectDate >= new Date(dateRange.from)) &&
-        (!dateRange.to || defectDate <= new Date(dateRange.to));
+      const matchesDateRange = (() => {
+        if (!dateRange.from && !dateRange.to) return true;
+        
+        const defectDate = new Date(defect['Date Reported']);
+        const fromDate = dateRange.from ? new Date(dateRange.from) : null;
+        const toDate = dateRange.to ? new Date(dateRange.to) : null;
+        
+        if (fromDate && toDate) {
+          return defectDate >= fromDate && defectDate <= toDate;
+        } else if (fromDate) {
+          return defectDate >= fromDate;
+        } else if (toDate) {
+          return defectDate <= toDate;
+        }
+        return true;
+      })();
   
       return matchesVessel && matchesStatus && matchesCriticality && 
              matchesRaisedBy && matchesSearch && matchesDateRange;
@@ -384,12 +418,13 @@ const [raisedByFilter, setRaisedByFilter] = useState([]);
                 }}
                 onDeleteDefect={handleDeleteDefect}
                 loading={loading}
+                permissions={userPermissions}
+                isExternal={isExternal}
               />
 
               <DefectDialog
                 isOpen={isDefectDialogOpen}
                 onClose={() => {
-                  console.log('Closing dialog');
                   setIsDefectDialogOpen(false);
                   setCurrentDefect(null);
                 }}
@@ -400,6 +435,8 @@ const [raisedByFilter, setRaisedByFilter] = useState([]);
                 onSave={handleSaveDefect}
                 vessels={vesselNames}
                 isNew={currentDefect?.id?.startsWith('temp-')}
+                permissions={userPermissions}
+                isExternal={isExternal}
               />
 
               <ChatBot 

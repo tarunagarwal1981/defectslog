@@ -16,8 +16,48 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from './ui/tooltip';
+import { CORE_FIELDS } from '../config/fieldMappings';
 
+const isColumnVisible = (fieldId, permissions) => {
+  if (!permissions?.fieldPermissions) return true;
+  return permissions.fieldPermissions[fieldId]?.visible;
+};
 
+const canPerformAction = (action, permissions) => {
+  if (!permissions?.actionPermissions) return false;
+  return permissions.actionPermissions[action];
+};
+
+const getVisibleColumns = (permissions, isExternal) => {
+  return Object.entries(CORE_FIELDS.TABLE)
+    .filter(([fieldId, field]) => {
+      // Always show action columns
+      if (field.isAction) return true;
+      
+      // Check permission visibility
+      if (!isColumnVisible(fieldId, permissions)) return false;
+      
+      // Handle external user restrictions
+      if (isExternal && field.restrictedToInternal) return false;
+      
+      return true;
+    })
+    .sort((a, b) => a[1].priority - b[1].priority);
+};
+const CRITICALITY_COLORS = {
+  'High': {
+    bg: 'bg-red-500/20',
+    text: 'text-red-300'
+  },
+  'Medium': {
+    bg: 'bg-yellow-500/20',
+    text: 'text-yellow-300'
+  },
+  'Low': {
+    bg: 'bg-blue-500/20',
+    text: 'text-blue-300'
+  }
+};
 const STATUS_COLORS = {
   'OPEN': {
     bg: 'bg-red-500/20',
@@ -36,19 +76,26 @@ const STATUS_COLORS = {
   }
 };
 
-const CRITICALITY_COLORS = {
-  'High': {
-    bg: 'bg-red-500/20',
-    text: 'text-red-300'
-  },
-  'Medium': {
-    bg: 'bg-yellow-500/20',
-    text: 'text-yellow-300'
-  },
-  'Low': {
-    bg: 'bg-blue-500/20',
-    text: 'text-blue-300'
-  }
+const TruncatedText = ({ text, maxWidth = "max-w-[200px]" }) => {
+  if (!text) return '-';
+  
+  return (
+    <TooltipProvider>
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <div className={`truncate ${maxWidth}`}>
+            {text}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent 
+          side="top" 
+          className="max-w-sm bg-[#132337] text-white border-white/20"
+        >
+          <p className="text-xs">{text}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
 };
 
 // File Viewer Component
@@ -133,33 +180,16 @@ const FileList = ({ files, onDelete, title }) => {
   );
 };
 
-const TruncatedText = ({ text, maxWidth = "max-w-[200px]" }) => {
-  if (!text) return '-';
-  
-  return (
-    <TooltipProvider>
-      <Tooltip delayDuration={300}>
-        <TooltipTrigger asChild>
-          <div className={`truncate ${maxWidth}`}>
-            {text}
-          </div>
-        </TooltipTrigger>
-        <TooltipContent 
-          side="top" 
-          className="max-w-sm bg-[#132337] text-white border-white/20"
-        >
-          <p className="text-xs">{text}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-};
 
 
-const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect }) => {
+
+
+const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect, permissions,
+  isExternal }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [defect, setDefect] = useState(initialDefect);
-
+  const canEdit = canPerformAction('update', permissions);
+  const canDelete = canPerformAction('delete', permissions);  
 
   const toggleExpand = (e) => {
     e.stopPropagation();
@@ -212,74 +242,142 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect 
   return (
     <>
       <tr className="table-hover-row cursor-pointer border-b border-white/10 hover:bg-white/5">
-        <td className="px-3 py-1.5">
-          <button
-            onClick={toggleExpand}
-            className="p-0.5 hover:bg-white/10 rounded transition-colors"
-          >
-            <span className={`inline-block transition-transform duration-200 text-[#3BADE5] ${isExpanded ? 'rotate-0' : '-rotate-90'}`}>
-              ▼
-            </span>
-          </button>
-        </td>
-        <td className="px-3 py-1.5">{index + 1}</td>
-        <td className="px-3 py-1.5" onClick={() => onEditDefect(defect)}>
-          {defect.vessel_name}
-        </td>
-        <td className="px-3 py-1.5" onClick={() => onEditDefect(defect)}>
-          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] 
-            ${STATUS_COLORS[defect['Status (Vessel)']].bg} 
-            ${STATUS_COLORS[defect['Status (Vessel)']].text}
-            ${STATUS_COLORS[defect['Status (Vessel)']].glow}
-            transition-all duration-200`}
-          >
-            <span className="w-1 h-1 rounded-full bg-current mr-1"></span>
-            {defect['Status (Vessel)']}
-          </span>
-        </td>
-        <td className="px-3 py-1.5" onClick={() => onEditDefect(defect)}>
-          <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] 
-            ${CRITICALITY_COLORS[defect.Criticality]?.bg || 'bg-gray-500/20'} 
-            ${CRITICALITY_COLORS[defect.Criticality]?.text || 'text-gray-300'}`}
-          >
-            {defect.Criticality || 'N/A'}
-          </span>
-        </td>
-        <td className="px-3 py-1.5" onClick={() => onEditDefect(defect)}>
-          <TruncatedText text={defect.Equipments} maxWidth="max-w-[150px]" />
-        </td>
-        <td className="px-3 py-1.5" onClick={() => onEditDefect(defect)}>
-          <TruncatedText text={defect.Description} />
-        </td>
-        <td className="px-3 py-1.5" onClick={() => onEditDefect(defect)}>
-          <TruncatedText text={defect['Action Planned']} />
-        </td>
-        <td className="px-3 py-1.5" onClick={() => onEditDefect(defect)}>
-          {defect['Date Reported'] ? new Date(defect['Date Reported']).toLocaleDateString('en-GB') : '-'}
-        </td>
-        <td className="px-3 py-1.5" onClick={() => onEditDefect(defect)}>
-          {defect['Date Completed'] ? new Date(defect['Date Completed']).toLocaleDateString('en-GB') : '-'}
-        </td>
-        <td className="px-3 py-1.5">
-          <div className="flex items-center justify-center">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDeleteDefect(defect.id);
-              }}
-              className="p-1 hover:bg-red-500/20 text-red-400 rounded-full transition-colors"
-              aria-label="Delete defect"
+     
+        {getVisibleColumns(permissions, isExternal).map(([fieldId, field]) => {
+          if (field.isAction) {
+            if (fieldId === 'expandToggle') {
+              return (
+                <td 
+                  key={fieldId} 
+                  className={`px-3 py-1.5 sticky left-0 z-10`}
+                >
+                  <button
+                    onClick={toggleExpand}
+                    className="p-0.5 hover:bg-white/10 rounded transition-colors"
+                  >
+                    <span className={`inline-block transition-transform duration-200 text-[#3BADE5] ${isExpanded ? 'rotate-0' : '-rotate-90'}`}>
+                      ▼
+                    </span>
+                  </button>
+                </td>
+              );
+            }
+            if (fieldId === 'actions') {
+              return (
+                <td 
+                  key={fieldId} 
+                  className={`px-3 py-1.5 sticky right-0 z-10`}
+                >
+                  <div className="flex items-center justify-center">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        canDelete && onDeleteDefect(defect.id);
+                      }}
+                      className={`p-1 text-red-400 rounded-full transition-colors
+                        ${canDelete ? 'hover:bg-red-500/20' : 'opacity-50 cursor-not-allowed'}`}
+                      aria-label="Delete defect"
+                      disabled={!canDelete}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </td>
+              );
+            }
+            return <td key={fieldId} className="px-3 py-1.5"></td>;
+          }
+
+          // Regular content cells
+          let content;
+          switch (fieldId) {
+            case 'vessel':
+              content = defect.vessel_name;
+              break;
+            case 'status':
+              content = (
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] 
+                  ${STATUS_COLORS[defect['Status (Vessel)']].bg} 
+                  ${STATUS_COLORS[defect['Status (Vessel)']].text}
+                  ${STATUS_COLORS[defect['Status (Vessel)']].glow}
+                  transition-all duration-200`}
+                >
+                  <span className="w-1 h-1 rounded-full bg-current mr-1"></span>
+                  {defect['Status (Vessel)']}
+                </span>
+              );
+              break;
+            case 'criticality':
+              content = (
+                <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] 
+                  ${CRITICALITY_COLORS[defect.Criticality]?.bg || 'bg-gray-500/20'} 
+                  ${CRITICALITY_COLORS[defect.Criticality]?.text || 'text-gray-300'}`}
+                >
+                  {defect.Criticality || 'N/A'}
+                </span>
+              );
+              break;
+            case 'equipments':
+              content = <TruncatedText text={defect.Equipments} maxWidth="max-w-[150px]" />;
+              break;
+            case 'description':
+              content = <TruncatedText text={defect.Description} />;
+              break;
+            case 'actionPlanned':
+              content = <TruncatedText text={defect['Action Planned']} />;
+              break;
+            case 'dateReported':
+              content = defect['Date Reported'] 
+                ? new Date(defect['Date Reported']).toLocaleDateString('en-GB') 
+                : '-';
+              break;
+            case 'dateCompleted':
+              content = defect['Date Completed'] 
+                ? new Date(defect['Date Completed']).toLocaleDateString('en-GB') 
+                : '-';
+              break;
+            case 'raisedBy':
+              content = defect.raised_by || '-';
+              break;
+            case 'comments':
+              content = <TruncatedText text={defect.Comments} title="Follow-Up" />;
+              break;
+            case 'closureComments':
+              content = <TruncatedText text={defect.closure_comments} />;
+              break;
+            case 'silentMode':
+              content = (
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] 
+                  ${defect.external_visibility ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}
+                >
+                  {defect.external_visibility ? 'Visible' : 'Hidden'}
+                </span>
+              );
+              break;  
+            case 'index':
+              content = index + 1;
+              break;
+            default:
+              content = defect[field.dbField] || '-';
+          }
+
+          return (
+            <td 
+              key={fieldId} 
+              className={`px-3 py-1.5 ${field.fixedLeft ? 'sticky left-0 z-10 bg-[#0B1623]' : ''} 
+                ${field.fixedRight ? 'sticky right-0 z-10 bg-[#0B1623]' : ''}`}
+              onClick={() => canEdit && onEditDefect(defect)}
             >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          </div>
-        </td>
+              {content}
+            </td>
+          );
+        })}
       </tr>
 
      
       {isExpanded && (
         <tr className="bg-[#132337]/50">
-          <td colSpan="11" className="p-4 border-b border-white/10">
+          <td colSpan={getVisibleColumns(permissions, isExternal).length} className="p-4 border-b border-white/10">
             <div className="space-y-4">
               {/* Main Content in 3-column Grid */}
               <div className="grid grid-cols-3 gap-4">
@@ -299,12 +397,24 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect 
                 </div>
       
                 <div className="bg-[#0B1623] rounded-md p-3">
-                  <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Comments</h4>
+                  <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Follow-Up</h4>
                   <div className="text-xs leading-relaxed text-white/90 break-words">
                     {defect.Comments || '-'}
                   </div>
                 </div>
-      
+
+                {/* <div className="bg-[#0B1623] rounded-md p-3">
+                  <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Visibility Settings</h4>
+                  <div className="text-xs leading-relaxed text-white/90 break-words flex items-center gap-2">
+                    <span className="text-white/60">External Visibility:</span>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] 
+                      ${defect.external_visibility ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}
+                    >
+                      {defect.external_visibility ? 'Visible to External Users' : 'Hidden from External Users'}
+                    </span>
+                  </div>
+                </div> */}
+
                 {/* Initial Documentation */}
                 <div className="bg-[#0B1623] rounded-md p-3">
                   <div className="flex items-center justify-between mb-2">
@@ -361,12 +471,27 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect 
       
               {/* Bottom row with Raised By and Generate Report */}
               <div className="flex justify-between items-center">
-                {/* Raised By info */}
-                {defect.raised_by && (
-                  <div className="text-xs text-white/60">
-                    Defect Source: <span className="text-white/80">{defect.raised_by}</span>
-                  </div>
-                )}
+                {/* Left section with Raised By and External Visibility */}
+                <div className="flex items-center gap-4">
+                  {/* Raised By info */}
+                  {defect.raised_by && (
+                    <div className="text-xs text-white/60">
+                      Defect Source: <span className="text-white/80">{defect.raised_by}</span>
+                    </div>
+                  )}
+                  
+                  {/* External Visibility indicator */}
+                  {isColumnVisible('silentMode', permissions) && (
+                    <div className="text-xs text-white/60">
+                      External Visibility: 
+                      <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] 
+                        ${defect.external_visibility ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}
+                      >
+                        {defect.external_visibility ? 'Visible' : 'Hidden'}
+                      </span>
+                    </div>
+                  )}
+                </div>
 
                 {/* Generate Report Button */}
                 <button
@@ -439,7 +564,9 @@ const DefectsTable = ({
   loading,
   searchTerm = '',
   statusFilter = '',
-  criticalityFilter = '' 
+  criticalityFilter = '',
+  permissions, // Add this
+  isExternal  
 }) => {
   const [sortConfig, setSortConfig] = useState({
     key: 'Date Reported',
@@ -447,6 +574,9 @@ const DefectsTable = ({
   });
 
   const handleSort = (key) => {
+    // Only allow sorting on visible columns
+    if (!isColumnVisible(key, permissions)) return;
+  
     setSortConfig(prevConfig => ({
       key,
       direction: prevConfig.key === key 
@@ -499,76 +629,77 @@ const DefectsTable = ({
       : <ChevronDown className="h-3 w-3" />;
   };
 
-  const columns = [
-    { key: 'vessel_name', label: 'Vessel' },
-    { key: 'Status (Vessel)', label: 'Status' },
-    { key: 'Criticality', label: 'Criticality' },
-    { key: 'Equipments', label: 'Equipment' },
-    { key: 'Description', label: 'Description' },
-    { key: 'Action Planned', label: 'Action Planned' },
-    { key: 'Date Reported', label: 'Reported' },
-    { key: 'Date Completed', label: 'Completed' }
-  ];
+  
 
   return (
-    <div className="glass-card rounded-[4px]">
+    <div className="glass-card rounded-[4px] flex flex-col h-[calc(100vh-200px)]">
+      {/* Header Section */}
       <div className="flex justify-between items-center px-3 py-2 border-b border-white/10">
         <h2 className="text-sm font-medium text-[#f4f4f4]">Defects Register</h2>
         <div className="flex items-center gap-2">
           <ExportButton onClick={handleExport} />
           <button 
             onClick={onAddDefect}
-            className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-[4px] 
-              text-white bg-[#3BADE5] hover:bg-[#3BADE5]/80 transition-colors"
+            disabled={!canPerformAction('create', permissions)}
+            className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-[4px] 
+              text-white bg-[#3BADE5] transition-colors
+              ${canPerformAction('create', permissions) ? 'hover:bg-[#3BADE5]/80' : 'opacity-50 cursor-not-allowed'}`}
           >
             <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
             Add Defect
           </button>
         </div>
       </div>
-      <div className="overflow-x-auto custom-scrollbar">
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="bg-[#132337] border-b border-white/10">
-              <th className="px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 w-8"></th>
-              <th className="px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 w-12">#</th>
-              {columns.map(column => (
-                <th 
-                  key={column.key}
-                  onClick={() => handleSort(column.key)}
-                  className="px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 cursor-pointer hover:bg-white/5"
-                >
-                  <div className="flex items-center gap-1">
-                    {column.label}
-                    {renderSortIcon(column.key)}
-                  </div>
-                </th>
-              ))}
-              <th className="px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 w-16">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="text-[#f4f4f4]">
-            {loading ? (
-              <tr>
-                <td colSpan="11" className="px-3 py-2 text-center">Loading...</td>
+  
+      {/* Table Container */}
+      <div className="relative flex-1 overflow-hidden">
+        <div className="absolute inset-0 overflow-auto custom-scrollbar">
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 z-20">
+              <tr className="bg-[#132337] border-b border-white/10">
+                {getVisibleColumns(permissions, isExternal).map(([fieldId, field]) => (
+                  <th 
+                    key={fieldId}
+                    onClick={() => !field.isAction && handleSort(field.dbField)}
+                    className={`px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 
+                      ${field.isAction ? '' : 'cursor-pointer hover:bg-white/5'}
+                      ${field.fixedLeft ? 'sticky left-0 z-10 bg-[#132337]' : ''}
+                      ${field.fixedRight ? 'sticky right-0 z-10 bg-[#132337]' : ''}`}
+                    style={{ width: field.width, minWidth: field.minWidth }}
+                  >
+                    <div className="flex items-center gap-1">
+                      {field.label}
+                      {!field.isAction && renderSortIcon(field.dbField)}
+                    </div>
+                  </th>
+                ))}
               </tr>
-            ) : sortedData.length === 0 ? (
-              <tr>
-                <td colSpan="11" className="px-3 py-2 text-center">No defects found</td>
-              </tr>
-            ) : (
-              sortedData.map((defect, index) => (
-                <DefectRow
-                  key={defect.id}
-                  defect={defect}
-                  index={index}
-                  onEditDefect={onEditDefect}
-                  onDeleteDefect={onDeleteDefect}
-                />
-              ))
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="text-[#f4f4f4]">
+              {loading ? (
+                <tr>
+                  <td colSpan="11" className="px-3 py-2 text-center">Loading...</td>
+                </tr>
+              ) : sortedData.length === 0 ? (
+                <tr>
+                  <td colSpan="11" className="px-3 py-2 text-center">No defects found</td>
+                </tr>
+              ) : (
+                sortedData.map((defect, index) => (
+                  <DefectRow
+                    key={defect.id}
+                    defect={defect}
+                    index={index}
+                    onEditDefect={onEditDefect}
+                    onDeleteDefect={onDeleteDefect}
+                    permissions={permissions}
+                    isExternal={isExternal}
+                  />
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
