@@ -49,6 +49,7 @@ const Header = ({
       from: from.toISOString().split('T')[0],
       to: to.toISOString().split('T')[0]
     });
+    setIsDatePickerOpen(false); // Close the date picker after selection
   };
 
   const handleThisMonth = () => {
@@ -58,6 +59,7 @@ const Header = ({
       from: from.toISOString().split('T')[0],
       to: now.toISOString().split('T')[0]
     });
+    setIsDatePickerOpen(false); // Close the date picker after selection
   };
 
   const handleThisYear = () => {
@@ -67,6 +69,7 @@ const Header = ({
       from: from.toISOString().split('T')[0],
       to: now.toISOString().split('T')[0]
     });
+    setIsDatePickerOpen(false); // Close the date picker after selection
   };
 
   const getDateRangeDisplay = () => {
