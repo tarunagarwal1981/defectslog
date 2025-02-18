@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { User, LogOut, ChevronDown, Calendar } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+
 
 const Header = ({ 
   user, 
