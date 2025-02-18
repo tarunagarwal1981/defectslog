@@ -12,7 +12,7 @@ import ChatBot from './components/ChatBot/ChatBot';
 import { supabase } from './supabaseClient';
 import { CORE_FIELDS } from './config/fieldMappings';
 import { getUserPermissions, isExternalUser } from './supabaseClient';
-const [dateRange, setDateRange] = useState({ from: '', to: '' });
+
 
 const getUserVessels = async (userId) => {
   try {
