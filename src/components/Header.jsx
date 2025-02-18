@@ -164,23 +164,23 @@ const Header = ({
             </button>
           
             {isDatePickerOpen && (
-              <div className="absolute top-full left-0 mt-1 w-[280px] bg-background border rounded-md shadow-lg">
-                <div className="p-3 space-y-3">
-                  <div className="flex gap-3">
-                    <div className="flex-1 space-y-1">
-                      <label className="text-xs text-muted-foreground">From</label>
+              <div className="absolute top-full left-0 mt-1 bg-[#0B1623] border border-[#3BADE5]/20 rounded-md shadow-lg p-2 z-20 w-[280px]">
+                <div className="grid gap-2">
+                  <div className="flex gap-2">
+                    <div className="grid gap-1">
+                      <label className="text-[10px] text-muted-foreground">From</label>
                       <input
                         type="date"
-                        className="w-full px-1.5 py-0.5 text-xs border rounded-md bg-background"
+                        className="w-32 px-1.5 py-0.5 text-xs border rounded-md bg-background"
                         value={dateRange?.from || ''}
                         onChange={(e) => onDateRangeChange({ ...dateRange, from: e.target.value })}
                       />
                     </div>
-                    <div className="flex-1 space-y-1">
-                      <label className="text-xs text-muted-foreground">To</label>
+                    <div className="grid gap-1">
+                      <label className="text-[10px] text-muted-foreground">To</label>
                       <input
                         type="date"
-                        className="w-full px-2 py-1 text-sm border rounded-md bg-background"
+                        className="w-32 px-1.5 py-0.5 text-xs border rounded-md bg-background"
                         value={dateRange?.to || ''}
                         onChange={(e) => onDateRangeChange({ ...dateRange, to: e.target.value })}
                         min={dateRange?.from || ''}
@@ -188,7 +188,7 @@ const Header = ({
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-1">
                     <button
                       onClick={() => handlePresetDateRange(7)}
                       className="px-3 py-1.5 text-sm border rounded-md hover:bg-accent/50"
