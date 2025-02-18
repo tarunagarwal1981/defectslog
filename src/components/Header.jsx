@@ -14,17 +14,10 @@ const Header = ({
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   
-  // Add refs for handling outside clicks
   const vesselDropdownRef = useRef(null);
   const datePickerRef = useRef(null);
   const userDropdownRef = useRef(null);
 
-  const vesselList = Array.isArray(vessels) ? vessels : [];
-  const selectedVessels = Array.isArray(currentVessel) 
-    ? currentVessel 
-    : currentVessel ? [currentVessel] : [];
-
-  // Handle clicks outside dropdowns
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (vesselDropdownRef.current && !vesselDropdownRef.current.contains(event.target)) {
@@ -42,6 +35,11 @@ const Header = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const vesselList = Array.isArray(vessels) ? vessels : [];
+  const selectedVessels = Array.isArray(currentVessel) 
+    ? currentVessel 
+    : currentVessel ? [currentVessel] : [];
+
   const handleVesselToggle = (vesselId) => {
     if (vesselId === '') {
       onVesselChange([]);
@@ -53,6 +51,15 @@ const Header = ({
       : [...selectedVessels, vesselId];
     
     onVesselChange(updatedSelection);
+  };
+
+  const getVesselDisplayText = () => {
+    if (selectedVessels.length === 0) return 'All Vessels';
+    if (selectedVessels.length === 1) {
+      const vesselName = vesselList.find(([id]) => id === selectedVessels[0])?.[1];
+      return vesselName || 'All Vessels';
+    }
+    return `${selectedVessels.length} Vessels Selected`;
   };
 
   const handlePresetDateRange = (days) => {
