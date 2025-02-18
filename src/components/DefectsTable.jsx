@@ -655,7 +655,7 @@ const DefectsTable = ({
       <div className="relative flex-1 overflow-hidden">
         <div className="absolute inset-0 overflow-auto custom-scrollbar">
           <table className="w-full text-xs">
-            <thead className="sticky top-0 z-10">
+            <thead className="sticky top-0 z-20">
               <tr className="bg-[#132337] border-b border-white/10">
                 {getVisibleColumns(permissions, isExternal).map(([fieldId, field]) => (
                   <th 
@@ -663,8 +663,8 @@ const DefectsTable = ({
                     onClick={() => !field.isAction && handleSort(field.dbField)}
                     className={`px-3 py-2 text-left font-semibold text-[#f4f4f4] opacity-90 
                       ${field.isAction ? '' : 'cursor-pointer hover:bg-white/5'}
-                      ${field.fixedLeft ? 'sticky left-0 z-20 bg-[#132337]' : ''}
-                      ${field.fixedRight ? 'sticky right-0 z-20 bg-[#132337]' : ''}`}
+                      ${field.fixedLeft ? 'sticky left-0 z-10 bg-[#132337]' : ''}
+                      ${field.fixedRight ? 'sticky right-0 z-10 bg-[#132337]' : ''}`}
                     style={{ width: field.width, minWidth: field.minWidth }}
                   >
                     <div className="flex items-center gap-1">
