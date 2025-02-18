@@ -138,11 +138,11 @@ const Header = ({
                         >
                           <input
                             type="checkbox"
-                            className="mr-2 h-4 w-4 rounded border-gray-300"
+                            className="mr-2 h-3 w-3"
                             checked={selectedVessels.includes(id)}
                             onChange={() => handleVesselToggle(id)}
                           />
-                          <span className="text-sm">{name}</span>
+                          <span className="text-xs">{name}</span>
                         </label>
                       ))}
                     </div>
@@ -155,7 +155,7 @@ const Header = ({
           {/* Date Range Selector */}
           <div className="relative" ref={datePickerRef}>
             <button
-              className="flex items-center space-x-2 bg-background border rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 hover:bg-accent/50"
+              className="flex items-center space-x-2 bg-[#132337] border border-[#3BADE5]/20 rounded-md px-2 py-1 text-xs focus:outline-none focus:ring-1 hover:bg-[#1c3251] hover:border-[#3BADE5]/40"
               onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}
             >
               <Calendar className="h-4 w-4" />
