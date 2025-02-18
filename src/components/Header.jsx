@@ -84,7 +84,7 @@ const Header = ({
       setIsVesselDropdownOpen(false);
       setIsDatePickerOpen(false);
       setIsUserDropdownOpen(false);
-    }, 1000);
+    }, 10000);
   };
 
 
