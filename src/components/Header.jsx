@@ -191,25 +191,25 @@ const Header = ({
                   <div className="grid grid-cols-2 gap-1">
                     <button
                       onClick={() => handlePresetDateRange(7)}
-                      className="px-3 py-1.5 text-sm border rounded-md hover:bg-accent/50"
+                      className="px-2 py-1 text-xs border rounded-md hover:bg-accent/50"
                     >
                       Last 7 days
                     </button>
                     <button
                       onClick={() => handlePresetDateRange(30)}
-                      className="px-3 py-1.5 text-sm border rounded-md hover:bg-accent/50"
+                      className="px-2 py-1 text-xs border rounded-md hover:bg-accent/50"
                     >
                       Last 30 days
                     </button>
                     <button
                       onClick={handleThisMonth}
-                      className="px-3 py-1.5 text-sm border rounded-md hover:bg-accent/50"
+                      className="px-2 py-1 text-xs border rounded-md hover:bg-accent/50"
                     >
                       This month
                     </button>
                     <button
                       onClick={handleThisYear}
-                      className="px-3 py-1.5 text-sm border rounded-md hover:bg-accent/50"
+                      className="px-2 py-1 text-xs border rounded-md hover:bg-accent/50"
                     >
                       This year
                     </button>
@@ -220,7 +220,7 @@ const Header = ({
                       onDateRangeChange({ from: '', to: '' });
                       setIsDatePickerOpen(false);
                     }}
-                    className="w-full px-3 py-1.5 text-sm border rounded-md hover:bg-accent/50 text-red-500"
+                    className="px-2 py-1 text-xs border rounded-md hover:bg-accent/50 text-red-500"
                   >
                     Clear dates
                   </button>
@@ -237,12 +237,12 @@ const Header = ({
               className="flex items-center space-x-2 hover:bg-accent rounded-full p-1.5"
               onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
             >
-              <User className="h-5 w-5" />
+              <User className="h-4 w-4" />
               <span className="text-xs font-medium">{user.email}</span>
             </button>
 
             {isUserDropdownOpen && (
-              <div className="absolute top-full right-0 mt-1 w-48 bg-background border rounded-md shadow-lg">
+              <div className="absolute top-full right-0 mt-1 bg-background border rounded-md shadow-lg z-20">
                 <button
                   onClick={() => {
                     onLogout();
