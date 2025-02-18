@@ -402,8 +402,11 @@ function App() {
                 onSearch={setSearchTerm}
                 onFilterStatus={setStatusFilter}
                 onFilterCriticality={setCriticalityFilter}
+                onFilterRaisedBy={setRaisedByFilter}
                 status={statusFilter}
                 criticality={criticalityFilter}
+                raisedBy={raisedByFilter}
+                raisedByOptions={raisedByOptions}
               />
               
               <DefectsTable
