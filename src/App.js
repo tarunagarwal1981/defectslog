@@ -391,6 +391,8 @@ function App() {
               currentVessel={currentVessel}
               onVesselChange={setCurrentVessel}
               onLogout={handleLogout}
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
             />
             
             <main className="container mx-auto pt-20">
