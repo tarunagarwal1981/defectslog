@@ -83,7 +83,7 @@ const Header = ({
     if (!event.target.closest('.date-picker-container')) {
       setIsDatePickerOpen(false);
     }
-  };;
+  };
 
 
   return (
