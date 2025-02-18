@@ -12,6 +12,7 @@ import ChatBot from './components/ChatBot/ChatBot';
 import { supabase } from './supabaseClient';
 import { CORE_FIELDS } from './config/fieldMappings';
 import { getUserPermissions, isExternalUser } from './supabaseClient';
+const [dateRange, setDateRange] = useState({ from: '', to: '' });
 
 const getUserVessels = async (userId) => {
   try {
@@ -144,7 +145,7 @@ function App() {
 
   const filteredData = React.useMemo(() => {
     return data.filter(defect => {
-      const defectDate = new Date(defect['Date Reported']);
+      
       
       // Check if defect matches any of the selected filters (or all if none selected)
       const matchesVessel = currentVessel.length === 0 || currentVessel.includes(defect.vessel_id);
@@ -157,9 +158,22 @@ function App() {
           String(value).toLowerCase().includes(searchTerm.toLowerCase())
         );
         
-      const matchesDateRange = 
-        (!dateRange.from || defectDate >= new Date(dateRange.from)) &&
-        (!dateRange.to || defectDate <= new Date(dateRange.to));
+      const matchesDateRange = (() => {
+        if (!dateRange.from && !dateRange.to) return true;
+        
+        const defectDate = new Date(defect['Date Reported']);
+        const fromDate = dateRange.from ? new Date(dateRange.from) : null;
+        const toDate = dateRange.to ? new Date(dateRange.to) : null;
+        
+        if (fromDate && toDate) {
+          return defectDate >= fromDate && defectDate <= toDate;
+        } else if (fromDate) {
+          return defectDate >= fromDate;
+        } else if (toDate) {
+          return defectDate <= toDate;
+        }
+        return true;
+      })();
   
       return matchesVessel && matchesStatus && matchesCriticality && 
              matchesRaisedBy && matchesSearch && matchesDateRange;
