@@ -228,7 +228,7 @@ const DefectDialog = ({
           </div>
         ),
         variant: "subtle",
-        className: "bg-[#132337] border border-[#3BADE5]/20 text-white",
+        className: "bg-[#0A1525] border border-[#3BADE5]/20 text-white",
       });
       return false;
     }
@@ -390,31 +390,29 @@ const DefectDialog = ({
         }}
       >
         <DialogContent 
-          className="max-w-md max-h-[90vh] overflow-hidden bg-[#0B1623] border border-[#3BADE5]/20"
+          className="p-0 max-w-md overflow-hidden bg-[#0A1525]"
           style={{
-            boxShadow: '0 4px 20px rgba(0,0,0,0.5), 0 0 0 1px rgba(59,173,229,0.1), 0 0 15px rgba(59,173,229,0.15) inset'
+            boxShadow: '0 10px 25px rgba(0,0,0,0.3), 0 0 0 1px rgba(59,173,229,0.1)'
           }}
           aria-describedby="dialog-description"
           // This prevents the default closing behavior when clicking outside
           onPointerDownOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
         >
-          <DialogHeader className="border-b border-[#3BADE5]/20 pb-3">
-            <DialogTitle className="text-sm font-medium text-white flex items-center">
-              <span className="inline-block w-1 h-4 bg-gradient-to-b from-[#3BADE5] to-[#3BADE5]/50 rounded-sm mr-2"></span>
-              {isNew ? 'Add New Defect' : 'Edit Defect'}
-            </DialogTitle>
-            <p id="dialog-description" className="text-xs text-white/60 ml-3">
+          <div className="px-4 py-3 border-b border-[#3BADE5]/10 bg-gradient-to-r from-[#0A1525] to-[#0F1E32]">
+            <div className="flex items-center gap-2">
+              <div className="w-1 h-5 bg-[#3BADE5]"></div>
+              <DialogTitle className="text-base font-medium text-white">
+                {isNew ? 'Add New Defect' : 'Edit Defect'}
+              </DialogTitle>
+            </div>
+            <p id="dialog-description" className="text-xs text-white/60 mt-1 ml-3">
               {isNew ? 'Create a new defect record' : 'Edit existing defect details'}
             </p>
-          </DialogHeader>
+          </div>
           
-          <div className="overflow-y-auto custom-scrollbar pr-2 max-h-[calc(90vh-120px)]" 
-               style={{
-                 scrollbarWidth: 'thin',
-                 scrollbarColor: 'rgba(59,173,229,0.3) rgba(11,22,35,0.1)'
-               }}>
-            <div className="grid gap-3 py-3">
+          <div className="max-h-[calc(90vh-120px)] overflow-y-auto custom-scrollbar">
+            <div className="p-4 space-y-4">
               {getVisibleFields().map(([fieldId, field]) => {
                 // Skip fields that should be hidden
                 if (field.conditionalDisplay && !field.conditionalDisplay(defect)) {
@@ -426,12 +424,13 @@ const DefectDialog = ({
                 switch (field.type) {
                   case 'checkbox':
                     return (
-                      <div key={fieldId} className="grid gap-1.5">
-                        <label className="flex items-center space-x-2">
+                      <div key={fieldId} className="flex items-center space-x-2 p-2">
+                        <div className="relative">
                           <input
                             type="checkbox"
-                            className="h-4 w-4 rounded border-gray-300 text-[#3BADE5] focus:ring-[#3BADE5]"
-                            checked={fieldId === 'silentMode' 
+                            id={fieldId}
+                            className="sr-only"
+                            checked={fieldId === 'silentMode'
                               ? !defect?.[field.dbField] // Invert for silent mode
                               : defect?.[field.dbField] ?? field.defaultValue}
                             onChange={(e) => {
@@ -442,30 +441,44 @@ const DefectDialog = ({
                               }
                             }}
                             disabled={!isFieldEditable(fieldId)}
-                            id={fieldId}
                           />
-                          <span className="text-xs font-medium text-white/80">
-                            {field.label}
-                            {fieldId === 'silentMode' && (
-                              <span className="ml-2 text-xs text-white/60">
-                                ({!defect?.[field.dbField] ? 'Hidden from external users' : 'Visible to external users'})
-                              </span>
+                          <div className="h-5 w-5 rounded border border-[#3BADE5]/30 bg-[#0A1525] flex items-center justify-center peer-checked:bg-[#3BADE5] peer-checked:border-[#3BADE5] transition-colors">
+                            {(fieldId === 'silentMode' 
+                              ? !defect?.[field.dbField] 
+                              : defect?.[field.dbField] ?? field.defaultValue) && (
+                              <svg
+                                className="h-3 w-3 text-white"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={3}
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
                             )}
-                          </span>
+                          </div>
+                        </div>
+                        <label htmlFor={fieldId} className="text-sm text-white/90 cursor-pointer select-none">
+                          {field.label}
+                          {fieldId === 'silentMode' && (
+                            <span className="ml-2 text-xs text-white/60 block">
+                              ({!defect?.[field.dbField] ? 'Hidden from external users' : 'Visible to external users'})
+                            </span>
+                          )}
                         </label>
                       </div>
                     );
                   
                   case 'select':
                     return (
-                      <div key={fieldId} className="grid gap-1.5">
-                        <label htmlFor={fieldId} className="text-xs font-medium text-white/80">
-                          {field.label} {field.required && <span className="text-red-400">*</span>}
+                      <div key={fieldId} className="space-y-2">
+                        <label htmlFor={fieldId} className="text-sm font-medium text-white/80 flex items-center">
+                          {field.label} {field.required && <span className="text-red-400 ml-1">*</span>}
                         </label>
                         <div className="relative">
                           <select
                             id={fieldId}
-                            className="flex h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40 appearance-none"
+                            className="w-full h-10 rounded-md border border-[#3BADE5]/20 bg-[#0F1E32] px-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40 transition-colors appearance-none"
                             value={defect?.[field.dbField] || ''}
                             onChange={(e) => onChange(field.dbField, e.target.value)}
                             required={field.required}
@@ -473,7 +486,7 @@ const DefectDialog = ({
                             aria-required={field.required}
                           >
                             <option value="">Select {field.label}</option>
-                            {field.dbField === 'vessel_id' 
+                            {field.dbField === 'vessel_id'
                               ? Object.entries(vessels).map(([id, name]) => (
                                 <option key={id} value={id}>{name}</option>
                               ))
@@ -481,9 +494,9 @@ const DefectDialog = ({
                                 <option key={option} value={option}>{option}</option>
                               ))}
                           </select>
-                          <div className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none text-white/60">
-                            <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                              <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-white/60">
+                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                             </svg>
                           </div>
                         </div>
@@ -492,13 +505,13 @@ const DefectDialog = ({
 
                   case 'textarea':
                     return (
-                      <div key={fieldId} className="grid gap-1.5">
-                        <label htmlFor={fieldId} className="text-xs font-medium text-white/80">
-                          {field.label} {field.required && <span className="text-red-400">*</span>}
+                      <div key={fieldId} className="space-y-2">
+                        <label htmlFor={fieldId} className="text-sm font-medium text-white/80 flex items-center">
+                          {field.label} {field.required && <span className="text-red-400 ml-1">*</span>}
                         </label>
                         <textarea
                           id={fieldId}
-                          className="flex h-24 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
+                          className="w-full rounded-md border border-[#3BADE5]/20 bg-[#0F1E32] px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40 transition-colors resize-none"
                           value={defect?.[field.dbField] || ''}
                           onChange={(e) => onChange(field.dbField, e.target.value)}
                           placeholder={`Enter ${field.label.toLowerCase()}`}
@@ -511,22 +524,22 @@ const DefectDialog = ({
 
                   case 'date':
                     return (
-                      <div key={fieldId} className="grid gap-1.5">
-                        <label htmlFor={fieldId} className="text-xs font-medium text-white/80">
-                          {field.label} {field.required && <span className="text-red-400">*</span>}
+                      <div key={fieldId} className="space-y-2">
+                        <label htmlFor={fieldId} className="text-sm font-medium text-white/80 flex items-center">
+                          {field.label} {field.required && <span className="text-red-400 ml-1">*</span>}
                         </label>
-                        <div className="relative h-8">
+                        <div className="relative">
                           <input
                             id={fieldId}
                             type="date"
-                            className="absolute inset-0 h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-transparent hover:border-[#3BADE5]/40 focus:outline-none focus:ring-1 focus:ring-[#3BADE5] [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:text-white [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer [&::-webkit-calendar-picker-indicator]:hover:opacity-70"
+                            className="w-full h-10 rounded-md border border-[#3BADE5]/20 bg-[#0F1E32] px-3 text-sm text-transparent hover:border-[#3BADE5]/40 focus:outline-none focus:ring-1 focus:ring-[#3BADE5] transition-colors [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:text-white [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer [&::-webkit-calendar-picker-indicator]:hover:opacity-70"
                             value={formatDateForInput(defect?.[field.dbField])}
                             onChange={(e) => onChange(field.dbField, e.target.value)}
                             required={field.required}
                             disabled={!isEditable}
                             aria-required={field.required}
                           />
-                          <div className="absolute inset-0 flex items-center px-2 text-xs text-white pointer-events-none">
+                          <div className="absolute inset-0 flex items-center px-3 text-sm text-white pointer-events-none">
                             {formatDateDisplay(defect?.[field.dbField]) || 'dd/mm/yyyy'}
                           </div>
                         </div>
@@ -535,14 +548,19 @@ const DefectDialog = ({
 
                   case 'file':
                     return (
-                      <div key={fieldId} className="grid gap-1.5">
-                        <label className="text-xs font-medium text-white/80">
+                      <div key={fieldId} className="space-y-2">
+                        <label className="text-sm font-medium text-white/80 flex items-center">
                           {field.label}
                         </label>
-                        <div className="space-y-2">
-                          <label className="flex items-center gap-2 px-3 py-1.5 rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] cursor-pointer hover:border-[#3BADE5]/40 transition-colors">
-                            <Upload className="h-4 w-4 text-[#3BADE5]" />
-                            <span className="text-xs text-white">Upload {field.label} (Max 2MB: PDF, DOC, Images)</span>
+                        <div className="space-y-3">
+                          <label className="flex items-center gap-3 px-4 py-3 rounded-md border border-[#3BADE5]/20 bg-[#0F1E32] cursor-pointer hover:border-[#3BADE5]/40 transition-colors group">
+                            <div className="h-8 w-8 rounded-full bg-[#3BADE5]/10 flex items-center justify-center group-hover:bg-[#3BADE5]/20 transition-colors">
+                              <Upload className="h-4 w-4 text-[#3BADE5]" />
+                            </div>
+                            <div>
+                              <span className="text-sm text-white group-hover:text-white/90 transition-colors">Upload {field.label}</span>
+                              <span className="block text-xs text-white/60">Max 2MB: PDF, DOC, Images</span>
+                            </div>
                             <input
                               type="file"
                               multiple={field.multiple}
@@ -552,34 +570,41 @@ const DefectDialog = ({
                               disabled={!isEditable}
                             />
                           </label>
+
                           {/* Show selected files */}
                           {(fieldId === 'initialFiles' ? initialFiles : closureFiles).length > 0 && (
-                            <div className="space-y-1 bg-[#132337]/50 p-2 rounded-md">
-                              {(fieldId === 'initialFiles' ? initialFiles : closureFiles).map((file, index) => (
-                                <div key={index} className="flex items-center gap-2 text-xs text-white/80">
-                                  <FileText className="h-3.5 w-3.5 text-[#3BADE5]" />
-                                  <span className="truncate flex-1">{file.name}</span>
-                                  <button
-                                    onClick={() => fieldId === 'initialFiles' ? removeInitialFile(index) : removeClosureFile(index)}
-                                    className="p-1 hover:bg-white/10 rounded-full transition-colors"
-                                    disabled={!isEditable}
-                                  >
-                                    <X className="h-3.5 w-3.5 text-red-400" />
-                                  </button>
-                                </div>
-                              ))}
+                            <div className="space-y-2 p-3 rounded-md bg-[#0A1525] border border-[#3BADE5]/10">
+                              <div className="text-xs font-medium text-white/70 mb-2">Selected files:</div>
+                              <div className="space-y-2">
+                                {(fieldId === 'initialFiles' ? initialFiles : closureFiles).map((file, index) => (
+                                  <div key={index} className="flex items-center gap-2 text-sm text-white/80 bg-[#0F1E32]/50 p-2 rounded-md">
+                                    <FileText className="h-3.5 w-3.5 text-[#3BADE5]" />
+                                    <span className="truncate flex-1 text-xs">{file.name}</span>
+                                    <button
+                                      onClick={() => fieldId === 'initialFiles' ? removeInitialFile(index) : removeClosureFile(index)}
+                                      className="p-1 hover:bg-white/10 rounded-full transition-colors"
+                                      disabled={!isEditable}
+                                    >
+                                      <X className="h-3.5 w-3.5 text-red-400" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           )}
+
                           {/* Show existing files */}
                           {defect?.[field.dbField]?.length > 0 && (
-                            <div className="space-y-1 bg-[#132337]/50 p-2 rounded-md mt-2">
-                              <div className="text-xs text-white/60 mb-1">Existing files:</div>
-                              {defect[field.dbField].map((file, index) => (
-                                <div key={index} className="flex items-center gap-2 text-xs text-white/80">
-                                  <FileText className="h-3.5 w-3.5 text-[#3BADE5]" />
-                                  <span className="truncate flex-1">{file.name}</span>
-                                </div>
-                              ))}
+                            <div className="space-y-2 p-3 rounded-md bg-[#0A1525] border border-[#3BADE5]/10">
+                              <div className="text-xs font-medium text-white/70 mb-2">Existing files:</div>
+                              <div className="space-y-2">
+                                {defect[field.dbField].map((file, index) => (
+                                  <div key={index} className="flex items-center gap-2 text-sm text-white/80 bg-[#0F1E32]/50 p-2 rounded-md">
+                                    <FileText className="h-3.5 w-3.5 text-[#3BADE5]" />
+                                    <span className="truncate flex-1 text-xs">{file.name}</span>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           )}
                         </div>
@@ -597,7 +622,7 @@ const DefectDialog = ({
 
               {/* Upload Progress */}
               {uploadProgress > 0 && uploadProgress < 100 && (
-                <div className="w-full bg-[#132337] rounded-full h-1.5 overflow-hidden">
+                <div className="w-full bg-[#0A1525] rounded-full h-1.5 overflow-hidden">
                   <div
                     className="bg-gradient-to-r from-[#3BADE5]/80 to-[#3BADE5] h-1.5 rounded-full transition-all duration-300"
                     style={{ width: `${uploadProgress}%` }}
@@ -607,11 +632,11 @@ const DefectDialog = ({
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-[#3BADE5]/10 mt-2">
+          <div className="flex justify-end gap-2 p-4 border-t border-[#3BADE5]/10 bg-gradient-to-r from-[#0A1525] to-[#0F1E32]">
             <button
               onClick={handleCloseAttempt}
               disabled={saving}
-              className="h-7 px-3 text-xs font-medium rounded-[4px] border border-[#3BADE5]/20 hover:border-[#3BADE5]/40 text-white disabled:opacity-50 transition-colors"
+              className="h-9 px-4 text-sm font-medium rounded-md border border-[#3BADE5]/20 hover:border-[#3BADE5]/40 text-white disabled:opacity-50 transition-colors"
             >
               Cancel
             </button>
@@ -619,9 +644,9 @@ const DefectDialog = ({
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="h-7 px-3 text-xs font-medium rounded-[4px] bg-[#3BADE5] hover:bg-[#3BADE5]/90 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="h-9 px-4 text-sm font-medium rounded-md bg-[#3BADE5] hover:bg-[#3BADE5]/90 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 style={{
-                  boxShadow: '0 2px 5px rgba(59,173,229,0.3), 0 0 0 1px rgba(59,173,229,0.4)'
+                  boxShadow: '0 2px 5px rgba(59,173,229,0.3)'
                 }}
               >
                 {saving ? 'Saving...' : (isNew ? 'Add Defect' : 'Save Changes')}
@@ -634,7 +659,7 @@ const DefectDialog = ({
       {/* Confirmation Dialog */}
       {showConfirmClose && (
         <Dialog open={showConfirmClose} onOpenChange={handleCancelClose}>
-          <DialogContent className="max-w-sm bg-[#0B1623] border border-[#3BADE5]/20">
+          <DialogContent className="max-w-sm bg-[#0A1525] border border-[#3BADE5]/20 shadow-lg">
             <DialogHeader>
               <DialogTitle className="text-sm font-medium text-white">
                 Discard Changes?
@@ -646,13 +671,13 @@ const DefectDialog = ({
             <div className="flex justify-end gap-2 pt-2">
               <button
                 onClick={handleCancelClose}
-                className="h-7 px-3 text-xs font-medium rounded-[4px] border border-[#3BADE5]/20 hover:border-[#3BADE5]/40 text-white"
+                className="h-9 px-4 text-sm font-medium rounded-md border border-[#3BADE5]/20 hover:border-[#3BADE5]/40 text-white"
               >
                 Continue Editing
               </button>
               <button
                 onClick={handleConfirmedClose}
-                className="h-7 px-3 text-xs font-medium rounded-[4px] bg-red-500/80 hover:bg-red-500 text-white"
+                className="h-9 px-4 text-sm font-medium rounded-md bg-red-500/80 hover:bg-red-500 text-white"
               >
                 Discard Changes
               </button>
