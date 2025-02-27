@@ -399,7 +399,7 @@ const DefectDialog = ({
           onPointerDownOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
         >
-          <DialogHeader className="border-b border-[#3BADE5]/20 pb-3">
+          <DialogHeader className="border-b border-[#3BADE5]/20 pb-3 px-2 pt-3">
             <DialogTitle className="text-sm font-medium text-white flex items-center">
               <span className="inline-block w-1 h-4 bg-gradient-to-b from-[#3BADE5] to-[#3BADE5]/50 rounded-sm mr-2"></span>
               {isNew ? 'Add New Defect' : 'Edit Defect'}
