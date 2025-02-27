@@ -375,6 +375,383 @@ const DefectDialog = ({
     }
   };
 
+  import React, { useState } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog';
+import { Upload, FileText, X } from 'lucide-react';
+import { toast } from './ui/use-toast';
+import { supabase } from '../supabaseClient';
+import { formatDateForInput, formatDateDisplay } from '../utils/dateUtils';
+import { CORE_FIELDS } from '../config/fieldMappings';
+
+const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+const ALLOWED_FILE_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+];
+
+const DefectDialog = ({ 
+  isOpen, 
+  onClose, 
+  defect, 
+  onChange, 
+  onSave, 
+  vessels, 
+  isNew,
+  permissions, 
+  isExternal 
+}) => {
+  const [initialFiles, setInitialFiles] = useState([]);
+  const [closureFiles, setClosureFiles] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [showConfirmClose, setShowConfirmClose] = useState(false);
+  
+  // Function to check if field is visible
+  const isFieldVisible = (fieldId) => {
+    if (!permissions?.fieldPermissions) return true;
+    return permissions.fieldPermissions[fieldId]?.visible;
+  };
+
+  // Function to handle silent mode change
+  const handleSilentModeChange = async (checked) => {
+    try {
+      // Update local state immediately for responsive UI
+      onChange('external_visibility', !checked); // Note the inversion: checked means hidden
+  
+      if (!isNew) {
+        // Update database if this is an existing defect
+        const { error } = await supabase
+          .from('defects register')
+          .update({ external_visibility: !checked })
+          .eq('id', defect.id);
+  
+        if (error) throw error;
+  
+        toast({
+          title: "Success",
+          description: `Defect is now ${!checked ? 'visible to' : 'hidden from'} external users`,
+        });
+      }
+    } catch (error) {
+      console.error('Error updating visibility:', error);
+      // Revert local state on error
+      onChange('external_visibility', defect.external_visibility);
+      
+      toast({
+        title: "Error",
+        description: "Failed to update visibility setting",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Function to check if field is editable
+  const isFieldEditable = (fieldId) => {
+    if (!permissions?.actionPermissions) return true;
+    if (isNew) return permissions.actionPermissions['create'];
+    return permissions.actionPermissions['update'];
+  };
+
+  // Function to get visible fields from section
+  const getVisibleFields = () => {
+    return Object.entries(CORE_FIELDS.DIALOG)
+      .filter(([fieldId, field]) => {
+        // Check basic visibility
+        if (!isFieldVisible(fieldId)) return false;
+        
+        // Check conditional display
+        if (field.conditionalDisplay && !defect) return false;
+        if (field.conditionalDisplay && !field.conditionalDisplay(defect)) {
+          return false;
+        }
+      
+        // External users special handling
+        if (isExternal && field.restrictedToInternal) {
+          return false;
+        }
+      
+        return true;
+      })
+      .sort((a, b) => a[1].displayOrder - b[1].displayOrder);
+  };
+
+  // Function to check if save should be enabled
+  const canSave = () => {
+    if (!permissions?.actionPermissions) return false;
+    return isNew ? 
+      permissions.actionPermissions['create'] : 
+      permissions.actionPermissions['update'];
+  };
+
+  // Handle dialog close attempt
+  const handleCloseAttempt = () => {
+    // If there are unsaved changes, show confirmation dialog
+    if (initialFiles.length > 0 || closureFiles.length > 0 || hasFormChanges()) {
+      setShowConfirmClose(true);
+    } else {
+      // No changes, close directly
+      onClose();
+    }
+  };
+
+  // Function to check if form has changes
+  const hasFormChanges = () => {
+    // Add logic to check if any fields were modified
+    // This is a simple example - you may need more complex comparison
+    return initialFiles.length > 0 || closureFiles.length > 0;
+  };
+
+  // Handle confirmed close
+  const handleConfirmedClose = () => {
+    setShowConfirmClose(false);
+    onClose();
+  };
+
+  // Cancel close attempt
+  const handleCancelClose = () => {
+    setShowConfirmClose(false);
+  };
+
+  const validateDefect = (defectData) => {
+    // Check dates logic
+    if (defectData['Date Completed'] && defectData['Date Reported']) {
+      const closureDate = new Date(defectData['Date Completed']);
+      const reportedDate = new Date(defectData['Date Reported']);
+      
+      if (closureDate < reportedDate) {
+        toast({
+          title: "Invalid Date",
+          description: "Closure date cannot be before the reported date",
+          variant: "destructive",
+        });
+        return false;
+      }
+    }
+  
+    // Get visible fields and their requirements
+    const visibleFields = Object.entries(CORE_FIELDS.DIALOG)
+      .filter(([fieldId, field]) => {
+        if (!isFieldVisible(fieldId)) return false;
+        
+        // Check conditional display
+        if (field.conditionalDisplay && !field.conditionalDisplay(defectData)) {
+          return false;
+        }
+        return true;
+      })
+      .filter(([_, field]) => {
+        // Check if field is required
+        if (field.required) return true;
+        if (field.conditionalRequired && field.conditionalRequired(defectData)) {
+          return true;
+        }
+        return false;
+      })
+      .map(([_, field]) => {
+        return field.dbField;
+      });
+  
+    // Add specific requirements for CLOSED status
+    if (defectData['Status (Vessel)'] === 'CLOSED') {
+      if (!defectData['Date Completed']) {
+        toast({
+          title: "Required Field Missing",
+          description: "Please enter Date Completed for closed defects",
+          variant: "destructive",
+        });
+        return false;
+      }
+      visibleFields.push('closure_comments');
+    }
+  
+    // Check for missing required fields
+    const missing = visibleFields.filter(field => !defectData[field]);
+    
+    if (missing.length > 0) {
+      // Map field names to more readable labels
+      const fieldLabels = {
+        'vessel_id': 'Vessel',
+        'Equipments': 'Equipment',
+        'Description': 'Description',
+        'Status (Vessel)': 'Status',
+        'Criticality': 'Criticality',
+        'Date Reported': 'Date Reported',
+        'raised_by': 'Defect Source',
+        'closure_comments': 'Closure Comments',
+        'Action Planned': 'Action Planned'
+      };
+  
+      const missingFieldLabels = missing.map(field => fieldLabels[field] || field);
+      
+      toast({
+        title: "Missing Information",
+        description: (
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Please fill in the following fields:</p>
+            <ul className="list-disc pl-4 text-sm space-y-1">
+              {missingFieldLabels.map((field, index) => (
+                <li key={index} className="text-sm opacity-90">{field}</li>
+              ))}
+            </ul>
+          </div>
+        ),
+        variant: "subtle",
+        className: "bg-[#132337] border border-[#3BADE5]/20 text-white",
+      });
+      return false;
+    }
+    return true;
+  };
+
+  const validateFile = (file) => {
+    if (file.size > MAX_FILE_SIZE) {
+      toast({
+        title: "File Too Large",
+        description: `${file.name} exceeds 2MB limit`,
+        variant: "destructive",
+      });
+      return false;
+    }
+    
+    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+      toast({
+        title: "Invalid File Type",
+        description: `${file.name} is not a supported file type`,
+        variant: "destructive",
+      });
+      return false;
+    }
+    
+    return true;
+  };
+
+  const uploadFiles = async (files, defectId, type = 'initial') => {
+    const uploadedFiles = [];
+    let progress = 0;
+    
+    for (const file of files) {
+      if (!validateFile(file)) continue;
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${defectId}/${type}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      
+      try {
+        const { error: uploadError } = await supabase.storage
+          .from('defect-files')
+          .upload(fileName, file);
+
+        if (uploadError) throw uploadError;
+
+        uploadedFiles.push({
+          name: file.name,
+          path: fileName,
+          type: file.type,
+          size: file.size,
+          uploadedAt: new Date().toISOString()
+        });
+
+        progress += (1 / files.length) * 100;
+        setUploadProgress(Math.round(progress));
+
+      } catch (error) {
+        console.error(`Error uploading ${file.name}:`, error);
+        toast({
+          title: "Upload Failed",
+          description: `Failed to upload ${file.name}`,
+          variant: "destructive",
+        });
+      }
+    }
+
+    return uploadedFiles;
+  };
+
+  const handleInitialFileChange = (e) => {
+    const selectedFiles = Array.from(e.target.files);
+    setInitialFiles(prevFiles => [...prevFiles, ...selectedFiles]);
+  };
+
+  const handleClosureFileChange = (e) => {
+    const selectedFiles = Array.from(e.target.files);
+    setClosureFiles(prevFiles => [...prevFiles, ...selectedFiles]);
+  };
+
+  const removeInitialFile = (index) => {
+    setInitialFiles(prevFiles => prevFiles.filter((_, i) => i !== index));
+  };
+
+  const removeClosureFile = (index) => {
+    setClosureFiles(prevFiles => prevFiles.filter((_, i) => i !== index));
+  };
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      setUploadProgress(0);
+    
+      // Set default value for external_visibility if not set
+      const updatedDefectData = {
+        ...defect,
+        external_visibility: defect.external_visibility ?? true
+      };
+    
+      if (!validateDefect(updatedDefectData)) {
+        setSaving(false);
+        return;
+      }
+    
+      // Upload files if any
+      let uploadedInitialFiles = [];
+      let uploadedClosureFiles = [];
+    
+      if (initialFiles.length > 0) {
+        uploadedInitialFiles = await uploadFiles(initialFiles, updatedDefectData.id || 'temp', 'initial');
+      }
+    
+      if (closureFiles.length > 0 && updatedDefectData['Status (Vessel)'] === 'CLOSED') {
+        uploadedClosureFiles = await uploadFiles(closureFiles, updatedDefectData.id || 'temp', 'closure');
+      }
+    
+      // Combine existing and new files
+      const finalDefect = {
+        ...updatedDefectData,
+        initial_files: [
+          ...(updatedDefectData.initial_files || []),
+          ...uploadedInitialFiles
+        ],
+        completion_files: [
+          ...(updatedDefectData.completion_files || []),
+          ...uploadedClosureFiles
+        ],
+        closure_comments: updatedDefectData.closure_comments || ''
+      };
+    
+      await onSave(finalDefect);
+      setInitialFiles([]);
+      setClosureFiles([]);
+      setUploadProgress(0);
+      
+    } catch (error) {
+      console.error('Error in DefectDialog save:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save defect. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <>
       {/* Main Dialog */}
@@ -663,5 +1040,7 @@ const DefectDialog = ({
     </>
   );
 };
+
+export default DefectDialog;
 
 export default DefectDialog;
