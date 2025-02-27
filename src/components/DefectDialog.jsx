@@ -390,7 +390,7 @@ const DefectDialog = ({
         }}
       >
         <DialogContent 
-          className="max-w-md max-h-[90vh] overflow-hidden bg-[#0B1623] border border-[#3BADE5]/20"
+          className="max-w-md max-h-[90vh] overflow-hidden bg-[#0B1623] border border-[#3BADE5]/20 p-0"
           style={{
             boxShadow: '0 4px 20px rgba(0,0,0,0.5), 0 0 0 1px rgba(59,173,229,0.1), 0 0 15px rgba(59,173,229,0.15) inset'
           }}
@@ -409,7 +409,7 @@ const DefectDialog = ({
             </p>
           </DialogHeader>
           
-          <div className="overflow-y-auto custom-scrollbar pr-2 max-h-[calc(90vh-120px)]" 
+          <div className="overflow-y-auto custom-scrollbar px-3 py-3 max-h-[calc(90vh-140px)]"
                style={{
                  scrollbarWidth: 'thin',
                  scrollbarColor: 'rgba(59,173,229,0.3) rgba(11,22,35,0.1)'
