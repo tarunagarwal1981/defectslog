@@ -390,9 +390,9 @@ const DefectDialog = ({
         }}
       >
         <DialogContent 
-          className="max-w-md max-h-[90vh] overflow-y-auto bg-gradient-to-br from-[#0B1623] to-[#132337] border border-[#3BADE5]/10 shadow-lg"
+          className="max-w-md max-h-[90vh] overflow-hidden bg-[#0B1623] border border-[#3BADE5]/20"
           style={{
-            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.3), 0 0 15px rgba(59, 173, 229, 0.15)'
+            boxShadow: '0 4px 20px rgba(0,0,0,0.5), 0 0 0 1px rgba(59,173,229,0.1), 0 0 15px rgba(59,173,229,0.15) inset'
           }}
           aria-describedby="dialog-description"
           // This prevents the default closing behavior when clicking outside
@@ -409,196 +409,209 @@ const DefectDialog = ({
             </p>
           </DialogHeader>
           
-          <div className="grid gap-3 py-3">
-            {getVisibleFields().map(([fieldId, field]) => {
-              // Skip fields that should be hidden
-              if (field.conditionalDisplay && !field.conditionalDisplay(defect)) {
-                return null;
-              }
+          <div className="overflow-y-auto custom-scrollbar pr-2 max-h-[calc(90vh-120px)]" 
+               style={{
+                 scrollbarWidth: 'thin',
+                 scrollbarColor: 'rgba(59,173,229,0.3) rgba(11,22,35,0.1)'
+               }}>
+            <div className="grid gap-3 py-3">
+              {getVisibleFields().map(([fieldId, field]) => {
+                // Skip fields that should be hidden
+                if (field.conditionalDisplay && !field.conditionalDisplay(defect)) {
+                  return null;
+                }
 
-              const isEditable = isFieldEditable(fieldId);
+                const isEditable = isFieldEditable(fieldId);
 
-              switch (field.type) {
-                case 'checkbox':
-                  return (
-                    <div key={fieldId} className="grid gap-1.5">
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4 rounded border-gray-300 text-[#3BADE5] focus:ring-[#3BADE5]"
-                          checked={fieldId === 'silentMode' 
-                            ? !defect?.[field.dbField] // Invert for silent mode
-                            : defect?.[field.dbField] ?? field.defaultValue}
-                          onChange={(e) => {
-                            if (fieldId === 'silentMode') {
-                              handleSilentModeChange(e.target.checked);
-                            } else {
-                              onChange(field.dbField, e.target.checked);
-                            }
-                          }}
-                          disabled={!isFieldEditable(fieldId)}
-                          id={fieldId}
-                        />
-                        <span className="text-xs font-medium text-white/80">
-                          {field.label}
-                          {fieldId === 'silentMode' && (
-                            <span className="ml-2 text-xs text-white/60">
-                              ({!defect?.[field.dbField] ? 'Hidden from external users' : 'Visible to external users'})
-                            </span>
-                          )}
-                        </span>
-                      </label>
-                    </div>
-                  );
-                
-                case 'select':
-                  return (
-                    <div key={fieldId} className="grid gap-1.5">
-                      <label htmlFor={fieldId} className="text-xs font-medium text-white/80">
-                        {field.label} {field.required && <span className="text-red-400">*</span>}
-                      </label>
-                      <select
-                        id={fieldId}
-                        className="flex h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
-                        value={defect?.[field.dbField] || ''}
-                        onChange={(e) => onChange(field.dbField, e.target.value)}
-                        required={field.required}
-                        disabled={!isEditable}
-                        aria-required={field.required}
-                      >
-                        <option value="">Select {field.label}</option>
-                        {field.dbField === 'vessel_id' 
-                          ? Object.entries(vessels).map(([id, name]) => (
-                            <option key={id} value={id}>{name}</option>
-                          ))
-                          : field.options?.map(option => (
-                            <option key={option} value={option}>{option}</option>
-                          ))}
-                      </select>
-                    </div>
-                  );
-
-                case 'textarea':
-                  return (
-                    <div key={fieldId} className="grid gap-1.5">
-                      <label htmlFor={fieldId} className="text-xs font-medium text-white/80">
-                        {field.label} {field.required && <span className="text-red-400">*</span>}
-                      </label>
-                      <textarea
-                        id={fieldId}
-                        className="flex h-24 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
-                        value={defect?.[field.dbField] || ''}
-                        onChange={(e) => onChange(field.dbField, e.target.value)}
-                        placeholder={`Enter ${field.label.toLowerCase()}`}
-                        required={field.required}
-                        disabled={!isEditable}
-                        rows={field.rows || 3}
-                      />
-                    </div>
-                  );
-
-                case 'date':
-                  return (
-                    <div key={fieldId} className="grid gap-1.5">
-                      <label htmlFor={fieldId} className="text-xs font-medium text-white/80">
-                        {field.label} {field.required && <span className="text-red-400">*</span>}
-                      </label>
-                      <div className="relative h-8">
-                        <input
-                          id={fieldId}
-                          type="date"
-                          className="absolute inset-0 h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-transparent hover:border-[#3BADE5]/40 focus:outline-none focus:ring-1 focus:ring-[#3BADE5] [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:text-white [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer [&::-webkit-calendar-picker-indicator]:hover:opacity-70"
-                          value={formatDateForInput(defect?.[field.dbField])}
-                          onChange={(e) => onChange(field.dbField, e.target.value)}
-                          required={field.required}
-                          disabled={!isEditable}
-                          aria-required={field.required}
-                        />
-                        <div className="absolute inset-0 flex items-center px-2 text-xs text-white pointer-events-none">
-                          {formatDateDisplay(defect?.[field.dbField]) || 'dd/mm/yyyy'}
+                switch (field.type) {
+                  case 'checkbox':
+                    return (
+                      <div key={fieldId} className="grid gap-1.5">
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-gray-300 text-[#3BADE5] focus:ring-[#3BADE5]"
+                            checked={fieldId === 'silentMode' 
+                              ? !defect?.[field.dbField] // Invert for silent mode
+                              : defect?.[field.dbField] ?? field.defaultValue}
+                            onChange={(e) => {
+                              if (fieldId === 'silentMode') {
+                                handleSilentModeChange(e.target.checked);
+                              } else {
+                                onChange(field.dbField, e.target.checked);
+                              }
+                            }}
+                            disabled={!isFieldEditable(fieldId)}
+                            id={fieldId}
+                          />
+                          <span className="text-xs font-medium text-white/80">
+                            {field.label}
+                            {fieldId === 'silentMode' && (
+                              <span className="ml-2 text-xs text-white/60">
+                                ({!defect?.[field.dbField] ? 'Hidden from external users' : 'Visible to external users'})
+                              </span>
+                            )}
+                          </span>
+                        </label>
+                      </div>
+                    );
+                  
+                  case 'select':
+                    return (
+                      <div key={fieldId} className="grid gap-1.5">
+                        <label htmlFor={fieldId} className="text-xs font-medium text-white/80">
+                          {field.label} {field.required && <span className="text-red-400">*</span>}
+                        </label>
+                        <div className="relative">
+                          <select
+                            id={fieldId}
+                            className="flex h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40 appearance-none"
+                            value={defect?.[field.dbField] || ''}
+                            onChange={(e) => onChange(field.dbField, e.target.value)}
+                            required={field.required}
+                            disabled={!isEditable}
+                            aria-required={field.required}
+                          >
+                            <option value="">Select {field.label}</option>
+                            {field.dbField === 'vessel_id' 
+                              ? Object.entries(vessels).map(([id, name]) => (
+                                <option key={id} value={id}>{name}</option>
+                              ))
+                              : field.options?.map(option => (
+                                <option key={option} value={option}>{option}</option>
+                              ))}
+                          </select>
+                          <div className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none text-white/60">
+                            <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
+                    );
 
-                case 'file':
-                  return (
-                    <div key={fieldId} className="grid gap-1.5">
-                      <label className="text-xs font-medium text-white/80">
-                        {field.label}
-                      </label>
-                      <div className="space-y-2">
-                        <label className="flex items-center gap-2 px-3 py-1.5 rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] cursor-pointer hover:border-[#3BADE5]/40">
-                          <Upload className="h-4 w-4 text-white" />
-                          <span className="text-xs text-white">Upload {field.label} (Max 2MB: PDF, DOC, Images)</span>
-                          <input
-                            type="file"
-                            multiple={field.multiple}
-                            className="hidden"
-                            onChange={fieldId === 'initialFiles' ? handleInitialFileChange : handleClosureFileChange}
-                            accept={field.accept}
-                            disabled={!isEditable}
-                          />
+                  case 'textarea':
+                    return (
+                      <div key={fieldId} className="grid gap-1.5">
+                        <label htmlFor={fieldId} className="text-xs font-medium text-white/80">
+                          {field.label} {field.required && <span className="text-red-400">*</span>}
                         </label>
-                        {/* Show selected files */}
-                        {(fieldId === 'initialFiles' ? initialFiles : closureFiles).length > 0 && (
-                          <div className="space-y-1">
-                            {(fieldId === 'initialFiles' ? initialFiles : closureFiles).map((file, index) => (
-                              <div key={index} className="flex items-center gap-2 text-xs text-white/80">
-                                <FileText className="h-3.5 w-3.5" />
-                                <span className="truncate flex-1">{file.name}</span>
-                                <button
-                                  onClick={() => fieldId === 'initialFiles' ? removeInitialFile(index) : removeClosureFile(index)}
-                                  className="p-1 hover:bg-white/10 rounded-full"
-                                  disabled={!isEditable}
-                                >
-                                  <X className="h-3.5 w-3.5" />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        {/* Show existing files */}
-                        {defect?.[field.dbField]?.length > 0 && (
-                          <div className="space-y-1 mt-2">
-                            <div className="text-xs text-white/60">Existing files:</div>
-                            {defect[field.dbField].map((file, index) => (
-                              <div key={index} className="flex items-center gap-2 text-xs text-white/80">
-                                <FileText className="h-3.5 w-3.5" />
-                                <span className="truncate flex-1">{file.name}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                        <textarea
+                          id={fieldId}
+                          className="flex h-24 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40"
+                          value={defect?.[field.dbField] || ''}
+                          onChange={(e) => onChange(field.dbField, e.target.value)}
+                          placeholder={`Enter ${field.label.toLowerCase()}`}
+                          required={field.required}
+                          disabled={!isEditable}
+                          rows={field.rows || 3}
+                        />
                       </div>
-                    </div>
-                  );
+                    );
 
-                default:
-                  return (
-                    <div key={fieldId} className="text-xs text-white/60">
-                      Unsupported field type: {field.type}
-                    </div>
-                  );  
-              }
-            })}
+                  case 'date':
+                    return (
+                      <div key={fieldId} className="grid gap-1.5">
+                        <label htmlFor={fieldId} className="text-xs font-medium text-white/80">
+                          {field.label} {field.required && <span className="text-red-400">*</span>}
+                        </label>
+                        <div className="relative h-8">
+                          <input
+                            id={fieldId}
+                            type="date"
+                            className="absolute inset-0 h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-transparent hover:border-[#3BADE5]/40 focus:outline-none focus:ring-1 focus:ring-[#3BADE5] [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:text-white [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer [&::-webkit-calendar-picker-indicator]:hover:opacity-70"
+                            value={formatDateForInput(defect?.[field.dbField])}
+                            onChange={(e) => onChange(field.dbField, e.target.value)}
+                            required={field.required}
+                            disabled={!isEditable}
+                            aria-required={field.required}
+                          />
+                          <div className="absolute inset-0 flex items-center px-2 text-xs text-white pointer-events-none">
+                            {formatDateDisplay(defect?.[field.dbField]) || 'dd/mm/yyyy'}
+                          </div>
+                        </div>
+                      </div>
+                    );
 
-            {/* Upload Progress */}
-            {uploadProgress > 0 && uploadProgress < 100 && (
-              <div className="w-full bg-[#132337] rounded-full h-1.5">
-                <div
-                  className="bg-[#3BADE5] h-1.5 rounded-full transition-all duration-300"
-                  style={{ width: `${uploadProgress}%` }}
-                />
-              </div>
-            )}
+                  case 'file':
+                    return (
+                      <div key={fieldId} className="grid gap-1.5">
+                        <label className="text-xs font-medium text-white/80">
+                          {field.label}
+                        </label>
+                        <div className="space-y-2">
+                          <label className="flex items-center gap-2 px-3 py-1.5 rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] cursor-pointer hover:border-[#3BADE5]/40 transition-colors">
+                            <Upload className="h-4 w-4 text-[#3BADE5]" />
+                            <span className="text-xs text-white">Upload {field.label} (Max 2MB: PDF, DOC, Images)</span>
+                            <input
+                              type="file"
+                              multiple={field.multiple}
+                              className="hidden"
+                              onChange={fieldId === 'initialFiles' ? handleInitialFileChange : handleClosureFileChange}
+                              accept={field.accept}
+                              disabled={!isEditable}
+                            />
+                          </label>
+                          {/* Show selected files */}
+                          {(fieldId === 'initialFiles' ? initialFiles : closureFiles).length > 0 && (
+                            <div className="space-y-1 bg-[#132337]/50 p-2 rounded-md">
+                              {(fieldId === 'initialFiles' ? initialFiles : closureFiles).map((file, index) => (
+                                <div key={index} className="flex items-center gap-2 text-xs text-white/80">
+                                  <FileText className="h-3.5 w-3.5 text-[#3BADE5]" />
+                                  <span className="truncate flex-1">{file.name}</span>
+                                  <button
+                                    onClick={() => fieldId === 'initialFiles' ? removeInitialFile(index) : removeClosureFile(index)}
+                                    className="p-1 hover:bg-white/10 rounded-full transition-colors"
+                                    disabled={!isEditable}
+                                  >
+                                    <X className="h-3.5 w-3.5 text-red-400" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {/* Show existing files */}
+                          {defect?.[field.dbField]?.length > 0 && (
+                            <div className="space-y-1 bg-[#132337]/50 p-2 rounded-md mt-2">
+                              <div className="text-xs text-white/60 mb-1">Existing files:</div>
+                              {defect[field.dbField].map((file, index) => (
+                                <div key={index} className="flex items-center gap-2 text-xs text-white/80">
+                                  <FileText className="h-3.5 w-3.5 text-[#3BADE5]" />
+                                  <span className="truncate flex-1">{file.name}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+
+                  default:
+                    return (
+                      <div key={fieldId} className="text-xs text-white/60">
+                        Unsupported field type: {field.type}
+                      </div>
+                    );  
+                }
+              })}
+
+              {/* Upload Progress */}
+              {uploadProgress > 0 && uploadProgress < 100 && (
+                <div className="w-full bg-[#132337] rounded-full h-1.5 overflow-hidden">
+                  <div
+                    className="bg-gradient-to-r from-[#3BADE5]/80 to-[#3BADE5] h-1.5 rounded-full transition-all duration-300"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex justify-end gap-2 pt-3 border-t border-[#3BADE5]/10 mt-2">
             <button
               onClick={handleCloseAttempt}
               disabled={saving}
-              className="h-7 px-3 text-xs font-medium rounded-[4px] border border-[#3BADE5]/20 hover:border-[#3BADE5]/40 text-white disabled:opacity-50"
+              className="h-7 px-3 text-xs font-medium rounded-[4px] border border-[#3BADE5]/20 hover:border-[#3BADE5]/40 text-white disabled:opacity-50 transition-colors"
             >
               Cancel
             </button>
@@ -606,7 +619,10 @@ const DefectDialog = ({
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="h-7 px-3 text-xs font-medium rounded-[4px] bg-[#3BADE5] hover:bg-[#3BADE5]/90 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                className="h-7 px-3 text-xs font-medium rounded-[4px] bg-[#3BADE5] hover:bg-[#3BADE5]/90 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                style={{
+                  boxShadow: '0 2px 5px rgba(59,173,229,0.3), 0 0 0 1px rgba(59,173,229,0.4)'
+                }}
               >
                 {saving ? 'Saving...' : (isNew ? 'Add Defect' : 'Save Changes')}
               </button>
@@ -618,7 +634,7 @@ const DefectDialog = ({
       {/* Confirmation Dialog */}
       {showConfirmClose && (
         <Dialog open={showConfirmClose} onOpenChange={handleCancelClose}>
-          <DialogContent className="max-w-sm bg-gradient-to-br from-[#0B1623] to-[#132337] border border-[#3BADE5]/10 shadow-lg">
+          <DialogContent className="max-w-sm bg-[#0B1623] border border-[#3BADE5]/20">
             <DialogHeader>
               <DialogTitle className="text-sm font-medium text-white">
                 Discard Changes?
