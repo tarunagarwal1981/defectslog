@@ -4,6 +4,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from './ui/dialog';
 import { Upload, FileText, X } from 'lucide-react';
 import { toast } from './ui/use-toast';
@@ -390,7 +391,7 @@ const DefectDialog = ({
         }}
       >
         <DialogContent 
-          className="max-w-md max-h-[80vh] bg-[#0B1623] border border-[#3BADE5]/20"
+          className="max-w-md max-h-[85vh] bg-[#0B1623] border border-[#3BADE5]/20 pb-4"
           style={{
             boxShadow: '0 4px 20px rgba(0,0,0,0.5), 0 0 0 1px rgba(59,173,229,0.1), 0 0 15px rgba(59,173,229,0.15) inset'
           }}
@@ -399,7 +400,7 @@ const DefectDialog = ({
           onPointerDownOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
         >
-          <DialogHeader className="border-b border-[#3BADE5]/20 pb-2 pt-1">
+          <DialogHeader className="border-b border-[#3BADE5]/20 pb-2 mb-2">
             <DialogTitle className="text-sm font-medium text-white flex items-center">
               <span className="inline-block w-1 h-4 bg-gradient-to-b from-[#3BADE5] to-[#3BADE5]/50 rounded-sm mr-2"></span>
               {isNew ? 'Add New Defect' : 'Edit Defect'}
@@ -411,7 +412,7 @@ const DefectDialog = ({
           
           {/* Scrollable form content */}
           <div 
-            className="overflow-y-auto pr-1 my-2 max-h-[calc(80vh-10rem)]"
+            className="overflow-y-auto pr-2 mb-2 max-h-[calc(85vh-10rem)]"
             style={{
               scrollbarWidth: 'thin',
               scrollbarColor: 'rgba(59,173,229,0.3) rgba(11,22,35,0.1)'
@@ -611,11 +612,11 @@ const DefectDialog = ({
           </div>
 
           {/* Button container at the bottom */}
-          <div className="flex justify-end gap-2 pt-3 border-t border-[#3BADE5]/10">
+          <DialogFooter className="border-t border-[#3BADE5]/10 pt-3 gap-2 sm:gap-2 sm:justify-end">
             <button
               onClick={handleCloseAttempt}
               disabled={saving}
-              className="h-7 px-3 text-xs font-medium rounded-[4px] border border-[#3BADE5]/20 hover:border-[#3BADE5]/40 text-white disabled:opacity-50 transition-colors"
+              className="h-8 min-w-[80px] px-4 text-xs font-medium rounded-[4px] border border-[#3BADE5]/20 hover:border-[#3BADE5]/40 text-white disabled:opacity-50 transition-colors"
             >
               Cancel
             </button>
@@ -623,7 +624,7 @@ const DefectDialog = ({
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="h-7 px-3 text-xs font-medium rounded-[4px] bg-[#3BADE5] hover:bg-[#3BADE5]/90 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="h-8 min-w-[80px] px-4 text-xs font-medium rounded-[4px] bg-[#3BADE5] hover:bg-[#3BADE5]/90 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 style={{
                   boxShadow: '0 2px 5px rgba(59,173,229,0.3), 0 0 0 1px rgba(59,173,229,0.4)'
                 }}
@@ -631,7 +632,7 @@ const DefectDialog = ({
                 {saving ? 'Saving...' : (isNew ? 'Add Defect' : 'Save Changes')}
               </button>
             )}
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -647,20 +648,20 @@ const DefectDialog = ({
             <p className="text-xs text-white/80 py-2">
               You have unsaved changes. Are you sure you want to close this form and discard your changes?
             </p>
-            <div className="flex justify-end gap-2 pt-2 border-t border-[#3BADE5]/20">
+            <DialogFooter className="flex justify-end gap-2 pt-2 border-t border-[#3BADE5]/20">
               <button
                 onClick={handleCancelClose}
-                className="h-7 px-3 text-xs font-medium rounded-[4px] border border-[#3BADE5]/20 hover:border-[#3BADE5]/40 text-white"
+                className="h-8 min-w-[120px] px-3 text-xs font-medium rounded-[4px] border border-[#3BADE5]/20 hover:border-[#3BADE5]/40 text-white"
               >
                 Continue Editing
               </button>
               <button
                 onClick={handleConfirmedClose}
-                className="h-7 px-3 text-xs font-medium rounded-[4px] bg-red-500/80 hover:bg-red-500 text-white"
+                className="h-8 min-w-[120px] px-3 text-xs font-medium rounded-[4px] bg-red-500/80 hover:bg-red-500 text-white"
               >
                 Discard Changes
               </button>
-            </div>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       )}
