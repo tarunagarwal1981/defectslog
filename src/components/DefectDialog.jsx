@@ -390,7 +390,7 @@ const DefectDialog = ({
         }}
       >
         <DialogContent 
-          className="max-w-md w-full max-h-[90vh] overflow-hidden bg-[#0B1623] border border-[#3BADE5]/20 p-0 flex flex-col"
+          className="max-w-md max-h-[90vh] bg-[#0B1623] border border-[#3BADE5]/20 p-0"
           style={{
             boxShadow: '0 4px 20px rgba(0,0,0,0.5), 0 0 0 1px rgba(59,173,229,0.1), 0 0 15px rgba(59,173,229,0.15) inset'
           }}
@@ -399,27 +399,26 @@ const DefectDialog = ({
           onPointerDownOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
         >
-          <DialogHeader className="border-b border-[#3BADE5]/20 pb-2 px-3 pt-2 sticky top-0 bg-[#0B1623] z-10 shrink-0">
-            <DialogTitle className="text-sm font-medium text-white flex items-center">
-              <span className="inline-block w-1 h-4 bg-gradient-to-b from-[#3BADE5] to-[#3BADE5]/50 rounded-sm mr-2"></span>
-              {isNew ? 'Add New Defect' : 'Edit Defect'}
-            </DialogTitle>
-            <p id="dialog-description" className="text-xs text-white/60 ml-3">
-              {isNew ? 'Create a new defect record' : 'Edit existing defect details'}
-            </p>
-          </DialogHeader>
-          
-          {/* Scrollable content area */}
-          <div 
-            className="overflow-y-auto w-full flex-grow" 
-            style={{
-              scrollbarWidth: 'thin',
-              scrollbarColor: 'rgba(59,173,229,0.3) rgba(11,22,35,0.1)'
-            }}
-          >
-            <div className="px-3 py-2">
-              {/* Form fields */}
-              <div className="grid gap-3 w-full">
+          <div className="flex flex-col h-[90vh]">
+            <DialogHeader className="border-b border-[#3BADE5]/20 pb-2 px-2 pt-2 sticky top-0 bg-[#0B1623] z-10">
+              <DialogTitle className="text-sm font-medium text-white flex items-center">
+                <span className="inline-block w-1 h-4 bg-gradient-to-b from-[#3BADE5] to-[#3BADE5]/50 rounded-sm mr-2"></span>
+                {isNew ? 'Add New Defect' : 'Edit Defect'}
+              </DialogTitle>
+              <p id="dialog-description" className="text-xs text-white/60 ml-3">
+                {isNew ? 'Create a new defect record' : 'Edit existing defect details'}
+              </p>
+            </DialogHeader>
+            
+            {/* Make the form area scrollable */}
+            <div 
+              className="overflow-y-auto custom-scrollbar flex-grow px-2 py-2"
+              style={{
+                scrollbarWidth: 'thin',
+                scrollbarColor: 'rgba(59,173,229,0.3) rgba(11,22,35,0.1)'
+              }}
+            >
+              <div className="grid gap-3">
                 {getVisibleFields().map(([fieldId, field]) => {
                   // Skip fields that should be hidden
                   if (field.conditionalDisplay && !field.conditionalDisplay(defect)) {
@@ -547,7 +546,7 @@ const DefectDialog = ({
                           <div className="space-y-2">
                             <label className="flex items-center gap-2 px-2 py-1.5 rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] cursor-pointer hover:border-[#3BADE5]/40 transition-colors">
                               <Upload className="h-4 w-4 text-[#3BADE5]" />
-                              <span className="text-xs text-white truncate">Upload {field.label} (Max 2MB: PDF, DOC, Images)</span>
+                              <span className="text-xs text-white truncate">Upload {field.label}</span>
                               <input
                                 type="file"
                                 multiple={field.multiple}
@@ -611,29 +610,29 @@ const DefectDialog = ({
                 )}
               </div>
             </div>
-          </div>
-
-          {/* Button container fixed at the bottom */}
-          <div className="flex justify-end gap-2 pt-3 border-t border-[#3BADE5]/10 px-3 py-3 bg-[#0B1623] shrink-0">
-            <button
-              onClick={handleCloseAttempt}
-              disabled={saving}
-              className="h-7 px-3 text-xs font-medium rounded-[4px] border border-[#3BADE5]/20 hover:border-[#3BADE5]/40 text-white disabled:opacity-50 transition-colors"
-            >
-              Cancel
-            </button>
-            {canSave() && (
+  
+            {/* Button container fixed at the bottom */}
+            <div className="flex justify-end gap-2 pt-3 pb-3 px-2 border-t border-[#3BADE5]/10 mt-auto bg-[#0B1623]">
               <button
-                onClick={handleSave}
+                onClick={handleCloseAttempt}
                 disabled={saving}
-                className="h-7 px-3 text-xs font-medium rounded-[4px] bg-[#3BADE5] hover:bg-[#3BADE5]/90 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                style={{
-                  boxShadow: '0 2px 5px rgba(59,173,229,0.3), 0 0 0 1px rgba(59,173,229,0.4)'
-                }}
+                className="h-7 px-3 text-xs font-medium rounded-[4px] border border-[#3BADE5]/20 hover:border-[#3BADE5]/40 text-white disabled:opacity-50 transition-colors"
               >
-                {saving ? 'Saving...' : (isNew ? 'Add Defect' : 'Save Changes')}
+                Cancel
               </button>
-            )}
+              {canSave() && (
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="h-7 px-3 text-xs font-medium rounded-[4px] bg-[#3BADE5] hover:bg-[#3BADE5]/90 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  style={{
+                    boxShadow: '0 2px 5px rgba(59,173,229,0.3), 0 0 0 1px rgba(59,173,229,0.4)'
+                  }}
+                >
+                  {saving ? 'Saving...' : (isNew ? 'Add Defect' : 'Save Changes')}
+                </button>
+              )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -642,15 +641,15 @@ const DefectDialog = ({
       {showConfirmClose && (
         <Dialog open={showConfirmClose} onOpenChange={handleCancelClose}>
           <DialogContent className="max-w-sm bg-[#0B1623] border border-[#3BADE5]/20 p-0">
-            <DialogHeader className="px-3 pt-2 pb-2 border-b border-[#3BADE5]/20">
+            <DialogHeader className="px-2 pt-2 pb-2 border-b border-[#3BADE5]/20">
               <DialogTitle className="text-sm font-medium text-white">
                 Discard Changes?
               </DialogTitle>
             </DialogHeader>
-            <p className="text-xs text-white/80 py-2 px-3">
+            <p className="text-xs text-white/80 py-2 px-2">
               You have unsaved changes. Are you sure you want to close this form and discard your changes?
             </p>
-            <div className="flex justify-end gap-2 pt-2 pb-2 px-3 border-t border-[#3BADE5]/20">
+            <div className="flex justify-end gap-2 pt-2 pb-2 px-2 border-t border-[#3BADE5]/20">
               <button
                 onClick={handleCancelClose}
                 className="h-7 px-3 text-xs font-medium rounded-[4px] border border-[#3BADE5]/20 hover:border-[#3BADE5]/40 text-white"
