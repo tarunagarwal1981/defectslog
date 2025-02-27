@@ -409,12 +409,12 @@ const DefectDialog = ({
             </p>
           </DialogHeader>
           
-          <div className="overflow-y-auto custom-scrollbar px-4 py-4 max-h-[calc(90vh-140px)]" 
+          <div className="overflow-y-auto custom-scrollbar px-4 py-3 max-h-[calc(90vh-140px)]" 
                style={{
                  scrollbarWidth: 'thin',
                  scrollbarColor: 'rgba(59,173,229,0.4) rgba(11,22,35,0.1)'
                }}>
-            <div className="grid gap-4 py-1">
+            <div className="grid gap-3">
               {getVisibleFields().map(([fieldId, field]) => {
                 // Skip fields that should be hidden
                 if (field.conditionalDisplay && !field.conditionalDisplay(defect)) {
@@ -426,7 +426,7 @@ const DefectDialog = ({
                 switch (field.type) {
                   case 'checkbox':
                     return (
-                      <div key={fieldId} className="grid gap-1.5">
+                      <div key={fieldId} className="grid gap-1">
                         <label className="flex items-center space-x-2">
                           <input
                             type="checkbox"
@@ -444,7 +444,7 @@ const DefectDialog = ({
                             disabled={!isFieldEditable(fieldId)}
                             id={fieldId}
                           />
-                          <span className="text-xs font-medium text-white/90">
+                          <span className="text-sm font-medium text-white/90">
                             {field.label}
                             {fieldId === 'silentMode' && (
                               <span className="ml-2 text-xs text-white/60">
@@ -458,14 +458,14 @@ const DefectDialog = ({
                   
                   case 'select':
                     return (
-                      <div key={fieldId} className="grid gap-1.5">
-                        <label htmlFor={fieldId} className="text-xs font-medium text-white/90">
-                          {field.label} {field.required && <span className="text-red-400">*</span>}
+                      <div key={fieldId} className="grid gap-1">
+                        <label htmlFor={fieldId} className="text-sm font-medium text-white/90 flex items-center">
+                          {field.label} {field.required && <span className="text-red-400 ml-1">*</span>}
                         </label>
                         <div className="relative">
                           <select
                             id={fieldId}
-                            className="flex h-9 w-full rounded-md border border-[#3BADE5]/30 bg-[#0F1A29] px-3 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/60 appearance-none shadow-inner shadow-[#000]/40"
+                            className="flex h-10 w-full rounded-sm border border-[#3BADE5]/30 bg-[#0F1A29] px-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/60 appearance-none shadow-inner shadow-[#000]/40"
                             value={defect?.[field.dbField] || ''}
                             onChange={(e) => onChange(field.dbField, e.target.value)}
                             required={field.required}
@@ -492,13 +492,13 @@ const DefectDialog = ({
 
                   case 'textarea':
                     return (
-                      <div key={fieldId} className="grid gap-1.5">
-                        <label htmlFor={fieldId} className="text-xs font-medium text-white/90">
-                          {field.label} {field.required && <span className="text-red-400">*</span>}
+                      <div key={fieldId} className="grid gap-1">
+                        <label htmlFor={fieldId} className="text-sm font-medium text-white/90 flex items-center">
+                          {field.label} {field.required && <span className="text-red-400 ml-1">*</span>}
                         </label>
                         <textarea
                           id={fieldId}
-                          className="flex h-24 w-full rounded-md border border-[#3BADE5]/30 bg-[#0F1A29] px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/60 shadow-inner shadow-[#000]/40"
+                          className="flex h-24 w-full rounded-sm border border-[#3BADE5]/30 bg-[#0F1A29] px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/60 shadow-inner shadow-[#000]/40"
                           value={defect?.[field.dbField] || ''}
                           onChange={(e) => onChange(field.dbField, e.target.value)}
                           placeholder={`Enter ${field.label.toLowerCase()}`}
@@ -511,22 +511,22 @@ const DefectDialog = ({
 
                   case 'date':
                     return (
-                      <div key={fieldId} className="grid gap-1.5">
-                        <label htmlFor={fieldId} className="text-xs font-medium text-white/90">
-                          {field.label} {field.required && <span className="text-red-400">*</span>}
+                      <div key={fieldId} className="grid gap-1">
+                        <label htmlFor={fieldId} className="text-sm font-medium text-white/90 flex items-center">
+                          {field.label} {field.required && <span className="text-red-400 ml-1">*</span>}
                         </label>
-                        <div className="relative h-9">
+                        <div className="relative h-10">
                           <input
                             id={fieldId}
                             type="date"
-                            className="absolute inset-0 h-9 w-full rounded-md border border-[#3BADE5]/30 bg-[#0F1A29] px-3 text-xs text-transparent hover:border-[#3BADE5]/60 focus:outline-none focus:ring-1 focus:ring-[#3BADE5] [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:text-white [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer [&::-webkit-calendar-picker-indicator]:hover:opacity-70 shadow-inner shadow-[#000]/40"
+                            className="absolute inset-0 h-10 w-full rounded-sm border border-[#3BADE5]/30 bg-[#0F1A29] px-3 text-sm text-transparent hover:border-[#3BADE5]/60 focus:outline-none focus:ring-1 focus:ring-[#3BADE5] [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:text-white [&::-webkit-calendar-picker-indicator]:hover:cursor-pointer [&::-webkit-calendar-picker-indicator]:hover:opacity-70 shadow-inner shadow-[#000]/40"
                             value={formatDateForInput(defect?.[field.dbField])}
                             onChange={(e) => onChange(field.dbField, e.target.value)}
                             required={field.required}
                             disabled={!isEditable}
                             aria-required={field.required}
                           />
-                          <div className="absolute inset-0 flex items-center px-3 text-xs text-white pointer-events-none">
+                          <div className="absolute inset-0 flex items-center px-3 text-sm text-white pointer-events-none">
                             {formatDateDisplay(defect?.[field.dbField]) || 'dd/mm/yyyy'}
                           </div>
                         </div>
@@ -535,14 +535,14 @@ const DefectDialog = ({
 
                   case 'file':
                     return (
-                      <div key={fieldId} className="grid gap-1.5">
-                        <label className="text-xs font-medium text-white/90">
+                      <div key={fieldId} className="grid gap-1">
+                        <label className="text-sm font-medium text-white/90">
                           {field.label}
                         </label>
                         <div className="space-y-2">
-                          <label className="flex items-center gap-2 px-3 py-2 rounded-md border border-[#3BADE5]/30 bg-[#0F1A29] cursor-pointer hover:border-[#3BADE5]/60 transition-colors shadow-inner shadow-[#000]/40">
+                          <label className="flex items-center gap-2 px-3 py-2 rounded-sm border border-[#3BADE5]/30 bg-[#0F1A29] cursor-pointer hover:border-[#3BADE5]/60 transition-colors shadow-inner shadow-[#000]/40">
                             <Upload className="h-4 w-4 text-[#3BADE5]" />
-                            <span className="text-xs text-white">Upload {field.label} (Max 2MB: PDF, DOC, Images)</span>
+                            <span className="text-sm text-white">Upload {field.label} (Max 2MB: PDF, DOC, Images)</span>
                             <input
                               type="file"
                               multiple={field.multiple}
@@ -554,9 +554,9 @@ const DefectDialog = ({
                           </label>
                           {/* Show selected files */}
                           {(fieldId === 'initialFiles' ? initialFiles : closureFiles).length > 0 && (
-                            <div className="space-y-1 bg-[#0F1A29] p-3 rounded-md border border-[#3BADE5]/10">
+                            <div className="space-y-1 bg-[#0F1A29] p-3 rounded-sm border border-[#3BADE5]/10">
                               {(fieldId === 'initialFiles' ? initialFiles : closureFiles).map((file, index) => (
-                                <div key={index} className="flex items-center gap-2 text-xs text-white/90">
+                                <div key={index} className="flex items-center gap-2 text-sm text-white/90">
                                   <FileText className="h-3.5 w-3.5 text-[#3BADE5]" />
                                   <span className="truncate flex-1">{file.name}</span>
                                   <button
@@ -572,10 +572,10 @@ const DefectDialog = ({
                           )}
                           {/* Show existing files */}
                           {defect?.[field.dbField]?.length > 0 && (
-                            <div className="space-y-1 bg-[#0F1A29] p-3 rounded-md border border-[#3BADE5]/10 mt-2">
-                              <div className="text-xs text-white/70 mb-1">Existing files:</div>
+                            <div className="space-y-1 bg-[#0F1A29] p-3 rounded-sm border border-[#3BADE5]/10 mt-2">
+                              <div className="text-sm text-white/70 mb-1">Existing files:</div>
                               {defect[field.dbField].map((file, index) => (
-                                <div key={index} className="flex items-center gap-2 text-xs text-white/90">
+                                <div key={index} className="flex items-center gap-2 text-sm text-white/90">
                                   <FileText className="h-3.5 w-3.5 text-[#3BADE5]" />
                                   <span className="truncate flex-1">{file.name}</span>
                                 </div>
@@ -588,7 +588,7 @@ const DefectDialog = ({
 
                   default:
                     return (
-                      <div key={fieldId} className="text-xs text-white/60">
+                      <div key={fieldId} className="text-sm text-white/60">
                         Unsupported field type: {field.type}
                       </div>
                     );  
@@ -607,11 +607,11 @@ const DefectDialog = ({
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-[#3BADE5]/20 mt-2 px-4 pb-4 bg-gradient-to-t from-[#132337] to-[#0B1623]">
+          <div className="flex justify-end gap-2 pt-3 border-t border-[#3BADE5]/20 mt-1 px-4 pb-4 bg-gradient-to-t from-[#132337] to-[#0B1623]">
             <button
               onClick={handleCloseAttempt}
               disabled={saving}
-              className="h-8 px-4 text-xs font-medium rounded-md border border-[#3BADE5]/30 hover:border-[#3BADE5]/60 bg-[#0F1A29]/60 text-white disabled:opacity-50 transition-colors"
+              className="h-8 px-4 text-sm font-medium rounded-sm border border-[#3BADE5]/30 hover:border-[#3BADE5]/60 bg-[#0F1A29]/60 text-white disabled:opacity-50 transition-colors"
             >
               Cancel
             </button>
@@ -619,7 +619,7 @@ const DefectDialog = ({
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="h-8 px-4 text-xs font-medium rounded-md bg-[#3BADE5] hover:bg-[#3BADE5]/90 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="h-8 px-4 text-sm font-medium rounded-sm bg-[#3BADE5] hover:bg-[#3BADE5]/90 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 style={{
                   boxShadow: '0 2px 8px rgba(59,173,229,0.4), 0 0 0 1px rgba(59,173,229,0.5), 0 1px 3px rgba(255,255,255,0.1) inset'
                 }}
@@ -640,19 +640,19 @@ const DefectDialog = ({
                 Discard Changes?
               </DialogTitle>
             </DialogHeader>
-            <p className="text-xs text-white/90 py-3 px-4">
+            <p className="text-sm text-white/90 py-3 px-4">
               You have unsaved changes. Are you sure you want to close this form and discard your changes?
             </p>
             <div className="flex justify-end gap-2 pt-3 border-t border-[#3BADE5]/20 px-4 pb-4 bg-gradient-to-t from-[#132337] to-[#0B1623]">
               <button
                 onClick={handleCancelClose}
-                className="h-8 px-4 text-xs font-medium rounded-md border border-[#3BADE5]/30 hover:border-[#3BADE5]/60 bg-[#0F1A29]/60 text-white"
+                className="h-8 px-4 text-sm font-medium rounded-sm border border-[#3BADE5]/30 hover:border-[#3BADE5]/60 bg-[#0F1A29]/60 text-white"
               >
                 Continue Editing
               </button>
               <button
                 onClick={handleConfirmedClose}
-                className="h-8 px-4 text-xs font-medium rounded-md bg-red-500/80 hover:bg-red-500 text-white"
+                className="h-8 px-4 text-sm font-medium rounded-sm bg-red-500/80 hover:bg-red-500 text-white"
                 style={{
                   boxShadow: '0 2px 8px rgba(239,68,68,0.3), 0 0 0 1px rgba(239,68,68,0.4)'
                 }}
