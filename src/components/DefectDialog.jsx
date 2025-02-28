@@ -390,7 +390,7 @@ const DefectDialog = ({
         }}
       >
         <DialogContent 
-          className="max-w-[90vw] md:max-w-[600px] max-h-[90vh] overflow-hidden flex flex-col bg-[#0B1623] border border-[#3BADE5]/20"
+          className="max-w-[90vw] md:max-w-[500px] max-h-[90vh] overflow-hidden flex flex-col bg-[#0B1623] border border-[#3BADE5]/20"
           style={{
             boxShadow: '0 4px 20px rgba(0,0,0,0.5), 0 0 0 1px rgba(59,173,229,0.1), 0 0 15px rgba(59,173,229,0.15) inset'
           }}
@@ -410,11 +410,14 @@ const DefectDialog = ({
             </p>
           </DialogHeader>
           
-          <div className="overflow-y-auto custom-scrollbar pr-2 max-h-[calc(90vh-120px)]" 
-               style={{
-                 scrollbarWidth: 'thin',
-                 scrollbarColor: 'rgba(59,173,229,0.3) rgba(11,22,35,0.1)'
-               }}>
+          <div 
+            className="overflow-y-auto custom-scrollbar pr-2 flex-1"
+            style={{
+              scrollbarWidth: 'thin',
+              scrollbarColor: 'rgba(59,173,229,0.3) rgba(11,22,35,0.1)',
+              maxHeight: 'calc(90vh - 180px)' // Adjust this value to account for header and footer
+            }}
+          >
             <div className="grid gap-3 py-3">
               {getVisibleFields().map(([fieldId, field]) => {
                 // Skip fields that should be hidden
