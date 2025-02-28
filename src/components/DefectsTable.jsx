@@ -44,6 +44,7 @@ const getVisibleColumns = (permissions, isExternal) => {
     })
     .sort((a, b) => a[1].priority - b[1].priority);
 };
+
 const CRITICALITY_COLORS = {
   'High': {
     bg: 'bg-red-500/20',
@@ -58,6 +59,7 @@ const CRITICALITY_COLORS = {
     text: 'text-blue-300'
   }
 };
+
 const STATUS_COLORS = {
   'OPEN': {
     bg: 'bg-red-500/20',
@@ -154,14 +156,14 @@ const FileList = ({ files, onDelete, title }) => {
           <FileText className="h-3.5 w-3.5 text-[#3BADE5]" />
           <button
             onClick={() => handleFileClick(file)}
-            className="text-white/90 hover:text-white truncate flex-1"
+            className="text-white/90 hover:text-white truncate flex-1 transition-colors duration-200"
           >
             {file.name}
           </button>
           {onDelete && (
             <button
               onClick={() => onDelete(file)}
-              className="text-red-400 hover:text-red-300 p-1 rounded-full hover:bg-red-500/20"
+              className="text-red-400 hover:text-red-300 p-1 rounded-full hover:bg-red-500/20 transition-all duration-200 transform hover:scale-105"
               aria-label="Delete file"
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -179,10 +181,6 @@ const FileList = ({ files, onDelete, title }) => {
     </div>
   );
 };
-
-
-
-
 
 const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect, permissions,
   isExternal }) => {
@@ -241,7 +239,7 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
 
   return (
     <>
-      <tr className="table-hover-row cursor-pointer border-b border-white/10 hover:bg-white/5">
+      <tr className="table-hover-row cursor-pointer border-b border-white/10 hover:bg-white/5 transition-all duration-200">
      
         {getVisibleColumns(permissions, isExternal).map(([fieldId, field]) => {
           if (field.isAction) {
@@ -253,9 +251,9 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
                 >
                   <button
                     onClick={toggleExpand}
-                    className="p-0.5 hover:bg-white/10 rounded transition-colors"
+                    className="p-0.5 hover:bg-white/10 rounded transition-colors hover:shadow-lg"
                   >
-                    <span className={`inline-block transition-transform duration-200 text-[#3BADE5] ${isExpanded ? 'rotate-0' : '-rotate-90'}`}>
+                    <span className={`inline-block transition-transform duration-300 text-[#3BADE5] ${isExpanded ? 'rotate-0' : '-rotate-90'}`}>
                       ▼
                     </span>
                   </button>
@@ -278,8 +276,8 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
                           onDeleteDefect(defect.id);
                         }
                       }}
-                      className={`p-1 text-red-400 rounded-full transition-colors
-                        ${canDelete ? 'hover:bg-red-500/20' : 'opacity-50 cursor-not-allowed'}`}
+                      className={`p-1 text-red-400 rounded-full transition-all duration-200
+                        ${canDelete ? 'hover:bg-red-500/20 hover:shadow-[0_0_8px_rgba(239,68,68,0.4)] hover:scale-110' : 'opacity-50 cursor-not-allowed'}`}
                       aria-label="Delete defect"
                       disabled={!canDelete}
                     >
@@ -304,7 +302,7 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
                   ${STATUS_COLORS[defect['Status (Vessel)']].bg} 
                   ${STATUS_COLORS[defect['Status (Vessel)']].text}
                   ${STATUS_COLORS[defect['Status (Vessel)']].glow}
-                  transition-all duration-200`}
+                  transition-all duration-200 hover:shadow-md`}
                 >
                   <span className="w-1 h-1 rounded-full bg-current mr-1"></span>
                   {defect['Status (Vessel)']}
@@ -315,7 +313,8 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
               content = (
                 <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] 
                   ${CRITICALITY_COLORS[defect.Criticality]?.bg || 'bg-gray-500/20'} 
-                  ${CRITICALITY_COLORS[defect.Criticality]?.text || 'text-gray-300'}`}
+                  ${CRITICALITY_COLORS[defect.Criticality]?.text || 'text-gray-300'}
+                  transition-all duration-200 hover:shadow-md`}
                 >
                   {defect.Criticality || 'N/A'}
                 </span>
@@ -352,7 +351,8 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
             case 'silentMode':
               content = (
                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] 
-                  ${defect.external_visibility ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}
+                  ${defect.external_visibility ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}
+                  transition-all duration-200 hover:shadow-md`}
                 >
                   {defect.external_visibility ? 'Visible' : 'Hidden'}
                 </span>
@@ -386,41 +386,29 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
               {/* Main Content in 3-column Grid */}
               <div className="grid grid-cols-3 gap-4">
                 {/* Basic Details */}
-                <div className="bg-[#0B1623] rounded-md p-3">
+                <div className="bg-[#0B1623] rounded-md p-3 shadow-lg hover:shadow-[0_4px_15px_rgba(0,0,0,0.3)] transition-all duration-300 border border-white/5">
                   <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Description</h4>
                   <div className="text-xs leading-relaxed text-white/90 break-words">
                     {defect.Description || '-'}
                   </div>
                 </div>
                 
-                <div className="bg-[#0B1623] rounded-md p-3">
+                <div className="bg-[#0B1623] rounded-md p-3 shadow-lg hover:shadow-[0_4px_15px_rgba(0,0,0,0.3)] transition-all duration-300 border border-white/5">
                   <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Action Planned</h4>
                   <div className="text-xs leading-relaxed text-white/90 break-words">
                     {defect['Action Planned'] || '-'}
                   </div>
                 </div>
       
-                <div className="bg-[#0B1623] rounded-md p-3">
+                <div className="bg-[#0B1623] rounded-md p-3 shadow-lg hover:shadow-[0_4px_15px_rgba(0,0,0,0.3)] transition-all duration-300 border border-white/5">
                   <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Follow-Up</h4>
                   <div className="text-xs leading-relaxed text-white/90 break-words">
                     {defect.Comments || '-'}
                   </div>
                 </div>
 
-                {/* <div className="bg-[#0B1623] rounded-md p-3">
-                  <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Visibility Settings</h4>
-                  <div className="text-xs leading-relaxed text-white/90 break-words flex items-center gap-2">
-                    <span className="text-white/60">External Visibility:</span>
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] 
-                      ${defect.external_visibility ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}
-                    >
-                      {defect.external_visibility ? 'Visible to External Users' : 'Hidden from External Users'}
-                    </span>
-                  </div>
-                </div> */}
-
                 {/* Initial Documentation */}
-                <div className="bg-[#0B1623] rounded-md p-3">
+                <div className="bg-[#0B1623] rounded-md p-3 shadow-lg hover:shadow-[0_4px_15px_rgba(0,0,0,0.3)] transition-all duration-300 border border-white/5">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="text-xs font-medium text-[#3BADE5]">Initial Documentation</h4>
                     <div className="text-[10px] text-white/60 px-2 py-0.5 bg-[#132337] rounded-full">
@@ -443,14 +431,14 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
                 {/* Show closure content only when status is CLOSED */}
                 {defect['Status (Vessel)'] === 'CLOSED' && (
                   <>
-                    <div className="bg-[#0B1623] rounded-md p-3">
+                    <div className="bg-[#0B1623] rounded-md p-3 shadow-lg hover:shadow-[0_4px_15px_rgba(0,0,0,0.3)] transition-all duration-300 border border-white/5">
                       <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Closure Comments</h4>
                       <div className="text-xs leading-relaxed text-white/90 break-words">
                         {defect.closure_comments || '-'}
                       </div>
                     </div>
       
-                    <div className="bg-[#0B1623] rounded-md p-3">
+                    <div className="bg-[#0B1623] rounded-md p-3 shadow-lg hover:shadow-[0_4px_15px_rgba(0,0,0,0.3)] transition-all duration-300 border border-white/5">
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="text-xs font-medium text-[#3BADE5]">Closure Documentation</h4>
                         <div className="text-[10px] text-white/60 px-2 py-0.5 bg-[#132337] rounded-full">
@@ -489,7 +477,8 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
                     <div className="text-xs text-white/60">
                       External Visibility: 
                       <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] 
-                        ${defect.external_visibility ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}
+                        ${defect.external_visibility ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}
+                        transition-all duration-200 hover:shadow-md`}
                       >
                         {defect.external_visibility ? 'Visible' : 'Hidden'}
                       </span>
@@ -545,7 +534,9 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
                     }
                   }}
                   className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md 
-                    text-white bg-[#3BADE5] hover:bg-[#3BADE5]/80 transition-colors shadow-sm"
+                    text-white bg-[#3BADE5] hover:bg-[#3BADE5]/80 transition-all duration-200 
+                    shadow-[0_2px_4px_rgba(0,0,0,0.2)] hover:shadow-[0_4px_8px_rgba(59,173,229,0.3)] 
+                    hover:translate-y-[-1px]"
                 >
                   <FileText className="h-3.5 w-3.5 mr-1.5" />
                   Generate Report
@@ -633,12 +624,10 @@ const DefectsTable = ({
       : <ChevronDown className="h-3 w-3" />;
   };
 
-  
-
   return (
-    <div className="glass-card rounded-[4px] flex flex-col h-[calc(100vh-200px)]">
+    <div className="glass-card rounded-[4px] flex flex-col h-[calc(100vh-200px)] shadow-lg border border-white/5 backdrop-blur-sm">
       {/* Header Section */}
-      <div className="flex justify-between items-center px-3 py-2 border-b border-white/10">
+      <div className="flex justify-between items-center px-3 py-2 border-b border-white/10 bg-gradient-to-r from-[#132337] to-[#0B1623]">
         <h2 className="text-sm font-medium text-[#f4f4f4]">Defects Register</h2>
         <div className="flex items-center gap-2">
           <ExportButton onClick={handleExport} />
@@ -646,8 +635,11 @@ const DefectsTable = ({
             onClick={onAddDefect}
             disabled={!canPerformAction('create', permissions)}
             className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-[4px] 
-              text-white bg-[#3BADE5] transition-colors
-              ${canPerformAction('create', permissions) ? 'hover:bg-[#3BADE5]/80' : 'opacity-50 cursor-not-allowed'}`}
+              text-white bg-[#3BADE5] transition-all duration-200
+              shadow-[0_2px_4px_rgba(0,0,0,0.2)]
+              ${canPerformAction('create', permissions) 
+                ? 'hover:bg-[#3BADE5]/80 hover:shadow-[0_4px_8px_rgba(59,173,229,0.3)] hover:translate-y-[-1px]' 
+                : 'opacity-50 cursor-not-allowed'}`}
           >
             <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
             Add Defect
@@ -660,7 +652,7 @@ const DefectsTable = ({
         <div className="absolute inset-0 overflow-auto custom-scrollbar">
           <table className="w-full text-xs">
             <thead className="sticky top-0 z-20">
-              <tr className="bg-[#132337] border-b border-white/10">
+              <tr className="bg-gradient-to-r from-[#132337] to-[#1a2c45] border-b border-white/10 shadow-md">
                 {getVisibleColumns(permissions, isExternal).map(([fieldId, field]) => (
                   <th 
                     key={fieldId}
@@ -682,7 +674,13 @@ const DefectsTable = ({
             <tbody className="text-[#f4f4f4]">
               {loading ? (
                 <tr>
-                  <td colSpan="11" className="px-3 py-2 text-center">Loading...</td>
+                  <td colSpan="11" className="px-3 py-6 text-center">
+                    <div className="flex items-center justify-center space-x-2">
+                      <div className="h-2 w-2 bg-[#3BADE5] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                      <div className="h-2 w-2 bg-[#3BADE5] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                      <div className="h-2 w-2 bg-[#3BADE5] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                    </div>
+                  </td>
                 </tr>
               ) : sortedData.length === 0 ? (
                 <tr>
