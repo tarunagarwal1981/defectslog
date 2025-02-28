@@ -131,7 +131,7 @@ const StatsCards = ({ data = [] }) => {
         <Card className="card-hover-effect bg-[#132337]/30 backdrop-blur-sm border border-[#3BADE5]/10 relative overflow-hidden">
           <div className="absolute inset-0 stats-gradient opacity-50" />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#0B1623]/20" />
-          <CardContent className="p-6 relative h-full flex flex-col">
+          <CardContent className="p-6 pt-4 relative h-full flex flex-col">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-sm font-medium text-[#f4f4f4]/90 flex items-center">
                 <span className="inline-block w-1 h-4 bg-gradient-to-b from-[#3BADE5] to-transparent rounded-sm mr-2"></span>
@@ -167,7 +167,7 @@ const StatsCards = ({ data = [] }) => {
         <Card className="card-hover-effect bg-[#132337]/30 backdrop-blur-sm border border-[#3BADE5]/10 relative overflow-hidden">
           <div className="absolute inset-0 stats-gradient opacity-50" />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#0B1623]/20" />
-          <CardContent className="p-6 relative h-full flex flex-col">
+          <CardContent className="p-6 pt-4 relative h-full flex flex-col">
             <h3 className="text-sm font-medium text-[#f4f4f4]/90 mb-4 flex items-center">
               <span className="inline-block w-1 h-4 bg-gradient-to-b from-[#3BADE5] to-transparent rounded-sm mr-2"></span>
               Status Overview
