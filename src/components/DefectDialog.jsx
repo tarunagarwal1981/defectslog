@@ -390,10 +390,11 @@ const DefectDialog = ({
         }}
       >
         <DialogContent 
-          className="max-w-md max-h-[90vh] overflow-hidden bg-[#0B1623] border border-[#3BADE5]/20"
+          className="max-w-[90vw] md:max-w-[600px] max-h-[90vh] overflow-hidden flex flex-col bg-[#0B1623] border border-[#3BADE5]/20"
           style={{
             boxShadow: '0 4px 20px rgba(0,0,0,0.5), 0 0 0 1px rgba(59,173,229,0.1), 0 0 15px rgba(59,173,229,0.15) inset'
           }}
+        
           aria-describedby="dialog-description"
           // This prevents the default closing behavior when clicking outside
           onPointerDownOutside={(e) => e.preventDefault()}
