@@ -272,7 +272,9 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
+                        console.log('Delete button clicked, canDelete:', canDelete);
                         if (canDelete) {
+                          console.log('Attempting to delete defect:', defect.id);
                           onDeleteDefect(defect.id);
                         }
                       }}
