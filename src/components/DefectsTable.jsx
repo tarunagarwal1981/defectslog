@@ -272,7 +272,9 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        canDelete && onDeleteDefect(defect.id);
+                        if (canDelete) {
+                          onDeleteDefect(defect.id);
+                        }
                       }}
                       className={`p-1 text-red-400 rounded-full transition-colors
                         ${canDelete ? 'hover:bg-red-500/20' : 'opacity-50 cursor-not-allowed'}`}
