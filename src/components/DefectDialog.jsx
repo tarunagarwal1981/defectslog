@@ -37,7 +37,7 @@ const DefectDialog = ({
   const [saving, setSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showConfirmClose, setShowConfirmClose] = useState(false);
-  
+
   // Function to check if field is visible
   const isFieldVisible = (fieldId) => {
     if (!permissions?.fieldPermissions) return true;
@@ -49,16 +49,16 @@ const DefectDialog = ({
     try {
       // Update local state immediately for responsive UI
       onChange('external_visibility', !checked); // Note the inversion: checked means hidden
-  
+
       if (!isNew) {
         // Update database if this is an existing defect
         const { error } = await supabase
           .from('defects register')
           .update({ external_visibility: !checked })
           .eq('id', defect.id);
-  
+
         if (error) throw error;
-  
+
         toast({
           title: "Success",
           description: `Defect is now ${!checked ? 'visible to' : 'hidden from'} external users`,
@@ -68,7 +68,7 @@ const DefectDialog = ({
       console.error('Error updating visibility:', error);
       // Revert local state on error
       onChange('external_visibility', defect.external_visibility);
-      
+    
       toast({
         title: "Error",
         description: "Failed to update visibility setting",
@@ -90,18 +90,18 @@ const DefectDialog = ({
       .filter(([fieldId, field]) => {
         // Check basic visibility
         if (!isFieldVisible(fieldId)) return false;
-        
+      
         // Check conditional display
         if (field.conditionalDisplay && !defect) return false;
         if (field.conditionalDisplay && !field.conditionalDisplay(defect)) {
           return false;
         }
-      
+    
         // External users special handling
         if (isExternal && field.restrictedToInternal) {
           return false;
         }
-      
+    
         return true;
       })
       .sort((a, b) => a[1].displayOrder - b[1].displayOrder);
@@ -149,7 +149,7 @@ const DefectDialog = ({
     if (defectData['Date Completed'] && defectData['Date Reported']) {
       const closureDate = new Date(defectData['Date Completed']);
       const reportedDate = new Date(defectData['Date Reported']);
-      
+    
       if (closureDate < reportedDate) {
         toast({
           title: "Invalid Date",
@@ -159,12 +159,12 @@ const DefectDialog = ({
         return false;
       }
     }
-  
+
     // Get visible fields and their requirements
     const visibleFields = Object.entries(CORE_FIELDS.DIALOG)
       .filter(([fieldId, field]) => {
         if (!isFieldVisible(fieldId)) return false;
-        
+      
         // Check conditional display
         if (field.conditionalDisplay && !field.conditionalDisplay(defectData)) {
           return false;
@@ -182,7 +182,7 @@ const DefectDialog = ({
       .map(([_, field]) => {
         return field.dbField;
       });
-  
+
     // Add specific requirements for CLOSED status
     if (defectData['Status (Vessel)'] === 'CLOSED') {
       if (!defectData['Date Completed']) {
@@ -195,10 +195,10 @@ const DefectDialog = ({
       }
       visibleFields.push('closure_comments');
     }
-  
+
     // Check for missing required fields
     const missing = visibleFields.filter(field => !defectData[field]);
-    
+  
     if (missing.length > 0) {
       // Map field names to more readable labels
       const fieldLabels = {
@@ -212,9 +212,9 @@ const DefectDialog = ({
         'closure_comments': 'Closure Comments',
         'Action Planned': 'Action Planned'
       };
-  
+
       const missingFieldLabels = missing.map(field => fieldLabels[field] || field);
-      
+    
       toast({
         title: "Missing Information",
         description: (
@@ -244,7 +244,7 @@ const DefectDialog = ({
       });
       return false;
     }
-    
+  
     if (!ALLOWED_FILE_TYPES.includes(file.type)) {
       toast({
         title: "Invalid File Type",
@@ -253,20 +253,20 @@ const DefectDialog = ({
       });
       return false;
     }
-    
+  
     return true;
   };
 
   const uploadFiles = async (files, defectId, type = 'initial') => {
     const uploadedFiles = [];
     let progress = 0;
-    
+  
     for (const file of files) {
       if (!validateFile(file)) continue;
 
       const fileExt = file.name.split('.').pop();
       const fileName = `${defectId}/${type}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-      
+    
       try {
         const { error: uploadError } = await supabase.storage
           .from('defect-files')
@@ -320,30 +320,30 @@ const DefectDialog = ({
     try {
       setSaving(true);
       setUploadProgress(0);
-    
+  
       // Set default value for external_visibility if not set
       const updatedDefectData = {
         ...defect,
         external_visibility: defect.external_visibility ?? true
       };
-    
+  
       if (!validateDefect(updatedDefectData)) {
         setSaving(false);
         return;
       }
-    
+  
       // Upload files if any
       let uploadedInitialFiles = [];
       let uploadedClosureFiles = [];
-    
+  
       if (initialFiles.length > 0) {
         uploadedInitialFiles = await uploadFiles(initialFiles, updatedDefectData.id || 'temp', 'initial');
       }
-    
+  
       if (closureFiles.length > 0 && updatedDefectData['Status (Vessel)'] === 'CLOSED') {
         uploadedClosureFiles = await uploadFiles(closureFiles, updatedDefectData.id || 'temp', 'closure');
       }
-    
+  
       // Combine existing and new files
       const finalDefect = {
         ...updatedDefectData,
@@ -357,12 +357,12 @@ const DefectDialog = ({
         ],
         closure_comments: updatedDefectData.closure_comments || ''
       };
-    
+  
       await onSave(finalDefect);
       setInitialFiles([]);
       setClosureFiles([]);
       setUploadProgress(0);
-      
+    
     } catch (error) {
       console.error('Error in DefectDialog save:', error);
       toast({
@@ -373,6 +373,12 @@ const DefectDialog = ({
     } finally {
       setSaving(false);
     }
+  };
+
+  // Check if closure file upload should be displayed
+  // This is the key function needed to show closure files upload when status is CLOSED
+  const shouldShowClosureFiles = () => {
+    return defect && defect['Status (Vessel)'] === 'CLOSED';
   };
 
   return (
@@ -394,7 +400,7 @@ const DefectDialog = ({
           style={{
             boxShadow: '0 4px 20px rgba(0,0,0,0.5), 0 0 0 1px rgba(59,173,229,0.1), 0 0 15px rgba(59,173,229,0.15) inset'
           }}
-        
+      
           aria-describedby="dialog-description"
           // This prevents the default closing behavior when clicking outside
           onPointerDownOutside={(e) => e.preventDefault()}
@@ -409,7 +415,7 @@ const DefectDialog = ({
               {isNew ? 'Create a new defect record' : 'Edit existing defect details'}
             </p>
           </DialogHeader>
-          
+        
           <div 
             className="overflow-y-auto custom-scrollbar pr-2 flex-1"
             style={{
@@ -459,7 +465,7 @@ const DefectDialog = ({
                         </label>
                       </div>
                     );
-                  
+                
                   case 'select':
                     return (
                       <div key={fieldId} className="grid gap-1.5">
@@ -595,9 +601,62 @@ const DefectDialog = ({
                       <div key={fieldId} className="text-xs text-white/60">
                         Unsupported field type: {field.type}
                       </div>
-                    );  
+                    );
                 }
               })}
+
+              {/* Conditionally render closure files upload section */}
+              {shouldShowClosureFiles() && (
+                <div className="grid gap-1.5">
+                  <label className="text-xs font-medium text-white/80">
+                    Closure Documents
+                  </label>
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 px-3 py-1.5 rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] cursor-pointer hover:border-[#3BADE5]/40 transition-colors">
+                      <Upload className="h-4 w-4 text-[#3BADE5]" />
+                      <span className="text-xs text-white">Upload Closure Documents (Max 2MB: PDF, DOC, Images)</span>
+                      <input
+                        type="file"
+                        multiple
+                        className="hidden"
+                        onChange={handleClosureFileChange}
+                        accept={ALLOWED_FILE_TYPES.join(',')}
+                        disabled={!isFieldEditable('closureFiles')}
+                      />
+                    </label>
+                    {/* Show selected closure files */}
+                    {closureFiles.length > 0 && (
+                      <div className="space-y-1 bg-[#132337]/50 p-2 rounded-md">
+                        {closureFiles.map((file, index) => (
+                          <div key={index} className="flex items-center gap-2 text-xs text-white/80">
+                            <FileText className="h-3.5 w-3.5 text-[#3BADE5]" />
+                            <span className="truncate flex-1">{file.name}</span>
+                            <button
+                              onClick={() => removeClosureFile(index)}
+                              className="p-1 hover:bg-white/10 rounded-full transition-colors"
+                              disabled={!isFieldEditable('closureFiles')}
+                            >
+                              <X className="h-3.5 w-3.5 text-red-400" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {/* Show existing closure files */}
+                    {defect?.completion_files?.length > 0 && (
+                      <div className="space-y-1 bg-[#132337]/50 p-2 rounded-md mt-2">
+                        <div className="text-xs text-white/60 mb-1">Existing closure files:</div>
+                        {defect.completion_files.map((file, index) => (
+                          <div key={index} className="flex items-center gap-2 text-xs text-white/80">
+                            <FileText className="h-3.5 w-3.5 text-[#3BADE5]" />
+                            <span className="truncate flex-1">{file.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Upload Progress */}
               {uploadProgress > 0 && uploadProgress < 100 && (
