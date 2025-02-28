@@ -2,7 +2,6 @@ import React, { useMemo } from 'react';
 import { Card, CardContent } from './ui/card';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 
-// Add this at the top of your file
 const styles = `
   @keyframes shimmer {
     0% { transform: translateX(-100%); }
@@ -11,6 +10,8 @@ const styles = `
 
   .card-hover-effect {
     transition: all 0.2s ease-in-out;
+    height: 30vh;
+    min-height: 300px;
   }
   
   .card-hover-effect:hover {
@@ -68,7 +69,7 @@ const EquipmentBar = ({ name, value, maxValue, isFirst }) => {
 };
 
 const StatsCards = ({ data = [] }) => {
-  // Equipment data processing
+  // Your existing data processing code remains the same
   const equipmentData = useMemo(() => {
     if (!data.length) return { items: [], totalCount: 0 };
 
@@ -92,7 +93,6 @@ const StatsCards = ({ data = [] }) => {
     return { items, totalCount };
   }, [data]);
 
-  // Status metrics calculation
   const statusMetrics = useMemo(() => {
     const total = data.length;
     const closed = data.filter(item => item['Status (Vessel)'] === 'CLOSED').length;
@@ -126,13 +126,13 @@ const StatsCards = ({ data = [] }) => {
   return (
     <>
       <style>{styles}</style>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4 h-[calc(100vh-200px)] min-h-[500px]">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
         {/* Equipment Distribution Card */}
-        <Card className="card-hover-effect bg-[#132337]/30 backdrop-blur-sm border border-[#3BADE5]/10 relative overflow-hidden h-full">
+        <Card className="card-hover-effect bg-[#132337]/30 backdrop-blur-sm border border-[#3BADE5]/10 relative overflow-hidden">
           <div className="absolute inset-0 stats-gradient opacity-50" />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#0B1623]/20" />
           <CardContent className="p-6 relative h-full flex flex-col">
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex justify-between items-center mb-4">
               <h3 className="text-sm font-medium text-[#f4f4f4]/90 flex items-center">
                 <span className="inline-block w-1 h-4 bg-gradient-to-b from-[#3BADE5] to-transparent rounded-sm mr-2"></span>
                 Equipment Distribution
@@ -164,16 +164,16 @@ const StatsCards = ({ data = [] }) => {
         </Card>
 
         {/* Status Overview Card */}
-        <Card className="card-hover-effect bg-[#132337]/30 backdrop-blur-sm border border-[#3BADE5]/10 relative overflow-hidden h-full">
+        <Card className="card-hover-effect bg-[#132337]/30 backdrop-blur-sm border border-[#3BADE5]/10 relative overflow-hidden">
           <div className="absolute inset-0 stats-gradient opacity-50" />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#0B1623]/20" />
           <CardContent className="p-6 relative h-full flex flex-col">
-            <h3 className="text-sm font-medium text-[#f4f4f4]/90 mb-6 flex items-center">
+            <h3 className="text-sm font-medium text-[#f4f4f4]/90 mb-4 flex items-center">
               <span className="inline-block w-1 h-4 bg-gradient-to-b from-[#3BADE5] to-transparent rounded-sm mr-2"></span>
               Status Overview
             </h3>
 
-            <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-2 gap-4 mb-4">
               <div className="text-center p-4 rounded-lg bg-[#0B1623]/30 hover:bg-[#0B1623]/40 transition-colors duration-200">
                 <div className="text-2xl font-bold text-[#3BADE5] drop-shadow-[0_0_8px_rgba(59,173,229,0.3)]">
                   {statusMetrics.closureRate.toFixed(1)}%
