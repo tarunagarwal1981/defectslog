@@ -106,6 +106,7 @@ function App() {
         .from('defects register')
         .select('*')
         .in('vessel_id', vesselIds)
+        .is('is_deleted', FALSE)
         .order('Date Reported', { ascending: false });
 
       // Add external visibility filter for external users
