@@ -1,4 +1,8 @@
-// Add this CSS animation to your global styles or component
+import React, { useMemo } from 'react';
+import { Card, CardContent } from './ui/card';
+import { TrendingUp, TrendingDown } from 'lucide-react';
+
+// Add this at the top of your file
 const styles = `
   @keyframes shimmer {
     0% { transform: translateX(-100%); }
@@ -6,7 +10,7 @@ const styles = `
   }
 
   .card-hover-effect {
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: all 0.2s ease-in-out;
   }
   
   .card-hover-effect:hover {
@@ -17,6 +21,24 @@ const styles = `
   .stats-gradient {
     background: linear-gradient(135deg, rgba(59, 173, 229, 0.1) 0%, rgba(19, 35, 55, 0.2) 100%);
   }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(11, 22, 35, 0.3);
+    border-radius: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(59, 173, 229, 0.3);
+    border-radius: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(59, 173, 229, 0.5);
+  }
 `;
 
 const EquipmentBar = ({ name, value, maxValue, isFirst }) => {
@@ -26,7 +48,7 @@ const EquipmentBar = ({ name, value, maxValue, isFirst }) => {
     <div className={`relative ${isFirst ? '' : 'mt-2'} group`}>
       <div className="flex justify-between items-center mb-1">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-white/90 group-hover:text-[#3BADE5] transition-colors">{name}</span>
+          <span className="text-xs text-white/90 group-hover:text-[#3BADE5] transition-colors duration-200">{name}</span>
           <span className="text-[10px] text-white/60">{value}</span>
         </div>
         <span className="text-[10px] text-white/60">
@@ -46,7 +68,60 @@ const EquipmentBar = ({ name, value, maxValue, isFirst }) => {
 };
 
 const StatsCards = ({ data = [] }) => {
-  // ... your existing data processing code ...
+  // Equipment data processing
+  const equipmentData = useMemo(() => {
+    if (!data.length) return { items: [], totalCount: 0 };
+
+    const counts = data.reduce((acc, item) => {
+      if (item.Equipments) {
+        acc[item.Equipments] = (acc[item.Equipments] || 0) + 1;
+      }
+      return acc;
+    }, {});
+
+    const totalCount = Object.values(counts).reduce((sum, count) => sum + count, 0);
+
+    const items = Object.entries(counts)
+      .map(([name, value]) => ({
+        name,
+        value,
+        percentage: (value / totalCount) * 100
+      }))
+      .sort((a, b) => b.value - a.value);
+
+    return { items, totalCount };
+  }, [data]);
+
+  // Status metrics calculation
+  const statusMetrics = useMemo(() => {
+    const total = data.length;
+    const closed = data.filter(item => item['Status (Vessel)'] === 'CLOSED').length;
+    const open = data.filter(item => item['Status (Vessel)'] === 'OPEN').length;
+    const inProgress = data.filter(item => item['Status (Vessel)'] === 'IN PROGRESS').length;
+
+    const lastMonth = new Date();
+    lastMonth.setMonth(lastMonth.getMonth() - 1);
+    const previousMonth = data.filter(item =>
+      new Date(item['Date Reported']) < lastMonth &&
+      new Date(item['Date Reported']) > new Date(lastMonth.setMonth(lastMonth.getMonth() - 1))
+    );
+    const previousTotal = previousMonth.length || 1;
+    const previousClosed = previousMonth.filter(item => item['Status (Vessel)'] === 'CLOSED').length;
+    const previousRate = (previousClosed / previousTotal) * 100;
+    const currentRate = (closed / (total || 1)) * 100;
+    const rateChange = currentRate - previousRate;
+
+    return {
+      total,
+      closed,
+      open,
+      inProgress,
+      closureRate: (closed / (total || 1)) * 100,
+      openRate: (open / (total || 1)) * 100,
+      inProgressRate: (inProgress / (total || 1)) * 100,
+      rateChange
+    };
+  }, [data]);
 
   return (
     <>
@@ -99,7 +174,7 @@ const StatsCards = ({ data = [] }) => {
             </h3>
 
             <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="text-center p-4 rounded-lg bg-[#0B1623]/30 hover:bg-[#0B1623]/40 transition-colors">
+              <div className="text-center p-4 rounded-lg bg-[#0B1623]/30 hover:bg-[#0B1623]/40 transition-colors duration-200">
                 <div className="text-2xl font-bold text-[#3BADE5] drop-shadow-[0_0_8px_rgba(59,173,229,0.3)]">
                   {statusMetrics.closureRate.toFixed(1)}%
                 </div>
@@ -116,7 +191,7 @@ const StatsCards = ({ data = [] }) => {
                   </span>
                 </div>
               </div>
-              <div className="text-center p-4 rounded-lg bg-[#0B1623]/30 hover:bg-[#0B1623]/40 transition-colors">
+              <div className="text-center p-4 rounded-lg bg-[#0B1623]/30 hover:bg-[#0B1623]/40 transition-colors duration-200">
                 <div className="text-2xl font-bold text-[#f4f4f4] drop-shadow-[0_0_8px_rgba(255,255,255,0.1)]">
                   {statusMetrics.total}
                 </div>
@@ -134,8 +209,8 @@ const StatsCards = ({ data = [] }) => {
               ].map(status => (
                 <div key={status.label} className="group">
                   <div className="flex justify-between mb-2">
-                    <span className="text-xs text-white/60 group-hover:text-white/90 transition-colors">{status.label}</span>
-                    <span className="text-xs text-white/60 group-hover:text-white/90 transition-colors">
+                    <span className="text-xs text-white/60 group-hover:text-white/90 transition-colors duration-200">{status.label}</span>
+                    <span className="text-xs text-white/60 group-hover:text-white/90 transition-colors duration-200">
                       {status.value} ({status.rate.toFixed(1)}%)
                     </span>
                   </div>
