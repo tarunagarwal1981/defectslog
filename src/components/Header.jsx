@@ -1,57 +1,5 @@
-import { User, LogOut, ChevronDown, Calendar, Ship } from 'lucide-react';
+import { User, LogOut, ChevronDown, Calendar } from 'lucide-react';
 import React, { useState, useEffect, useRef } from 'react';
-
-const styles = `
-  .header-container {
-    background: rgba(11, 22, 35, 0.95);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid rgba(59, 173, 229, 0.1);
-  }
-
-  .dropdown-content {
-    background: rgba(11, 22, 35, 0.98);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(59, 173, 229, 0.1);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  }
-
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 4px;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background: rgba(11, 22, 35, 0.3);
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(59, 173, 229, 0.3);
-    border-radius: 4px;
-  }
-
-  .date-input {
-    color-scheme: dark;
-  }
-
-  .date-input::-webkit-calendar-picker-indicator {
-    filter: invert(1);
-    opacity: 0.5;
-  }
-
-  .button-hover {
-    transition: all 0.2s ease;
-  }
-
-  .button-hover:hover {
-    background: rgba(59, 173, 229, 0.1);
-    border-color: rgba(59, 173, 229, 0.3);
-  }
-
-  .gradient-text {
-    background: linear-gradient(45deg, #3BADE5, #8B5CF6);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-`;
 
 const Header = ({ 
   user, 
@@ -62,7 +10,6 @@ const Header = ({
   dateRange = { from: '', to: '' }, 
   onDateRangeChange = () => {} 
 }) => {
-  // All your existing state and refs remain the same
   const [isVesselDropdownOpen, setIsVesselDropdownOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
@@ -71,168 +18,247 @@ const Header = ({
   const datePickerRef = useRef(null);
   const userDropdownRef = useRef(null);
 
-  // All your existing functions remain unchanged
-  // ... (keep all your existing functions)
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (vesselDropdownRef.current && !vesselDropdownRef.current.contains(event.target)) {
+        setIsVesselDropdownOpen(false);
+      }
+      if (datePickerRef.current && !datePickerRef.current.contains(event.target)) {
+        setIsDatePickerOpen(false);
+      }
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target)) {
+        setIsUserDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const vesselList = Array.isArray(vessels) ? vessels : [];
+  const selectedVessels = Array.isArray(currentVessel) 
+    ? currentVessel 
+    : currentVessel ? [currentVessel] : [];
+
+  const handleVesselToggle = (vesselId) => {
+    if (vesselId === '') {
+      onVesselChange([]);
+      return;
+    }
+
+    const updatedSelection = selectedVessels.includes(vesselId)
+      ? selectedVessels.filter(id => id !== vesselId)
+      : [...selectedVessels, vesselId];
+    
+    onVesselChange(updatedSelection);
+  };
+
+  const getVesselDisplayText = () => {
+    if (selectedVessels.length === 0) return 'All Vessels';
+    if (selectedVessels.length === 1) {
+      const vesselName = vesselList.find(([id]) => id === selectedVessels[0])?.[1];
+      return vesselName || 'All Vessels';
+    }
+    return `${selectedVessels.length} Vessels Selected`;
+  };
+
+  const handlePresetDateRange = (days) => {
+    const to = new Date();
+    const from = new Date();
+    from.setDate(from.getDate() - days);
+    onDateRangeChange({
+      from: from.toISOString().split('T')[0],
+      to: to.toISOString().split('T')[0]
+    });
+    setIsDatePickerOpen(false);
+  };
+
+  const handleThisMonth = () => {
+    const now = new Date();
+    const from = new Date(now.getFullYear(), now.getMonth(), 1);
+    onDateRangeChange({
+      from: from.toISOString().split('T')[0],
+      to: now.toISOString().split('T')[0]
+    });
+    setIsDatePickerOpen(false);
+  };
+
+  const handleThisYear = () => {
+    const now = new Date();
+    const from = new Date(now.getFullYear(), 0, 1);
+    onDateRangeChange({
+      from: from.toISOString().split('T')[0],
+      to: now.toISOString().split('T')[0]
+    });
+    setIsDatePickerOpen(false);
+  };
+
+  const getDateRangeDisplay = () => {
+    if (!dateRange?.from && !dateRange?.to) return 'All Time';
+    if (dateRange?.from && !dateRange?.to) return `From ${dateRange.from}`;
+    if (!dateRange?.from && dateRange?.to) return `Until ${dateRange.to}`;
+    return `${dateRange.from} to ${dateRange.to}`;
+  };
 
   return (
-    <>
-      <style>{styles}</style>
-      <header className="fixed top-0 left-0 right-0 z-50 header-container">
-        <div className="container mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center space-x-6">
-            <h1 className="text-lg font-bold gradient-text flex items-center">
-              <Ship className="h-5 w-5 mr-2 text-[#3BADE5]" />
-              Defects Manager
-            </h1>
-            
-            {/* Vessel Selector */}
-            {vesselList.length > 0 && (
-              <div className="relative" ref={vesselDropdownRef}>
-                <button
-                  className="button-hover flex items-center space-x-2 bg-[#132337]/50 border border-[#3BADE5]/10 rounded-md px-3 py-1.5 text-sm focus:outline-none"
-                  onClick={() => setIsVesselDropdownOpen(!isVesselDropdownOpen)}
-                >
-                  <Ship className="h-4 w-4 text-[#3BADE5]/70" />
-                  <span className="text-white/80">{getVesselDisplayText()}</span>
-                  <ChevronDown className="h-4 w-4 text-[#3BADE5]/50" />
-                </button>
-                
-                {isVesselDropdownOpen && (
-                  <div className="dropdown-content absolute top-full left-0 mt-1 w-56 rounded-md">
-                    <div className="p-3">
-                      <div className="text-sm text-[#3BADE5] mb-2">Select Vessels</div>
-                      <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
-                        <label className="flex items-center px-2 py-2 hover:bg-[#3BADE5]/5 rounded-md cursor-pointer">
+    <header className="fixed top-0 left-0 right-0 z-10 bg-background border-b">
+      <div className="container mx-auto px-4 h-12 flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <h1 className="text-lg font-bold">Defects Manager</h1>
+          
+          {/* Vessel Selector */}
+          {vesselList.length > 0 && (
+            <div className="relative" ref={vesselDropdownRef}>
+              <button
+                className="flex items-center space-x-2 bg-background border rounded-md px-2 py-1 text-xs focus:outline-none focus:ring-2 hover:bg-accent/50"
+                onClick={() => setIsVesselDropdownOpen(!isVesselDropdownOpen)}
+              >
+                <span>{getVesselDisplayText()}</span>
+                <ChevronDown className="h-4 w-4 opacity-50" />
+              </button>
+              
+              {isVesselDropdownOpen && (
+                <div className="absolute top-full left-0 mt-1 w-48 bg-background border rounded-md shadow-lg">
+                  <div className="p-2">
+                    <div className="text-xs text-muted-foreground mb-1">Select Vessels</div>
+                    <div className="max-h-[300px] overflow-y-auto">
+                      <label className="flex items-center px-2 py-1.5 hover:bg-accent/50 rounded-sm cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="mr-2 h-3 w-3 rounded border-gray-300"
+                          checked={selectedVessels.length === 0}
+                          onChange={() => handleVesselToggle('')}
+                        />
+                        <span className="text-xs">All Vessels</span>
+                      </label>
+                      {vesselList.map(([id, name]) => (
+                        <label
+                          key={id}
+                          className="flex items-center px-2 py-1.5 hover:bg-accent/50 rounded-sm cursor-pointer"
+                        >
                           <input
                             type="checkbox"
-                            className="mr-2 h-4 w-4 rounded accent-[#3BADE5]"
-                            checked={selectedVessels.length === 0}
-                            onChange={() => handleVesselToggle('')}
+                            className="mr-2 h-3 w-3"
+                            checked={selectedVessels.includes(id)}
+                            onChange={() => handleVesselToggle(id)}
                           />
-                          <span className="text-sm text-white/80">All Vessels</span>
+                          <span className="text-xs">{name}</span>
                         </label>
-                        {vesselList.map(([id, name]) => (
-                          <label
-                            key={id}
-                            className="flex items-center px-2 py-2 hover:bg-[#3BADE5]/5 rounded-md cursor-pointer"
-                          >
-                            <input
-                              type="checkbox"
-                              className="mr-2 h-4 w-4 rounded accent-[#3BADE5]"
-                              checked={selectedVessels.includes(id)}
-                              onChange={() => handleVesselToggle(id)}
-                            />
-                            <span className="text-sm text-white/80">{name}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Date Range Selector */}
-            <div className="relative" ref={datePickerRef}>
-              <button
-                className="button-hover flex items-center space-x-2 bg-[#132337]/50 border border-[#3BADE5]/10 rounded-md px-3 py-1.5 text-sm"
-                onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}
-              >
-                <Calendar className="h-4 w-4 text-[#3BADE5]/70" />
-                <span className="text-white/80">{getDateRangeDisplay()}</span>
-                <ChevronDown className="h-4 w-4 text-[#3BADE5]/50" />
-              </button>
-
-              {isDatePickerOpen && (
-                <div className="dropdown-content absolute top-full left-0 mt-1 p-4 rounded-md w-[320px]">
-                  <div className="grid gap-4">
-                    <div className="flex gap-4">
-                      <div className="grid gap-2">
-                        <label className="text-xs text-[#3BADE5]">From</label>
-                        <input
-                          type="date"
-                          className="date-input w-36 px-2 py-1.5 text-sm border border-[#3BADE5]/20 rounded-md bg-[#132337]/50 focus:border-[#3BADE5]/40 focus:outline-none"
-                          value={dateRange?.from || ''}
-                          onChange={(e) => onDateRangeChange({ ...dateRange, from: e.target.value })}
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <label className="text-xs text-[#3BADE5]">To</label>
-                        <input
-                          type="date"
-                          className="date-input w-36 px-2 py-1.5 text-sm border border-[#3BADE5]/20 rounded-md bg-[#132337]/50 focus:border-[#3BADE5]/40 focus:outline-none"
-                          value={dateRange?.to || ''}
-                          onChange={(e) => onDateRangeChange({ ...dateRange, to: e.target.value })}
-                          min={dateRange?.from || ''}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      {[
-                        { label: 'Last 7 days', action: () => handlePresetDateRange(7) },
-                        { label: 'Last 30 days', action: () => handlePresetDateRange(30) },
-                        { label: 'This month', action: handleThisMonth },
-                        { label: 'This year', action: handleThisYear }
-                      ].map(({ label, action }) => (
-                        <button
-                          key={label}
-                          onClick={action}
-                          className="button-hover px-3 py-1.5 text-sm border border-[#3BADE5]/20 rounded-md text-white/80"
-                        >
-                          {label}
-                        </button>
                       ))}
                     </div>
-
-                    <button
-                      onClick={() => {
-                        onDateRangeChange({ from: '', to: '' });
-                        setIsDatePickerOpen(false);
-                      }}
-                      className="button-hover px-3 py-1.5 text-sm border border-red-500/20 rounded-md text-red-400 hover:bg-red-500/10"
-                    >
-                      Clear dates
-                    </button>
                   </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* User Menu */}
-          {user && (
-            <div className="relative" ref={userDropdownRef}>
-              <button
-                className="button-hover flex items-center space-x-3 bg-[#132337]/50 border border-[#3BADE5]/10 rounded-full px-4 py-1.5"
-                onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
-              >
-                <User className="h-4 w-4 text-[#3BADE5]" />
-                <span className="text-sm text-white/80">{user.email}</span>
-                <ChevronDown className="h-4 w-4 text-[#3BADE5]/50" />
-              </button>
-
-              {isUserDropdownOpen && (
-                <div className="dropdown-content absolute top-full right-0 mt-1 rounded-md min-w-[200px]">
-                  <button
-                    onClick={() => {
-                      onLogout();
-                      setIsUserDropdownOpen(false);
-                    }}
-                    className="flex items-center space-x-2 w-full px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    <span>Logout</span>
-                  </button>
                 </div>
               )}
             </div>
           )}
+
+          {/* Date Range Selector */}
+          <div className="relative" ref={datePickerRef}>
+            <button
+              className="flex items-center space-x-2 bg-[#132337] border border-[#3BADE5]/20 rounded-md px-2 py-1 text-xs focus:outline-none focus:ring-1 hover:bg-[#1c3251] hover:border-[#3BADE5]/40"
+              onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}
+            >
+              <Calendar className="h-4 w-4" />
+              <span>{getDateRangeDisplay()}</span>
+              <ChevronDown className="h-4 w-4 opacity-50" />
+            </button>
+          
+            {isDatePickerOpen && (
+              <div className="absolute top-full left-0 mt-1 bg-[#0B1623] border border-[#3BADE5]/20 rounded-md shadow-lg p-2 z-20 w-[280px]">
+                <div className="grid gap-2">
+                  <div className="flex gap-2">
+                    <div className="grid gap-1">
+                      <label className="text-[10px] text-muted-foreground">From</label>
+                      <input
+                        type="date"
+                        className="w-32 px-1.5 py-0.5 text-xs border rounded-md bg-background"
+                        value={dateRange?.from || ''}
+                        onChange={(e) => onDateRangeChange({ ...dateRange, from: e.target.value })}
+                      />
+                    </div>
+                    <div className="grid gap-1">
+                      <label className="text-[10px] text-muted-foreground">To</label>
+                      <input
+                        type="date"
+                        className="w-32 px-1.5 py-0.5 text-xs border rounded-md bg-background"
+                        value={dateRange?.to || ''}
+                        onChange={(e) => onDateRangeChange({ ...dateRange, to: e.target.value })}
+                        min={dateRange?.from || ''}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-1">
+                    <button
+                      onClick={() => handlePresetDateRange(7)}
+                      className="px-2 py-1 text-xs border rounded-md hover:bg-accent/50"
+                    >
+                      Last 7 days
+                    </button>
+                    <button
+                      onClick={() => handlePresetDateRange(30)}
+                      className="px-2 py-1 text-xs border rounded-md hover:bg-accent/50"
+                    >
+                      Last 30 days
+                    </button>
+                    <button
+                      onClick={handleThisMonth}
+                      className="px-2 py-1 text-xs border rounded-md hover:bg-accent/50"
+                    >
+                      This month
+                    </button>
+                    <button
+                      onClick={handleThisYear}
+                      className="px-2 py-1 text-xs border rounded-md hover:bg-accent/50"
+                    >
+                      This year
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      onDateRangeChange({ from: '', to: '' });
+                      setIsDatePickerOpen(false);
+                    }}
+                    className="px-2 py-1 text-xs border rounded-md hover:bg-accent/50 text-red-500"
+                  >
+                    Clear dates
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      </header>
-      {/* Add spacing for fixed header */}
-      <div className="h-14" />
-    </>
+
+        {/* User Menu */}
+        {user && (
+          <div className="relative" ref={userDropdownRef}>
+            <button
+              className="flex items-center space-x-2 hover:bg-accent rounded-full p-1.5"
+              onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
+            >
+              <User className="h-4 w-4" />
+              <span className="text-xs font-medium">{user.email}</span>
+            </button>
+
+            {isUserDropdownOpen && (
+              <div className="absolute top-full right-0 mt-1 bg-background border rounded-md shadow-lg z-20">
+                <button
+                  onClick={() => {
+                    onLogout();
+                    setIsUserDropdownOpen(false);
+                  }}
+                  className="flex items-center space-x-2 w-full px-3 py-1.5 text-sm text-red-500 hover:bg-accent/50"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>Logout</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </header>
   );
 };
 
