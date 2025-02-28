@@ -297,25 +297,29 @@ function App() {
   };
 
   const handleDeleteDefect = async (defectId) => {
+    console.log('handleDeleteDefect starting with defectId:', defectId);
     try {
       if (!session?.user?.id) {
+        console.log('No user session found');
         throw new Error("User not authenticated");
       }
 
       const defect = data.find(d => d.id === defectId);
+      console.log('Found defect to delete:', defect);
       const hasFiles = (defect?.initial_files?.length || 0) + (defect?.completion_files?.length || 0) > 0;
-      
+      console.log('Defect has files:', hasFiles);
       const confirmed = window.confirm(
         hasFiles 
           ? "Are you sure you want to delete this defect? This will also delete all associated files."
           : "Are you sure you want to delete this defect?"
       );
-      
+      console.log('User confirmed deletion:', confirmed);
       if (!confirmed) return;
 
       setLoading(true);
-
+      console.log('Set loading to true');
       if (hasFiles) {
+        console.log('Attempting to delete files');
         const allFiles = [
           ...(defect.initial_files || []),
           ...(defect.completion_files || [])
@@ -324,10 +328,10 @@ function App() {
         const { error: storageError } = await supabase.storage
           .from('defect-files')
           .remove(allFiles.map(file => file.path));
-
+        console.log('File deletion response:', { storageError });
         if (storageError) throw storageError;
       }
-
+      
       const { error } = await supabase
         .from('defects register')
         .update({
