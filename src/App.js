@@ -297,6 +297,7 @@ function App() {
   };
 
   const handleDeleteDefect = async (defectId) => {
+    console.log('===== DELETE OPERATION START =====');
     console.log('handleDeleteDefect starting with defectId:', defectId);
     try {
       if (!session?.user?.id) {
@@ -304,20 +305,58 @@ function App() {
         throw new Error("User not authenticated");
       }
 
+      // First, check if the defect exists and is accessible
+      console.log('Checking if defect exists and is accessible');
+      const { data: defectCheck, error: defectCheckError } = await supabase
+        .from('defects register')
+        .select('id, vessel_id')
+        .eq('id', defectId)
+        .single();
+      
+      console.log('Defect check result:', { defectCheck, defectCheckError });
+      
+      if (defectCheckError) {
+        console.error('Error checking defect:', defectCheckError);
+        throw new Error("Cannot access this defect: " + defectCheckError.message);
+      }
+      
+      if (!defectCheck) {
+        console.error('Defect not found');
+        throw new Error("Defect not found");
+      }
+      
+      // Check if user is assigned to this vessel
+      console.log('Checking if user is assigned to vessel:', defectCheck.vessel_id);
+      console.log('User assigned vessels:', assignedVessels);
+      const isAssigned = assignedVessels.includes(defectCheck.vessel_id);
+      console.log('User is assigned to vessel:', isAssigned);
+      
+      if (!isAssigned) {
+        console.error('User not assigned to vessel');
+        throw new Error("You are not authorized to delete defects for this vessel");
+      }
+
       const defect = data.find(d => d.id === defectId);
       console.log('Found defect to delete:', defect);
+      
       const hasFiles = (defect?.initial_files?.length || 0) + (defect?.completion_files?.length || 0) > 0;
       console.log('Defect has files:', hasFiles);
+      
       const confirmed = window.confirm(
         hasFiles 
           ? "Are you sure you want to delete this defect? This will also delete all associated files."
           : "Are you sure you want to delete this defect?"
       );
       console.log('User confirmed deletion:', confirmed);
-      if (!confirmed) return;
+      
+      if (!confirmed) {
+        console.log('Deletion cancelled by user');
+        return;
+      }
 
       setLoading(true);
       console.log('Set loading to true');
+      
       if (hasFiles) {
         console.log('Attempting to delete files');
         const allFiles = [
@@ -325,31 +364,95 @@ function App() {
           ...(defect.completion_files || [])
         ];
 
+        console.log('Files to delete:', allFiles);
+        
         const { error: storageError } = await supabase.storage
           .from('defect-files')
           .remove(allFiles.map(file => file.path));
+        
         console.log('File deletion response:', { storageError });
-        if (storageError) throw storageError;
+        
+        if (storageError) {
+          console.error('Error deleting files:', storageError);
+          throw storageError;
+        }
       }
       
-      const { error } = await supabase
-        .from('defects register')
-        .update({
-          is_deleted: true,
-          deleted_by: session.user.id,
-          deleted_at: new Date().toISOString()
-        })
-        .eq('id', defectId);
-
-      if (error) throw error;
-
-      setData(prevData => prevData.filter(d => d.id !== defectId));
-
-      toast({
-        title: "Defect Deleted",
-        description: "Successfully deleted the defect record",
+      // Check if table has the required columns
+      console.log('Checking table structure');
+      try {
+        const { data: tableInfo, error: tableError } = await supabase
+          .from('defects register')
+          .select('id, is_deleted')
+          .limit(1);
+        
+        console.log('Table structure check:', { hasIsDeleted: tableInfo?.[0]?.hasOwnProperty('is_deleted'), tableError });
+        
+        if (tableError) {
+          console.error('Error checking table structure:', tableError);
+        }
+      } catch (tableCheckError) {
+        console.error('Exception checking table structure:', tableCheckError);
+      }
+      
+      // Try a minimal update first
+      console.log('Attempting minimal update');
+      try {
+        const { data: minimalData, error: minimalError } = await supabase
+          .from('defects register')
+          .update({ Comments: `Marked for deletion at ${new Date().toISOString()}` })
+          .eq('id', defectId);
+        
+        console.log('Minimal update result:', { minimalData, minimalError });
+        
+        if (minimalError) {
+          console.error('Minimal update failed:', minimalError);
+          throw new Error("Cannot modify this defect: " + minimalError.message);
+        }
+      } catch (minimalUpdateError) {
+        console.error('Exception during minimal update:', minimalUpdateError);
+      }
+      
+      // Now try the actual delete update
+      console.log('About to perform soft delete update');
+      console.log('Delete payload:', {
+        is_deleted: true,
+        deleted_by: session.user.id,
+        deleted_at: new Date().toISOString()
       });
-
+      
+      try {
+        const { data: updateData, error: updateError } = await supabase
+          .from('defects register')
+          .update({
+            is_deleted: true,
+            deleted_by: session.user.id,
+            deleted_at: new Date().toISOString()
+          })
+          .eq('id', defectId);
+        
+        console.log('Update operation response:', { updateData, updateError });
+        
+        if (updateError) {
+          console.error('Update operation failed:', updateError);
+          throw updateError;
+        }
+        
+        console.log('Update successful, updating UI state');
+        setData(prevData => prevData.filter(d => d.id !== defectId));
+        console.log('UI state updated');
+        
+        toast({
+          title: "Defect Deleted",
+          description: "Successfully deleted the defect record",
+        });
+        console.log('Success toast displayed');
+        
+      } catch (updateOperationError) {
+        console.error('Exception during update operation:', updateOperationError);
+        throw updateOperationError;
+      }
+      
     } catch (error) {
       console.error("Error deleting defect:", error);
       toast({
@@ -358,7 +461,9 @@ function App() {
         variant: "destructive",
       });
     } finally {
+      console.log('Setting loading to false');
       setLoading(false);
+      console.log('===== DELETE OPERATION END =====');
     }
   };
 
