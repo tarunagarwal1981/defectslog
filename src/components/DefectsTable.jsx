@@ -335,7 +335,7 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
                 : '-';
               break;
             case 'targetDate':
-              content = defect[target_date] 
+              content = defect['target_date'] 
                 ? new Date(defect['target_date']).toLocaleDateString('en-GB') 
                 : '-';
               break;
@@ -365,7 +365,13 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
               content = defect[field.dbField] || '-';
           }
           // Inside the DefectsTable component
-          
+          // Add this before the return statement in DefectsTable
+          const visibleColumns = getVisibleColumns(permissions, isExternal);
+          console.log('Columns that will be rendered:', visibleColumns.map(([id, field]) => ({ 
+            id, 
+            label: field.label,
+            width: field.width
+          })));
           return (
             <td 
               key={fieldId} 
