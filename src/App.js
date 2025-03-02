@@ -218,6 +218,7 @@ function App() {
       'Status (Vessel)': 'OPEN',
       'Date Reported': new Date().toISOString().split('T')[0],
       'Date Completed': '',
+      target_date: '',
       initial_files: [],
       completion_files: [],
       raised_by: ''
@@ -243,6 +244,7 @@ function App() {
         Criticality: updatedDefect.Criticality,
         "Date Reported": updatedDefect['Date Reported'],
         "Date Completed": updatedDefect['Date Completed'] || null,
+        target_date: updatedDefect.target_date || null,
         Comments: updatedDefect.Comments || '',
         initial_files: updatedDefect.initial_files || [],
         completion_files: updatedDefect.completion_files || [],
