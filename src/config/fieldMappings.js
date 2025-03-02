@@ -342,6 +342,13 @@ export const CORE_FIELDS = {
         dbField: 'external_visibility',
         displayOrder: 25,
         defaultValue: true
+      },
+      targetDate: {
+        id: 'targetDate',
+        label: 'Target Date',
+        dbField: 'target_date',
+        section: 'dates',
+        type: 'date'
       }
     }
   };
