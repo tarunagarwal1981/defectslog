@@ -29,20 +29,32 @@ const canPerformAction = (action, permissions) => {
 };
 
 const getVisibleColumns = (permissions, isExternal) => {
-  return Object.entries(CORE_FIELDS.TABLE)
-    .filter(([fieldId, field]) => {
-      // Always show action columns
-      if (field.isAction) return true;
-      
-      // Check permission visibility
-      if (!isColumnVisible(fieldId, permissions)) return false;
-      
-      // Handle external user restrictions
-      if (isExternal && field.restrictedToInternal) return false;
-      
-      return true;
-    })
-    .sort((a, b) => a[1].priority - b[1].priority);
+  const allFields = Object.entries(CORE_FIELDS.TABLE);
+  console.log('All fields before filtering:', allFields.map(([id]) => id));
+  
+  const filteredFields = allFields.filter(([fieldId, field]) => {
+    // Always show action columns
+    if (field.isAction) return true;
+    
+    // Check permission visibility
+    const visibleByPermission = isColumnVisible(fieldId, permissions);
+    if (!visibleByPermission) {
+      console.log(`Field ${fieldId} filtered out by permissions`);
+      return false;
+    }
+    
+    // Handle external user restrictions
+    if (isExternal && field.restrictedToInternal) {
+      console.log(`Field ${fieldId} filtered out because it's restricted to internal users`);
+      return false;
+    }
+    
+    return true;
+  });
+  
+  console.log('Fields after filtering:', filteredFields.map(([id]) => id));
+  
+  return filteredFields.sort((a, b) => a[1].priority - b[1].priority);
 };
 
 const CRITICALITY_COLORS = {
