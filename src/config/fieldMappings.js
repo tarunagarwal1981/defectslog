@@ -270,15 +270,14 @@ export const CORE_FIELDS = {
         priority: 3,
         type: 'date'
       },
-      dateCompleted: {
-        id: 'dateCompleted',
-        label: 'Completed',
-        dbField: 'Date Completed',
-        width: '120px',
-        minWidth: '120px',
-        priority: 3,
+      targetDate: {
+        id: 'targetDate',
+        label: 'Target Date',
+        dbField: 'target_date',
+        section: 'dates',
         type: 'date'
       },
+      
       actions: {
         id: 'actions',
         label: 'Actions',
@@ -309,6 +308,15 @@ export const CORE_FIELDS = {
         label: 'Follow-Up',
         dbField: 'Comments',
         section: 'details'
+      },
+      dateCompleted: {
+        id: 'dateCompleted',
+        label: 'Completed',
+        dbField: 'Date Completed',
+        width: '120px',
+        minWidth: '120px',
+        priority: 3,
+        type: 'date'
       },
       initialFiles: {
         id: 'initialFiles',
@@ -343,13 +351,7 @@ export const CORE_FIELDS = {
         displayOrder: 25,
         defaultValue: true
       },
-      targetDate: {
-        id: 'targetDate',
-        label: 'Target Date',
-        dbField: 'target_date',
-        section: 'dates',
-        type: 'date'
-      }
+      
     }
   };
   
