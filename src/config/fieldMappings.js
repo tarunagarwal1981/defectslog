@@ -154,6 +154,15 @@ export const CORE_FIELDS = {
         width: 'half',
         conditionalRequired: (values) => values.status === 'CLOSED'
       },
+      targetDate: {
+        id: 'targetDate',
+        label: 'Target Date',
+        dbField: 'target_date',
+        width: '120px',
+        minWidth: '120px',
+        priority: 3,
+        type: 'date'
+      },
       closureComments: {
         id: 'closureComments',
         label: 'Closure Comments',
