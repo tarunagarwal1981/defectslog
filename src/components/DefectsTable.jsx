@@ -576,6 +576,13 @@ const DefectsTable = ({
     key: 'Date Reported',
     direction: 'desc'
   });
+  console.log('Permissions:', permissions?.fieldPermissions?.targetDate);
+  console.log('Is External:', isExternal);
+  console.log('Target date field restricted?', CORE_FIELDS.TABLE.targetDate?.restrictedToInternal);
+  console.log('Visible columns:', getVisibleColumns(permissions, isExternal).map(([id]) => id));
+  
+  // And to check if your data contains target_date values:
+  console.log('Sample defect data target_date:', data.length > 0 ? data[0].target_date : 'No data');
 
   const handleSort = (key) => {
     // Only allow sorting on visible columns
