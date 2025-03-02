@@ -261,15 +261,15 @@ export const CORE_FIELDS = {
         minWidth: '200px',
         priority: 2
       },
-      // dateReported: {
-      //   id: 'dateReported',
-      //   label: 'Reported',
-      //   dbField: 'Date Reported',
-      //   width: '120px',
-      //   minWidth: '120px',
-      //   priority: 3,
-      //   type: 'date'
-      // },
+      dateReported: {
+        id: 'dateReported',
+        label: 'Reported',
+        dbField: 'Date Reported',
+        width: '120px',
+        minWidth: '120px',
+        priority: 3,
+        type: 'date'
+      },
       targetDate: {
         id: 'targetDate',
         label: 'Target Date',

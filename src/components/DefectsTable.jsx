@@ -329,11 +329,11 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
             case 'actionPlanned':
               content = <TruncatedText text={defect['Action Planned']} />;
               break;
-            // case 'dateReported':
-            //   content = defect['Date Reported'] 
-            //     ? new Date(defect['Date Reported']).toLocaleDateString('en-GB') 
-            //     : '-';
-            //   break;
+            case 'dateReported':
+              content = defect['Date Reported'] 
+                ? new Date(defect['Date Reported']).toLocaleDateString('en-GB') 
+                : '-';
+              break;
             case 'targetDate':
               content = defect.target_date 
                 ? new Date(defect.target_date).toLocaleDateString('en-GB') 
