@@ -76,7 +76,7 @@ export const getUserPermissions = async (userId) => {
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('role')
-      .eq('id', userId)
+      .eq('email', userId)
       .single();
 
     if (userError) throw userError;
