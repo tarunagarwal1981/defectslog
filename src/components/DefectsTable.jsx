@@ -26,8 +26,8 @@ const isColumnVisible = (fieldId, permissions) => {
   // Special case for action columns
   if (fieldId === 'expandToggle' || fieldId === 'actions') return true;
   
-  // Use the checkPermission utility
-  return checkPermission(permissions, null, fieldId);
+  // Check if this field has a specific permission
+  return permissions.fields && permissions.fields[fieldId]?.visible !== false;
 };
 
 
