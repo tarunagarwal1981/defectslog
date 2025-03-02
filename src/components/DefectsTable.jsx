@@ -334,9 +334,9 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
                 ? new Date(defect['Date Reported']).toLocaleDateString('en-GB') 
                 : '-';
               break;
-            case 'dateCompleted':
-              content = defect['Date Completed'] 
-                ? new Date(defect['Date Completed']).toLocaleDateString('en-GB') 
+            case 'targetDate':
+              content = defect.target_date 
+                ? new Date(defect.target_date).toLocaleDateString('en-GB') 
                 : '-';
               break;
             case 'raisedBy':
@@ -406,12 +406,12 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
                     {defect.Comments || '-'}
                   </div>
                 </div>
-                {/* Add Target Date field here */}
+                {/* Date Completed field */}
                 <div className="bg-[#0B1623] rounded-md p-3 shadow-lg hover:shadow-[0_4px_15px_rgba(0,0,0,0.3)] transition-all duration-300 border border-white/5">
-                  <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Target Date</h4>
+                  <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Date Completed</h4>
                   <div className="text-xs leading-relaxed text-white/90 break-words">
-                    {defect.target_date 
-                      ? new Date(defect.target_date).toLocaleDateString('en-GB') 
+                    {defect['Date Completed'] 
+                      ? new Date(defect['Date Completed']).toLocaleDateString('en-GB') 
                       : '-'}
                   </div>
                 </div>
