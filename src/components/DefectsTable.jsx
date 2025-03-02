@@ -320,7 +320,7 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
                 </span>
               );
               break;
-            case 'equipments':
+            case 'equipment':
               content = <TruncatedText text={defect.Equipments} maxWidth="max-w-[150px]" />;
               break;
             case 'description':
