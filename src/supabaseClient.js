@@ -12,7 +12,7 @@ export const getUserRole = async (userId) => {
     const { data, error } = await supabase
       .from('users')
       .select('role')
-      .eq('id', userId)
+      .eq('email', userId)
       .single();
 
     if (error) throw error;
@@ -28,12 +28,13 @@ export const getFieldPermissions = async (userRole) => {
   try {
     const { data, error } = await supabase
       .from('role_field_permissions')
-      .select('*')
+      .select('field_name')
       .eq('role_name', userRole);
 
     if (error) throw error;
     
     // Transform into an easily accessible format
+    // If a field is in the list, it's visible and editable
     return data.reduce((acc, perm) => {
       acc[perm.field_name] = {
         visible: true,
@@ -52,17 +53,25 @@ export const getActionPermissions = async (userRole) => {
   try {
     const { data, error } = await supabase
       .from('action_permissions')
-      .select('*')
-      .eq('role', userRole)
-      .eq('resource', 'defects');
+      .select('action')
+      .eq('role', userRole);
 
     if (error) throw error;
 
-    // Transform into an easily accessible format
-    return data.reduce((acc, perm) => {
-      acc[perm.action] = true;
-      return acc;
-    }, {});
+    // Initialize all actions as false
+    const actions = {
+      create: false,
+      read: false,
+      update: false,
+      delete: false
+    };
+    
+    // Set permitted actions to true
+    data.forEach(perm => {
+      actions[perm.action] = true;
+    });
+    
+    return actions;
   } catch (error) {
     console.error('Error fetching action permissions:', error);
     throw error;
@@ -72,92 +81,55 @@ export const getActionPermissions = async (userRole) => {
 // Get all user permissions
 export const getUserPermissions = async (userId) => {
   try {
+    console.log("Getting permissions for user:", userId);
+    
     // Fetch user role
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('role')
-      .eq('email', userId)
-      .single();
-
-    if (userError) throw userError;
+    const userRole = await getUserRole(userId);
+    console.log("User role:", userRole);
     
-    const userRole = userData?.role;
+    if (!userRole) {
+      console.warn("No role found for user");
+      return {
+        actions: { create: false, read: false, update: false, delete: false },
+        fields: {}
+      };
+    }
     
-    // Initialize permissions structure
-    const permissions = {
-      actions: {
-        create: true,
-        update: true,
-        delete: true
-      },
-      fields: {}
-    };
-
-    // Make all fields visible by default
+    // Fetch action permissions
+    const actions = await getActionPermissions(userRole);
+    console.log("Action permissions:", actions);
+    
+    // Fetch field permissions
+    const fieldPermissionsData = await getFieldPermissions(userRole);
+    console.log("Field permissions:", fieldPermissionsData);
+    
+    // Initialize field visibility to false for all fields
+    const fields = {};
     Object.keys(CORE_FIELDS.TABLE).forEach(fieldId => {
-      permissions.fields[fieldId] = {
-        visible: true,
-        editable: true
+      fields[fieldId] = {
+        visible: false,
+        editable: false
       };
     });
     
-    // If no role defined, return default permissions
-    if (!userRole) {
-      return permissions;
-    }
-    
-    // Fetch role-based permissions if role exists
-    try {
-      const { data: actionPerms, error: actionError } = await supabase
-        .from('role_permissions')
-        .select('action, allowed')
-        .eq('role_name', userRole);
-        
-      if (!actionError && actionPerms) {
-        // Override default actions with role-specific ones
-        actionPerms.forEach(perm => {
-          permissions.actions[perm.action] = perm.allowed;
-        });
+    // Update permissions for fields that are explicitly allowed
+    Object.keys(fieldPermissionsData).forEach(fieldName => {
+      if (fields[fieldName]) {
+        fields[fieldName] = fieldPermissionsData[fieldName];
       }
-      
-      const { data: fieldPerms, error: fieldError } = await supabase
-        .from('role_field_permissions')
-        .select('field_name, visible, editable')
-        .eq('role_name', userRole);
-        
-      if (!fieldError && fieldPerms) {
-        // Override default field permissions with role-specific ones
-        fieldPerms.forEach(perm => {
-          permissions.fields[perm.field_name] = {
-            visible: perm.visible,
-            editable: perm.editable
-          };
-        });
-      }
-    } catch (e) {
-      console.error('Error fetching role permissions:', e);
-      // Continue with default permissions if there's an error
-    }
+    });
     
-    return permissions;
+    return {
+      actions,
+      fields
+    };
     
   } catch (error) {
     console.error('Error in getUserPermissions:', error);
-    // Return default permissions that show everything
-    const defaultPermissions = {
-      actions: { create: true, update: true, delete: true },
+    return {
+      actions: { create: false, read: false, update: false, delete: false },
       fields: {}
     };
-    
-    // Make all fields visible by default
-    Object.keys(CORE_FIELDS.TABLE).forEach(fieldId => {
-      defaultPermissions.fields[fieldId] = {
-        visible: true,
-        editable: true
-      };
-    });
-    
-    return defaultPermissions;
   }
 };
 
@@ -167,7 +139,7 @@ export const isExternalUser = async (userId) => {
     const { data, error } = await supabase
       .from('users')
       .select('role')
-      .eq('id', userId)
+      .eq('email', userId)
       .single();
 
     if (error) throw error;
@@ -206,12 +178,12 @@ export const checkPermission = async (userId, action, field = null) => {
     const permissions = await getUserPermissions(userId);
     
     // Check action permission
-    if (action && !permissions.actionPermissions[action]) {
+    if (action && !permissions.actions[action]) {
       return false;
     }
 
     // Check field permission if provided
-    if (field && !permissions.fieldPermissions[field]?.visible) {
+    if (field && !permissions.fields[field]?.visible) {
       return false;
     }
 
