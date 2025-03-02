@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { CORE_FIELDS } from './config/fieldMappings';
 
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
 const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
@@ -71,25 +72,92 @@ export const getActionPermissions = async (userRole) => {
 // Get all user permissions
 export const getUserPermissions = async (userId) => {
   try {
-    // First get user's role
-    const userRole = await getUserRole(userId);
-    if (!userRole) throw new Error('User role not found');
+    // Fetch user role
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', userId)
+      .single();
 
-    // Get field permissions
-    const fieldPermissions = await getFieldPermissions(userRole);
-
-    // Get action permissions
-    const actionPermissions = await getActionPermissions(userRole);
-
-    return {
-      role: userRole,
-      fieldPermissions,
-      actionPermissions
+    if (userError) throw userError;
+    
+    const userRole = userData?.role;
+    
+    // Initialize permissions structure
+    const permissions = {
+      actions: {
+        create: true,
+        update: true,
+        delete: true
+      },
+      fields: {}
     };
 
+    // Make all fields visible by default
+    Object.keys(CORE_FIELDS.TABLE).forEach(fieldId => {
+      permissions.fields[fieldId] = {
+        visible: true,
+        editable: true
+      };
+    });
+    
+    // If no role defined, return default permissions
+    if (!userRole) {
+      return permissions;
+    }
+    
+    // Fetch role-based permissions if role exists
+    try {
+      const { data: actionPerms, error: actionError } = await supabase
+        .from('role_permissions')
+        .select('action, allowed')
+        .eq('role_name', userRole);
+        
+      if (!actionError && actionPerms) {
+        // Override default actions with role-specific ones
+        actionPerms.forEach(perm => {
+          permissions.actions[perm.action] = perm.allowed;
+        });
+      }
+      
+      const { data: fieldPerms, error: fieldError } = await supabase
+        .from('role_field_permissions')
+        .select('field_name, visible, editable')
+        .eq('role_name', userRole);
+        
+      if (!fieldError && fieldPerms) {
+        // Override default field permissions with role-specific ones
+        fieldPerms.forEach(perm => {
+          permissions.fields[perm.field_name] = {
+            visible: perm.visible,
+            editable: perm.editable
+          };
+        });
+      }
+    } catch (e) {
+      console.error('Error fetching role permissions:', e);
+      // Continue with default permissions if there's an error
+    }
+    
+    return permissions;
+    
   } catch (error) {
-    console.error('Error fetching user permissions:', error);
-    throw error;
+    console.error('Error in getUserPermissions:', error);
+    // Return default permissions that show everything
+    const defaultPermissions = {
+      actions: { create: true, update: true, delete: true },
+      fields: {}
+    };
+    
+    // Make all fields visible by default
+    Object.keys(CORE_FIELDS.TABLE).forEach(fieldId => {
+      defaultPermissions.fields[fieldId] = {
+        visible: true,
+        editable: true
+      };
+    });
+    
+    return defaultPermissions;
   }
 };
 

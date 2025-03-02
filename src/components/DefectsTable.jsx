@@ -17,11 +17,19 @@ import {
   TooltipTrigger,
 } from './ui/tooltip';
 import { CORE_FIELDS } from '../config/fieldMappings';
+import { checkPermission } from '../utils/permissionUtils';
 
 const isColumnVisible = (fieldId, permissions) => {
-  if (!permissions?.fieldPermissions) return true;
-  return permissions.fieldPermissions[fieldId]?.visible;
+  // If no permissions provided, everything is visible by default
+  if (!permissions) return true;
+  
+  // Special case for action columns
+  if (fieldId === 'expandToggle' || fieldId === 'actions') return true;
+  
+  // Use the checkPermission utility
+  return checkPermission(permissions, null, fieldId);
 };
+
 
 const canPerformAction = (action, permissions) => {
   if (!permissions?.actionPermissions) return false;
@@ -29,21 +37,20 @@ const canPerformAction = (action, permissions) => {
 };
 
 const getVisibleColumns = (permissions, isExternal) => {
-  const allFields = Object.entries(CORE_FIELDS.TABLE);
-  
-  const filteredFields = allFields.filter(([fieldId, field]) => {
-    // Always show action columns or targetDate
-    if (field.isAction || fieldId === 'targetDate') return true;
-    
-    // Check permission visibility for other fields
-    if (!isColumnVisible(fieldId, permissions)) return false;
-    
-    if (isExternal && field.restrictedToInternal) return false;
-    
-    return true;
-  });
-  
-  return filteredFields.sort((a, b) => a[1].priority - b[1].priority);
+  return Object.entries(CORE_FIELDS.TABLE)
+    .filter(([fieldId, field]) => {
+      // Always show action columns
+      if (field.isAction) return true;
+      
+      // Check permission visibility
+      if (!isColumnVisible(fieldId, permissions)) return false;
+      
+      // Handle external user restrictions
+      if (isExternal && field.restrictedToInternal) return false;
+      
+      return true;
+    })
+    .sort((a, b) => a[1].priority - b[1].priority);
 };
 
 const CRITICALITY_COLORS = {
