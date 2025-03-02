@@ -161,7 +161,8 @@ export const CORE_FIELDS = {
         width: '120px',
         minWidth: '120px',
         priority: 3,
-        type: 'date'
+        type: 'date',
+        section: 'dates'
       },
       closureComments: {
         id: 'closureComments',
