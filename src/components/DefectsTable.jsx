@@ -335,8 +335,8 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
                 : '-';
               break;
             case 'targetDate':
-              content = defect.target_date 
-                ? new Date(defect.target_date).toLocaleDateString('en-GB') 
+              content = defect[target_date] 
+                ? new Date(defect['target_date']).toLocaleDateString('en-GB') 
                 : '-';
               break;
             case 'raisedBy':
