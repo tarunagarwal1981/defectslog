@@ -284,8 +284,11 @@ export const CORE_FIELDS = {
         id: 'targetDate',
         label: 'Target Date',
         dbField: 'target_date',
-        section: 'dates',
+        width: '120px',
+        minWidth: '120px',
+        priority: 3,
         type: 'date'
+        
       },
       
       actions: {
