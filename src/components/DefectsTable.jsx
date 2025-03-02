@@ -32,8 +32,8 @@ const isColumnVisible = (fieldId, permissions) => {
 
 
 const canPerformAction = (action, permissions) => {
-  if (!permissions?.actionPermissions) return false;
-  return permissions.actionPermissions[action];
+  if (!permissions?.actions) return false;
+  return permissions.actions[action] === true;
 };
 
 const getVisibleColumns = (permissions, isExternal) => {
