@@ -364,7 +364,8 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
             default:
               content = defect[field.dbField] || '-';
           }
-
+          // Inside the DefectsTable component
+          
           return (
             <td 
               key={fieldId} 
@@ -377,8 +378,11 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
           );
         })}
       </tr>
-
-     
+      console.log('Permissions:', permissions?.fieldPermissions?.targetDate);
+      console.log('Is External:', isExternal);
+      console.log('Target date field restricted?', CORE_FIELDS.TABLE.targetDate?.restrictedToInternal);
+      console.log('Visible columns:', getVisibleColumns(permissions, isExternal).map(([id]) => id));
+  
       {isExpanded && (
         <tr className="bg-[#132337]/50">
           <td colSpan={getVisibleColumns(permissions, isExternal).length} className="p-4 border-b border-white/10">
