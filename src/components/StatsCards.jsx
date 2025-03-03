@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Activity, AlertCircle } from 'lucide-react';
+import { Activity, AlertCircle, Triangle } from 'lucide-react';
 
 const StatsCards = ({ data = [] }) => {
   const stats = useMemo(() => {
@@ -15,6 +15,16 @@ const StatsCards = ({ data = [] }) => {
       'High': 0,
       'Medium': 0,
       'Low': 0
+    };
+    
+    // Count by equipment type
+    const equipmentCounts = {};
+    
+    // Criticality by status
+    const criticalityByStatus = {
+      'High': { 'OPEN': 0, 'IN PROGRESS': 0, 'CLOSED': 0 },
+      'Medium': { 'OPEN': 0, 'IN PROGRESS': 0, 'CLOSED': 0 },
+      'Low': { 'OPEN': 0, 'IN PROGRESS': 0, 'CLOSED': 0 }
     };
     
     // Count by status
@@ -35,10 +45,46 @@ const StatsCards = ({ data = [] }) => {
       }
       
       // Count by criticality
-      if (defect.Criticality in criticalityCounts) {
-        criticalityCounts[defect.Criticality]++;
+      const criticality = defect.Criticality;
+      if (criticality in criticalityCounts) {
+        criticalityCounts[criticality]++;
+        
+        // Track criticality by status
+        if (status && criticality && criticalityByStatus[criticality] && criticalityByStatus[criticality][status] !== undefined) {
+          criticalityByStatus[criticality][status]++;
+        }
+      }
+      
+      // Count by equipment
+      if (defect.Equipments) {
+        if (!equipmentCounts[defect.Equipments]) {
+          equipmentCounts[defect.Equipments] = 1;
+        } else {
+          equipmentCounts[defect.Equipments]++;
+        }
       }
     });
+    
+    // Process equipment data for display
+    let equipmentData = Object.entries(equipmentCounts)
+      .map(([name, count]) => ({
+        name,
+        count,
+        percentage: Math.round((count / totalDefects) * 100)
+      }))
+      .sort((a, b) => b.count - a.count);
+    
+    // Limit to top 4 equipment types and group the rest as "Others"
+    if (equipmentData.length > 4) {
+      const topEquipment = equipmentData.slice(0, 3);
+      const otherCount = equipmentData.slice(3).reduce((sum, item) => sum + item.count, 0);
+      const otherPercentage = Math.round((otherCount / totalDefects) * 100);
+      
+      equipmentData = [
+        ...topEquipment,
+        { name: 'Others', count: otherCount, percentage: otherPercentage }
+      ];
+    }
     
     // Calculate percentages
     const openPercentage = totalDefects > 0 ? (openCount / totalDefects) * 100 : 0;
@@ -56,7 +102,9 @@ const StatsCards = ({ data = [] }) => {
       inProgressPercentage,
       closedPercentage,
       overduePercentage,
-      criticalityCounts
+      criticalityCounts,
+      criticalityByStatus,
+      equipmentData
     };
   }, [data]);
   
@@ -176,62 +224,107 @@ const StatsCards = ({ data = [] }) => {
             style={{ width: `${stats.totalDefects > 0 ? (stats.criticalityCounts.Low / stats.totalDefects) * 100 : 0}%` }}
           ></div>
         </div>
+        
+        {/* High Criticality Status Distribution */}
+        {stats.criticalityCounts.High > 0 && (
+          <div className="mt-4 pt-3 border-t border-white/10">
+            <div className="flex items-center gap-1 mb-2">
+              <Triangle className="h-3 w-3 fill-red-500 text-red-500" />
+              <span className="text-xs text-white/80">High Criticality Status</span>
+            </div>
+            <div className="flex justify-between items-center text-[10px] pb-1">
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                <span className="text-white/80">Open: {stats.criticalityByStatus.High.OPEN}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                <span className="text-white/80">In Progress: {stats.criticalityByStatus.High['IN PROGRESS']}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span className="text-white/80">Closed: {stats.criticalityByStatus.High.CLOSED}</span>
+              </div>
+            </div>
+            <div className="h-1.5 bg-[#132337] rounded-full overflow-hidden flex">
+              <div
+                className="h-full bg-red-500"
+                style={{ 
+                  width: `${stats.criticalityCounts.High > 0 ? 
+                    (stats.criticalityByStatus.High.OPEN / stats.criticalityCounts.High) * 100 : 0}%` 
+                }}
+              ></div>
+              <div
+                className="h-full bg-yellow-500"
+                style={{ 
+                  width: `${stats.criticalityCounts.High > 0 ? 
+                    (stats.criticalityByStatus.High['IN PROGRESS'] / stats.criticalityCounts.High) * 100 : 0}%` 
+                }}
+              ></div>
+              <div
+                className="h-full bg-green-500"
+                style={{ 
+                  width: `${stats.criticalityCounts.High > 0 ? 
+                    (stats.criticalityByStatus.High.CLOSED / stats.criticalityCounts.High) * 100 : 0}%` 
+                }}
+              ></div>
+            </div>
+          </div>
+        )}
       </div>
       
-      {/* Card 3: Completion Rate */}
+      {/* Card 3: Equipment Distribution */}
       <div className="glass-card rounded-[4px] p-4 shadow-lg border border-white/5 backdrop-blur-sm">
-        <h3 className="text-sm font-medium text-[#f4f4f4] mb-2">Completion Rate</h3>
-        <div className="flex flex-col items-center justify-center py-4">
-          <svg className="w-24 h-24" viewBox="0 0 100 100">
-            {/* Background circle */}
-            <circle
-              cx="50"
-              cy="50"
-              r="40"
-              fill="none"
-              stroke="#132337"
-              strokeWidth="12"
-            />
+        <h3 className="text-sm font-medium text-[#f4f4f4] mb-4">Equipment Distribution</h3>
+        
+        <div className="space-y-3">
+          {stats.equipmentData.map((item, index) => {
+            // Colors for different equipment types
+            const colors = ['#3BADE5', '#805AD5', '#38B2AC', '#718096'];
+            const color = colors[index % colors.length];
             
-            {/* Progress circle */}
-            <circle
-              cx="50"
-              cy="50"
-              r="40"
-              fill="none"
-              stroke={stats.closedPercentage > 66 ? '#10B981' : stats.closedPercentage > 33 ? '#FBBF24' : '#EF4444'}
-              strokeWidth="12"
-              strokeDasharray={`${stats.closedPercentage * 2.51} 251`}
-              strokeDashoffset="0"
-              strokeLinecap="round"
-              transform="rotate(-90 50 50)"
-              style={{ transition: 'all 0.3s ease' }}
-            />
-            
-            {/* Center text */}
-            <text
-              x="50"
-              y="55"
-              fontSize="18"
-              fontWeight="bold"
-              textAnchor="middle"
-              fill="white"
-            >
-              {stats.closedPercentage.toFixed(0)}%
-            </text>
-          </svg>
-          <p className="text-xs text-white/60 mt-2">
-            {stats.closedCount} of {stats.totalDefects} defects closed
-          </p>
+            return (
+              <div key={index} className="space-y-1">
+                <div className="flex justify-between text-[10px]">
+                  <span className="text-white/80 truncate max-w-[180px]" title={item.name}>{item.name}</span>
+                  <span className="text-white/60">{item.count} ({item.percentage}%)</span>
+                </div>
+                <div className="h-1.5 bg-[#132337] rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full"
+                    style={{ 
+                      width: `${item.percentage}%`,
+                      backgroundColor: color
+                    }}
+                  ></div>
+                </div>
+              </div>
+            );
+          })}
         </div>
         
-        {/* Overdue warning if applicable */}
-        {stats.overdueCount > 0 && (
-          <div className="mt-2 p-2 bg-orange-500/10 border border-orange-500/20 rounded-md flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 text-orange-400" />
-            <span className="text-xs text-orange-300">
-              {stats.overdueCount} {stats.overdueCount === 1 ? 'defect is' : 'defects are'} past target date
-            </span>
+        {stats.equipmentData.length === 0 && (
+          <div className="flex items-center justify-center h-32 text-white/40 text-xs">
+            No equipment data available
+          </div>
+        )}
+        
+        {/* Equipment count summary */}
+        {stats.equipmentData.length > 0 && (
+          <div className="mt-4 pt-3 border-t border-white/10">
+            <div className="text-xs text-white/60 mb-2">
+              Equipment Types: <span className="text-white/80">{Object.keys(stats.equipmentData).length}</span>
+            </div>
+            
+            {/* Show a warning if any equipment has high number of defects */}
+            {stats.equipmentData[0]?.percentage > 30 && (
+              <div className="flex items-start gap-2 bg-[#132337] p-2 rounded-md mt-2">
+                <AlertCircle className="h-4 w-4 text-[#3BADE5] flex-shrink-0 mt-0.5" />
+                <div className="text-[10px] text-white/80">
+                  <span className="font-medium text-[#3BADE5]">{stats.equipmentData[0].name}</span> accounts for {stats.equipmentData[0].percentage}% of all defects, which may require focused attention.
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
