@@ -18,9 +18,8 @@ import {
 } from './ui/tooltip';
 import { CORE_FIELDS } from '../config/fieldMappings';
 
-// Add near the top of DefectsTable component
-console.log("CORE_FIELDS.TABLE:", CORE_FIELDS.TABLE);
-console.log("Visible columns:", getVisibleColumns(permissions, isExternal).map(col => col[0]));
+
+
 
 const isColumnVisible = (fieldId, permissions) => {
   if (!permissions?.fieldPermissions) return true;
@@ -579,6 +578,12 @@ const DefectsTable = ({
   permissions, // Add this
   isExternal  
 }) => {
+
+  console.log("CORE_FIELDS.TABLE:", CORE_FIELDS.TABLE);
+  
+  // We need to call getVisibleColumns with the props that are available in this scope
+  console.log("Visible columns:", getVisibleColumns(permissions, isExternal).map(col => col[0]));
+ 
   const [sortConfig, setSortConfig] = useState({
     key: 'Date Reported',
     direction: 'desc'
