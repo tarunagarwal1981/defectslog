@@ -41,6 +41,9 @@ const DefectDialog = ({
   // Function to check if field is visible
   const isFieldVisible = (fieldId) => {
     if (!permissions?.fieldPermissions) return true;
+    if (fieldId === 'targetDate' && permissions.fieldPermissions.target_date) {
+      return permissions.fieldPermissions.target_date.visible;
+    }
     return permissions.fieldPermissions[fieldId]?.visible;
   };
 
