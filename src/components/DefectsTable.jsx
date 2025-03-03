@@ -23,6 +23,9 @@ import { CORE_FIELDS } from '../config/fieldMappings';
 
 const isColumnVisible = (fieldId, permissions) => {
   if (!permissions?.fieldPermissions) return true;
+  if (fieldId === 'targetDate') {
+    return permissions.fieldPermissions.target_date?.visible;
+  }
   return permissions.fieldPermissions[fieldId]?.visible;
 };
 
