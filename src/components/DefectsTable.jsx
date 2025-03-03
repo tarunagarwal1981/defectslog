@@ -579,10 +579,8 @@ const DefectsTable = ({
   isExternal  
 }) => {
 
-  console.log("CORE_FIELDS.TABLE:", CORE_FIELDS.TABLE);
-  
-  // We need to call getVisibleColumns with the props that are available in this scope
-  console.log("Visible columns:", getVisibleColumns(permissions, isExternal).map(col => col[0]));
+  console.log("Is targetDate visible:", isColumnVisible('targetDate', permissions));
+  console.log("Permissions object:", permissions);
  
   const [sortConfig, setSortConfig] = useState({
     key: 'Date Reported',
