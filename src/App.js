@@ -147,10 +147,28 @@ function App() {
   const filteredData = React.useMemo(() => {
     return data.filter(defect => {
       
+      const isOverdue = () => {
+        if (defect['Status (Vessel)'] === 'CLOSED') return false;
+        if (!defect.target_date) return false;
+        
+        const targetDate = new Date(defect.target_date);
+        const today = new Date();
+        return targetDate < today;
+      };
       
       // Check if defect matches any of the selected filters (or all if none selected)
       const matchesVessel = currentVessel.length === 0 || currentVessel.includes(defect.vessel_id);
-      const matchesStatus = statusFilter.length === 0 || statusFilter.includes(defect['Status (Vessel)']);
+      const matchesStatus = () => {
+        if (statusFilter.length === 0) return true;
+        
+        // If OVERDUE is selected, include defects that are overdue
+        if (statusFilter.includes('OVERDUE') && isOverdue()) {
+          return true;
+        }
+        
+        // Also include defects that match other selected statuses
+        return statusFilter.includes(defect['Status (Vessel)']);
+      };
       const matchesCriticality = criticalityFilter.length === 0 || criticalityFilter.includes(defect.Criticality);
       const matchesRaisedBy = raisedByFilter.length === 0 || raisedByFilter.includes(defect.raised_by);
       
