@@ -150,7 +150,7 @@ export const CORE_FIELDS = {
         type: 'date',
         required: false,
         section: 'dates',
-        displayOrder: 10,
+        displayOrder: 11,
         width: 'half',
         conditionalRequired: (values) => values.status === 'CLOSED'
       },
@@ -161,7 +161,7 @@ export const CORE_FIELDS = {
         type: 'date',
         required: true,  // This will make it mandatory
         section: 'dates',
-        displayOrder: 14,
+        displayOrder: 10,
         width: 'half'
       },
       closureComments: {
@@ -171,7 +171,7 @@ export const CORE_FIELDS = {
         type: 'textarea',
         required: false,
         section: 'closure',
-        displayOrder: 11,
+        displayOrder: 12,
         width: 'full',
         rows: 3,
         conditionalDisplay: (values) => values?.status === 'CLOSED' || values?.['Status (Vessel)'] === 'CLOSED',
@@ -184,7 +184,7 @@ export const CORE_FIELDS = {
         type: 'file',
         required: false,
         section: 'files',
-        displayOrder: 12,
+        displayOrder: 13,
         width: 'full',
         accept: '.pdf,.doc,.docx,.jpg,.jpeg,.png',
         maxSize: 2 * 1024 * 1024, // 2MB
@@ -197,7 +197,7 @@ export const CORE_FIELDS = {
         type: 'file',
         required: false,
         section: 'files',
-        displayOrder: 13,
+        displayOrder: 14,
         width: 'full',
         accept: '.pdf,.doc,.docx,.jpg,.jpeg,.png',
         maxSize: 2 * 1024 * 1024, // 2MB
