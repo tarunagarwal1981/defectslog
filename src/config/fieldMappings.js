@@ -155,14 +155,14 @@ export const CORE_FIELDS = {
         conditionalRequired: (values) => values.status === 'CLOSED'
       },
       targetDate: {
-        id: 'target_date',
+        id: 'targetDate',
         label: 'Target Date',
-        dbField: 'target_date',
-        width: '120px',
-        minWidth: '120px',
-        displayOrder: 14,
+        dbField: 'target_date', 
         type: 'date',
-        section: 'dates'
+        required: true,  // This will make it mandatory
+        section: 'dates',
+        displayOrder: 14,
+        width: 'half'
       },
       closureComments: {
         id: 'closureComments',
@@ -286,7 +286,7 @@ export const CORE_FIELDS = {
         dbField: 'target_date',
         width: '120px',
         minWidth: '120px',
-        priority: 2,
+        priority: 4,
         type: 'date',
         section: 'dates'
       },
