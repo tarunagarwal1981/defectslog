@@ -18,6 +18,10 @@ import {
 } from './ui/tooltip';
 import { CORE_FIELDS } from '../config/fieldMappings';
 
+// Add near the top of DefectsTable component
+console.log("CORE_FIELDS.TABLE:", CORE_FIELDS.TABLE);
+console.log("Visible columns:", getVisibleColumns(permissions, isExternal).map(col => col[0]));
+
 const isColumnVisible = (fieldId, permissions) => {
   if (!permissions?.fieldPermissions) return true;
   return permissions.fieldPermissions[fieldId]?.visible;
@@ -147,7 +151,7 @@ const FileList = ({ files, onDelete, title }) => {
   };
 
   if (!files?.length) return null;
-
+  
   return (
     <div className="space-y-2">
       <div className="text-xs font-medium text-white/80 mb-1">{title}</div>

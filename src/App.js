@@ -218,6 +218,7 @@ function App() {
       'Status (Vessel)': 'OPEN',
       'Date Reported': new Date().toISOString().split('T')[0],
       'Date Completed': '',
+      target_date:'',
       initial_files: [],
       completion_files: [],
       raised_by: ''
@@ -247,7 +248,8 @@ function App() {
         initial_files: updatedDefect.initial_files || [],
         completion_files: updatedDefect.completion_files || [],
         closure_comments: updatedDefect.closure_comments || null,
-        raised_by: updatedDefect.raised_by || ''
+        raised_by: updatedDefect.raised_by || '',
+        target_date: updatedDefect.target_date || null
       };
 
       let result;
