@@ -195,7 +195,7 @@ const SearchBar = ({
   return (
     <>
       <style>{styles}</style>
-      <div className="flex items-center justify-between gap-4 px-3 py-2 mb-2 bg-[#132337]/20 rounded-lg backdrop-blur-sm">
+      <div className="flex items-center justify-between gap-4 px-1 py-2 mb-2 bg-[#132337]/20 rounded-lg backdrop-blur-sm">
         <div className="w-full max-w-xs relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/40" />
           <Input
