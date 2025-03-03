@@ -155,7 +155,7 @@ export const CORE_FIELDS = {
         conditionalRequired: (values) => values.status === 'CLOSED'
       },
       targetDate: {
-        id: 'targetDate',
+        id: 'target_date',
         label: 'Target Date',
         dbField: 'target_date',
         width: '120px',
@@ -281,7 +281,7 @@ export const CORE_FIELDS = {
         type: 'date'
       },
       targetDate: {
-        id: 'targetDate',
+        id: 'target_date',
         label: 'Target Date',
         dbField: 'target_date',
         width: '120px',
