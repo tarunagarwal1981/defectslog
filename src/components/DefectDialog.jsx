@@ -44,6 +44,7 @@ const DefectDialog = ({
     if (fieldId === 'targetDate' && permissions.fieldPermissions.target_date) {
       return permissions.fieldPermissions.target_date.visible;
     }
+    
     return permissions.fieldPermissions[fieldId]?.visible;
   };
 
