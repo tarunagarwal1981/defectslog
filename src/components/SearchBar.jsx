@@ -129,7 +129,7 @@ const SearchBar = ({
 
   const FilterDropdown = ({ type, options, selection, onFilter, label, isStatus = false }) => (
     <DropdownMenu>
-      <DropdownMenuTrigger className="filter-dropdown-trigger flex items-center justify-between w-[140px] h-9 px-3 text-xs border border-white/10 rounded-md hover:border-[#3BADE5]/30 group">
+      <DropdownMenuTrigger className="filter-dropdown-trigger flex items-center justify-between w-[140px] h-8 px-3 text-xs border border-white/10 rounded-md hover:border-[#3BADE5]/30 group">
         <span className="flex items-center gap-2">
           <Filter className="w-3 h-3 opacity-50 group-hover:opacity-80 transition-opacity" />
           {getFilterDisplayText(type, selection)}
@@ -195,13 +195,13 @@ const SearchBar = ({
   return (
     <>
       <style>{styles}</style>
-      <div className="flex items-center justify-between gap-4 px-3 py-3 mb-2 bg-[#132337]/20 rounded-lg backdrop-blur-sm">
+      <div className="flex items-center justify-between gap-4 px-3 py-2 mb-2 bg-[#132337]/20 rounded-lg backdrop-blur-sm">
         <div className="w-full max-w-xs relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/40" />
           <Input
             placeholder="Search defects..."
             onChange={(e) => onSearch(e.target.value)}
-            className="search-input h-9 text-sm pl-10 pr-4 bg-[#132337]/30 border-white/10 placeholder:text-white/40"
+            className="search-input h-8 text-sm pl-10 pr-4 bg-[#132337]/30 border-white/10 placeholder:text-white/40"
           />
         </div>
         
