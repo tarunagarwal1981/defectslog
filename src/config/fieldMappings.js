@@ -154,6 +154,16 @@ export const CORE_FIELDS = {
         width: 'half',
         conditionalRequired: (values) => values.status === 'CLOSED'
       },
+      targetDate: {
+        id: 'targetDate',
+        label: 'Target Date',
+        dbField: 'target_date',
+        width: '120px',
+        minWidth: '120px',
+        displayOrder: 14,
+        type: 'date',
+        section: 'dates'
+      },
       closureComments: {
         id: 'closureComments',
         label: 'Closure Comments',
@@ -270,15 +280,17 @@ export const CORE_FIELDS = {
         priority: 3,
         type: 'date'
       },
-      dateCompleted: {
-        id: 'dateCompleted',
-        label: 'Completed',
-        dbField: 'Date Completed',
+      targetDate: {
+        id: 'targetDate',
+        label: 'Target Date',
+        dbField: 'target_date',
         width: '120px',
         minWidth: '120px',
         priority: 3,
-        type: 'date'
+        type: 'date',
+        section: 'dates'
       },
+      
       actions: {
         id: 'actions',
         label: 'Actions',
@@ -309,6 +321,15 @@ export const CORE_FIELDS = {
         label: 'Follow-Up',
         dbField: 'Comments',
         section: 'details'
+      },
+      dateCompleted: {
+        id: 'dateCompleted',
+        label: 'Completed',
+        dbField: 'Date Completed',
+        width: '120px',
+        minWidth: '120px',
+        priority: 3,
+        type: 'date'
       },
       initialFiles: {
         id: 'initialFiles',
@@ -342,7 +363,8 @@ export const CORE_FIELDS = {
         dbField: 'external_visibility',
         displayOrder: 25,
         defaultValue: true
-      }
+      },
+      
     }
   };
   
