@@ -286,7 +286,7 @@ export const CORE_FIELDS = {
         dbField: 'target_date',
         width: '120px',
         minWidth: '120px',
-        priority: 3,
+        priority: 2,
         type: 'date',
         section: 'dates'
       },
