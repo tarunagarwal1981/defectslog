@@ -150,9 +150,19 @@ export const CORE_FIELDS = {
         type: 'date',
         required: false,
         section: 'dates',
-        displayOrder: 10,
+        displayOrder: 11,
         width: 'half',
         conditionalRequired: (values) => values.status === 'CLOSED'
+      },
+      targetDate: {
+        id: 'target_date',
+        label: 'Target Date',
+        dbField: 'target_date', 
+        type: 'date',
+        required: true,  // This will make it mandatory
+        section: 'dates',
+        displayOrder: 10,
+        width: 'half'
       },
       closureComments: {
         id: 'closureComments',
@@ -161,7 +171,7 @@ export const CORE_FIELDS = {
         type: 'textarea',
         required: false,
         section: 'closure',
-        displayOrder: 11,
+        displayOrder: 12,
         width: 'full',
         rows: 3,
         conditionalDisplay: (values) => values?.status === 'CLOSED' || values?.['Status (Vessel)'] === 'CLOSED',
@@ -174,7 +184,7 @@ export const CORE_FIELDS = {
         type: 'file',
         required: false,
         section: 'files',
-        displayOrder: 12,
+        displayOrder: 13,
         width: 'full',
         accept: '.pdf,.doc,.docx,.jpg,.jpeg,.png',
         maxSize: 2 * 1024 * 1024, // 2MB
@@ -187,7 +197,7 @@ export const CORE_FIELDS = {
         type: 'file',
         required: false,
         section: 'files',
-        displayOrder: 13,
+        displayOrder: 14,
         width: 'full',
         accept: '.pdf,.doc,.docx,.jpg,.jpeg,.png',
         maxSize: 2 * 1024 * 1024, // 2MB
@@ -270,15 +280,17 @@ export const CORE_FIELDS = {
         priority: 3,
         type: 'date'
       },
-      dateCompleted: {
-        id: 'dateCompleted',
-        label: 'Completed',
-        dbField: 'Date Completed',
+      targetDate: {
+        id: 'target_date',
+        label: 'Target Date',
+        dbField: 'target_date',
         width: '120px',
         minWidth: '120px',
-        priority: 3,
-        type: 'date'
+        priority: 4,
+        type: 'date',
+        section: 'dates'
       },
+      
       actions: {
         id: 'actions',
         label: 'Actions',
@@ -309,6 +321,15 @@ export const CORE_FIELDS = {
         label: 'Follow-Up',
         dbField: 'Comments',
         section: 'details'
+      },
+      dateCompleted: {
+        id: 'dateCompleted',
+        label: 'Completed',
+        dbField: 'Date Completed',
+        width: '120px',
+        minWidth: '120px',
+        priority: 3,
+        type: 'date'
       },
       initialFiles: {
         id: 'initialFiles',
@@ -342,7 +363,8 @@ export const CORE_FIELDS = {
         dbField: 'external_visibility',
         displayOrder: 25,
         defaultValue: true
-      }
+      },
+      
     }
   };
   

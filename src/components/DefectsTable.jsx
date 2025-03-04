@@ -18,8 +18,14 @@ import {
 } from './ui/tooltip';
 import { CORE_FIELDS } from '../config/fieldMappings';
 
+
+
+
 const isColumnVisible = (fieldId, permissions) => {
   if (!permissions?.fieldPermissions) return true;
+  if (fieldId === 'targetDate') {
+    return permissions.fieldPermissions.target_date?.visible;
+  }
   return permissions.fieldPermissions[fieldId]?.visible;
 };
 
@@ -147,7 +153,7 @@ const FileList = ({ files, onDelete, title }) => {
   };
 
   if (!files?.length) return null;
-
+  
   return (
     <div className="space-y-2">
       <div className="text-xs font-medium text-white/80 mb-1">{title}</div>
@@ -334,6 +340,11 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
                 ? new Date(defect['Date Reported']).toLocaleDateString('en-GB') 
                 : '-';
               break;
+            case 'targetDate':
+              content = defect.target_date 
+                ? new Date(defect.target_date).toLocaleDateString('en-GB') 
+                : '-';
+              break;  
             case 'dateCompleted':
               content = defect['Date Completed'] 
                 ? new Date(defect['Date Completed']).toLocaleDateString('en-GB') 
@@ -406,7 +417,14 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
                     {defect.Comments || '-'}
                   </div>
                 </div>
-
+                <div className="bg-[#0B1623] rounded-md p-3 shadow-lg hover:shadow-[0_4px_15px_rgba(0,0,0,0.3)] transition-all duration-300 border border-white/5">
+                  <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Date Completed</h4>
+                  <div className="text-xs leading-relaxed text-white/90 break-words">
+                    {defect['Date Completed'] 
+                      ? new Date(defect['Date Completed']).toLocaleDateString('en-GB')
+                      : '-'}
+                  </div>
+                </div>
                 {/* Initial Documentation */}
                 <div className="bg-[#0B1623] rounded-md p-3 shadow-lg hover:shadow-[0_4px_15px_rgba(0,0,0,0.3)] transition-all duration-300 border border-white/5">
                   <div className="flex items-center justify-between mb-2">
@@ -563,6 +581,10 @@ const DefectsTable = ({
   permissions, // Add this
   isExternal  
 }) => {
+
+  console.log("Is targetDate visible:", isColumnVisible('targetDate', permissions));
+  console.log("Permissions object:", permissions);
+ 
   const [sortConfig, setSortConfig] = useState({
     key: 'Date Reported',
     direction: 'desc'
