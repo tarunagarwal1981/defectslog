@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from './ui/dialog';
 import ExportButton from './ui/ExportButton';
-import { exportToCSV } from '../utils/exportToCSV';
+
 import { supabase } from '../supabaseClient';
 import { toast } from './ui/use-toast';
 import {
