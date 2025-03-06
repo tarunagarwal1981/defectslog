@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React from 'react';
 import { Input } from './ui/input';
 import { 
   DropdownMenu, 
@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel
 } from './ui/dropdown-menu';
-import { ChevronDown, Search, Filter, AlertCircle } from 'lucide-react';
+import { ChevronDown, Search, Filter } from 'lucide-react';
 
 const styles = `
   .search-input {
@@ -57,30 +57,6 @@ const styles = `
   .filter-item:hover {
     background: rgba(59, 173, 229, 0.1);
   }
-  
-  .status-indicator {
-    display: inline-flex;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    margin-right: 6px;
-  }
-
-  .status-open {
-    background-color: rgba(239, 68, 68, 0.8);
-  }
-  
-  .status-inprogress {
-    background-color: rgba(250, 173, 20, 0.8);
-  }
-  
-  .status-closed {
-    background-color: rgba(82, 196, 26, 0.8);
-  }
-  
-  .status-overdue {
-    background-color: rgba(249, 115, 22, 0.8);
-  }
 `;
 
 const SearchBar = ({ 
@@ -93,62 +69,28 @@ const SearchBar = ({
   raisedBy = [],
   raisedByOptions = []
 }) => {
-  // State to control open/closed state of each dropdown
-  const [openDropdowns, setOpenDropdowns] = useState({
-    status: false,
-    criticality: false,
-    raisedBy: false
-  });
-
-  // Toggle dropdown open/closed state
-  const toggleDropdown = (dropdown) => {
-    setOpenDropdowns(prev => ({
-      ...prev,
-      [dropdown]: !prev[dropdown]
-    }));
-  };
-
-  // Status options
-  const statusOptions = ['OPEN', 'IN PROGRESS', 'CLOSED', 'OVERDUE'];
-
-  // Memoized handlers to prevent unnecessary re-renders
-  const handleStatusFilterToggle = useCallback((value, currentSelection) => {
-    // If clicking "All Status", clear selection
-    if (value === '') {
-      onFilterStatus([]);
-      return;
-    }
-    
-    const updatedSelection = currentSelection.includes(value)
-      ? currentSelection.filter(item => item !== value)
-      : [...currentSelection, value];
-    
-    onFilterStatus(updatedSelection);
-  }, [onFilterStatus]);
-  
-  const handleFilterToggle = useCallback((type, value, currentSelection, onFilter) => {
-    // If clicking "All", clear selection
+  const handleFilterToggle = (type, value, currentSelection, onFilter) => {
     if (value === '') {
       onFilter([]);
       return;
     }
-    
     const updatedSelection = currentSelection.includes(value)
       ? currentSelection.filter(item => item !== value)
       : [...currentSelection, value];
-    
     onFilter(updatedSelection);
-  }, []);
+  };
 
-  const getFilterDisplayText = useCallback((type, selection) => {
+  const getFilterDisplayText = (type, selection, options) => {
     if (selection.length === 0) return `All ${type}`;
     if (selection.length === 1) return selection[0];
     return `${selection.length} Selected`;
-  }, []);
+  };
 
-  const FilterDropdown = ({ type, options, selection, onFilter, label, isStatus = false, dropdownKey }) => (
-    <DropdownMenu open={openDropdowns[dropdownKey]} onOpenChange={() => toggleDropdown(dropdownKey)}>
-      <DropdownMenuTrigger className="filter-dropdown-trigger flex items-center justify-between w-[140px] h-8 px-3 text-xs border border-white/10 rounded-md hover:border-[#3BADE5]/30 group">
+  const statusOptions = ['OPEN', 'IN PROGRESS', 'CLOSED'];
+
+  const FilterDropdown = ({ type, options, selection, onFilter, label }) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger className="filter-dropdown-trigger flex items-center justify-between w-[140px] h-9 px-3 text-xs border border-white/10 rounded-md hover:border-[#3BADE5]/30 group">
         <span className="flex items-center gap-2">
           <Filter className="w-3 h-3 opacity-50 group-hover:opacity-80 transition-opacity" />
           {getFilterDisplayText(type, selection)}
@@ -161,70 +103,27 @@ const SearchBar = ({
         </DropdownMenuLabel>
         <DropdownMenuSeparator className="bg-white/5 my-2" />
         <div className="max-h-[200px] overflow-y-auto custom-scrollbar">
-          {/* "All" option */}
-          <div 
-            className="filter-item rounded-sm px-2 py-1.5"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (isStatus) {
-                handleStatusFilterToggle('', selection);
-              } else {
-                handleFilterToggle(type, '', selection, onFilter);
-              }
-            }}
-          >
-            <label className="flex items-center cursor-pointer w-full">
+          <div className="filter-item rounded-sm px-2 py-1.5">
+            <label className="flex items-center cursor-pointer">
               <input
                 type="checkbox"
                 className="custom-checkbox mr-2 h-4 w-4 rounded"
                 checked={selection.length === 0}
-                onChange={() => {}}
-                onClick={(e) => e.stopPropagation()}
+                onChange={() => handleFilterToggle(type, '', selection, onFilter)}
               />
               <span className="text-sm text-white/80">All {type}</span>
             </label>
           </div>
-          
-          {/* Individual options */}
           {options.map((value) => (
-            <div 
-              key={value}
-              className="filter-item rounded-sm px-2 py-1.5"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (isStatus) {
-                  handleStatusFilterToggle(value, selection);
-                } else {
-                  handleFilterToggle(type, value, selection, onFilter);
-                }
-              }}
-            >
-              <label className="flex items-center cursor-pointer w-full">
+            <div key={value} className="filter-item rounded-sm px-2 py-1.5">
+              <label className="flex items-center cursor-pointer">
                 <input
                   type="checkbox"
                   className="custom-checkbox mr-2 h-4 w-4 rounded"
                   checked={selection.includes(value)}
-                  onChange={() => {}}
-                  onClick={(e) => e.stopPropagation()}
+                  onChange={() => handleFilterToggle(type, value, selection, onFilter)}
                 />
-                {isStatus ? (
-                  <span className="text-sm text-white/80 flex items-center">
-                    <span className={`status-indicator ${
-                      value === 'OPEN' ? 'status-open' : 
-                      value === 'IN PROGRESS' ? 'status-inprogress' : 
-                      value === 'CLOSED' ? 'status-closed' :
-                      value === 'OVERDUE' ? 'status-overdue' : ''
-                    }`}></span>
-                    {value === 'OVERDUE' && (
-                      <AlertCircle className="inline-block h-3 w-3 mr-1 text-orange-400" />
-                    )}
-                    {value}
-                  </span>
-                ) : (
-                  <span className="text-sm text-white/80">{value}</span>
-                )}
+                <span className="text-sm text-white/80">{value}</span>
               </label>
             </div>
           ))}
@@ -236,13 +135,13 @@ const SearchBar = ({
   return (
     <>
       <style>{styles}</style>
-      <div className="flex items-center justify-between gap-4 px-1 py-2 mb-2 bg-[#132337]/20 rounded-lg backdrop-blur-sm">
+      <div className="flex items-center justify-between gap-4 px-3 py-3 mb-2 bg-[#132337]/20 rounded-lg backdrop-blur-sm">
         <div className="w-full max-w-xs relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/40" />
           <Input
             placeholder="Search defects..."
             onChange={(e) => onSearch(e.target.value)}
-            className="search-input h-8 text-sm pl-10 pr-4 bg-[#132337]/30 border-white/10 placeholder:text-white/40"
+            className="search-input h-9 text-sm pl-10 pr-4 bg-[#132337]/30 border-white/10 placeholder:text-white/40"
           />
         </div>
         
@@ -253,8 +152,6 @@ const SearchBar = ({
             selection={status}
             onFilter={onFilterStatus}
             label="Select Status"
-            isStatus={true}
-            dropdownKey="status"
           />
           
           <FilterDropdown
@@ -263,19 +160,15 @@ const SearchBar = ({
             selection={criticality}
             onFilter={onFilterCriticality}
             label="Select Criticality"
-            dropdownKey="criticality"
           />
           
-          {raisedByOptions.length > 0 && (
-            <FilterDropdown
-              type="Defect Source"
-              options={raisedByOptions}
-              selection={raisedBy}
-              onFilter={onFilterRaisedBy}
-              label="Select Source"
-              dropdownKey="raisedBy"
-            />
-          )}
+          <FilterDropdown
+            type="Defect Source"
+            options={raisedByOptions}
+            selection={raisedBy}
+            onFilter={onFilterRaisedBy}
+            label="Select Source"
+          />
         </div>
       </div>
     </>
