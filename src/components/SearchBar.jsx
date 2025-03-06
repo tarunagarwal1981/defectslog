@@ -94,8 +94,10 @@ const SearchBar = ({
   raisedByOptions = []
 }) => {
   // Custom handler for status filter to handle the special OVERDUE case
+  // Inside SearchBar component, add this to the handleStatusFilterToggle function
   const handleStatusFilterToggle = (value, currentSelection) => {
     if (value === '') {
+      console.log("Clearing status filters");
       onFilterStatus([]);
       return;
     }
@@ -104,6 +106,7 @@ const SearchBar = ({
       ? currentSelection.filter(item => item !== value)
       : [...currentSelection, value];
     
+    console.log("Updated status filters:", updatedSelection);
     onFilterStatus(updatedSelection);
   };
   
