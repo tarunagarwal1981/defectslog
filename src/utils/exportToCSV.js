@@ -1,4 +1,3 @@
-import ExcelJS from 'exceljs';
 export const exportToExcel = async (data, vesselNames, filters = {}) => {
   try {
     // Apply filters
@@ -41,32 +40,16 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
       return `${process.env.REACT_APP_SUPABASE_URL}/storage/v1/object/public/defect-files/${filePath}`;
     };
     
-    // Create a new workbook and worksheets
+    // Find the maximum number of initial and completion files
+    const maxInitialFiles = Math.min(5, Math.max(0, ...filteredData.map(item => item.initial_files?.length || 0)));
+    const maxCompletionFiles = Math.min(5, Math.max(0, ...filteredData.map(item => item.completion_files?.length || 0)));
+    
+    // Create a new workbook and worksheet
     const workbook = new ExcelJS.Workbook();
-    const defectsSheet = workbook.addWorksheet('Defects');
-    const filesSheet = workbook.addWorksheet('Files');
+    const worksheet = workbook.addWorksheet('Defects');
     
-    // Set up the files worksheet
-    filesSheet.columns = [
-      { header: 'Defect ID', key: 'defectId', width: 15 },
-      { header: 'Vessel', key: 'vessel', width: 15 },
-      { header: 'Equipment', key: 'equipment', width: 20 },
-      { header: 'File Type', key: 'fileType', width: 15 },
-      { header: 'File Name', key: 'fileName', width: 30 },
-      { header: 'Link', key: 'link', width: 40 }
-    ];
-    
-    // Style header row for files sheet
-    filesSheet.getRow(1).font = { bold: true };
-    filesSheet.getRow(1).fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FF4F81BD' }
-    };
-    filesSheet.getRow(1).font = { color: { argb: 'FFFFFFFF' }, bold: true };
-    
-    // Define columns for defects sheet
-    defectsSheet.columns = [
+    // Define columns
+    const baseColumns = [
       { header: 'No.', key: 'no', width: 5 },
       { header: 'Vessel Name', key: 'vesselName', width: 15 },
       { header: 'Status', key: 'status', width: 10 },
@@ -79,31 +62,45 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
       { header: 'Date Completed', key: 'dateCompleted', width: 12 },
       { header: 'Comments', key: 'comments', width: 20 },
       { header: 'Closure Comments', key: 'closureComments', width: 20 },
-      { header: 'Defect Source', key: 'defectSource', width: 15 },
-      { header: 'Files Count', key: 'filesCount', width: 10 }
+      { header: 'Defect Source', key: 'defectSource', width: 15 }
     ];
     
-    // Style header row for defects sheet
-    defectsSheet.getRow(1).font = { bold: true };
-    defectsSheet.getRow(1).fill = {
+    // Add initial file columns
+    const initialFilesColumns = [];
+    for (let i = 0; i < maxInitialFiles; i++) {
+      initialFilesColumns.push({
+        header: `Initial File ${i + 1}`,
+        key: `initialFile${i}`,
+        width: 25
+      });
+    }
+    
+    // Add completion file columns
+    const completionFilesColumns = [];
+    for (let i = 0; i < maxCompletionFiles; i++) {
+      completionFilesColumns.push({
+        header: `Closure File ${i + 1}`,
+        key: `completionFile${i}`,
+        width: 25
+      });
+    }
+    
+    // Combine all columns
+    worksheet.columns = [...baseColumns, ...initialFilesColumns, ...completionFilesColumns];
+    
+    // Style header row
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = {
       type: 'pattern',
       pattern: 'solid',
       fgColor: { argb: 'FF4F81BD' }
     };
-    defectsSheet.getRow(1).font = { color: { argb: 'FFFFFFFF' }, bold: true };
+    worksheet.getRow(1).font = { color: { argb: 'FFFFFFFF' }, bold: true };
     
-    // Add file references
-    let fileRowIndex = 2; // Start after header
-    
-    // Add data rows to defects sheet
+    // Add data rows
     filteredData.forEach((item, index) => {
-      // Count files for reference
-      const initialFilesCount = item.initial_files?.length || 0;
-      const completionFilesCount = item.completion_files?.length || 0;
-      const totalFilesCount = initialFilesCount + completionFilesCount;
-      
-      // Add primary defect data
-      const row = defectsSheet.addRow({
+      // Prepare row data
+      const rowData = {
         no: index + 1,
         vesselName: item.vessel_name || vesselNames[item.vessel_id] || '-',
         status: item['Status (Vessel)'],
@@ -116,9 +113,11 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
         dateCompleted: formatDate(item['Date Completed']),
         comments: item.Comments || '',
         closureComments: item.closure_comments || '',
-        defectSource: item.raised_by || '',
-        filesCount: totalFilesCount > 0 ? `${totalFilesCount} files (see Files tab)` : 'No files'
-      });
+        defectSource: item.raised_by || ''
+      };
+      
+      // Add row
+      const row = worksheet.addRow(rowData);
       
       // Color code criticality
       if (item.Criticality) {
@@ -149,85 +148,68 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
         }
       }
       
-      // Add file links to files worksheet
+      // Add initial file links
       if (item.initial_files?.length) {
-        item.initial_files.forEach(file => {
-          const fileRow = filesSheet.addRow({
-            defectId: item.id,
-            vessel: item.vessel_name || vesselNames[item.vessel_id] || '-',
-            equipment: item.Equipments || '',
-            fileType: 'Initial Documentation',
-            fileName: file.name,
-            link: getFileUrl(file.path)
-          });
-          
-          // Make the link clickable
-          const linkCell = fileRow.getCell('link');
-          linkCell.value = {
+        item.initial_files.slice(0, maxInitialFiles).forEach((file, i) => {
+          const fileCell = row.getCell(`initialFile${i}`);
+          fileCell.value = {
             text: file.name,
             hyperlink: getFileUrl(file.path),
             tooltip: 'Click to open file'
           };
-          linkCell.font = {
+          fileCell.font = {
             color: { argb: 'FF0000FF' },
             underline: true
           };
-          
-          fileRowIndex++;
         });
+        
+        // Add indicator if there are more files than shown
+        if (item.initial_files.length > maxInitialFiles) {
+          const lastFileCell = row.getCell(`initialFile${maxInitialFiles - 1}`);
+          const lastFile = item.initial_files[maxInitialFiles - 1];
+          lastFileCell.value = {
+            text: `${lastFile.name} (+${item.initial_files.length - maxInitialFiles} more)`,
+            hyperlink: getFileUrl(lastFile.path),
+            tooltip: 'Click to open file - there are more files not shown'
+          };
+        }
       }
       
+      // Add completion file links
       if (item.completion_files?.length) {
-        item.completion_files.forEach(file => {
-          const fileRow = filesSheet.addRow({
-            defectId: item.id,
-            vessel: item.vessel_name || vesselNames[item.vessel_id] || '-',
-            equipment: item.Equipments || '',
-            fileType: 'Closure Documentation',
-            fileName: file.name,
-            link: getFileUrl(file.path)
-          });
-          
-          // Make the link clickable
-          const linkCell = fileRow.getCell('link');
-          linkCell.value = {
+        item.completion_files.slice(0, maxCompletionFiles).forEach((file, i) => {
+          const fileCell = row.getCell(`completionFile${i}`);
+          fileCell.value = {
             text: file.name,
             hyperlink: getFileUrl(file.path),
             tooltip: 'Click to open file'
           };
-          linkCell.font = {
+          fileCell.font = {
             color: { argb: 'FF0000FF' },
             underline: true
           };
-          
-          fileRowIndex++;
         });
-      }
-      
-      // Add hyperlink to files tab if there are files
-      if (totalFilesCount > 0) {
-        const filesCountCell = row.getCell('filesCount');
-        filesCountCell.value = {
-          text: `${totalFilesCount} files (see Files tab)`,
-          hyperlink: `#Files!A1`, // Link to the Files sheet
-          tooltip: 'Click to view files'
-        };
-        filesCountCell.font = {
-          color: { argb: 'FF0000FF' },
-          underline: true
-        };
+        
+        // Add indicator if there are more files than shown
+        if (item.completion_files.length > maxCompletionFiles) {
+          const lastFileCell = row.getCell(`completionFile${maxCompletionFiles - 1}`);
+          const lastFile = item.completion_files[maxCompletionFiles - 1];
+          lastFileCell.value = {
+            text: `${lastFile.name} (+${item.completion_files.length - maxCompletionFiles} more)`,
+            hyperlink: getFileUrl(lastFile.path),
+            tooltip: 'Click to open file - there are more files not shown'
+          };
+        }
       }
     });
     
-    // Auto-filter for both sheets
-    defectsSheet.autoFilter = {
+    // Add auto filter
+    worksheet.autoFilter = {
       from: 'A1',
-      to: 'N1'
-    };
-    
-    filesSheet.autoFilter = {
-      from: 'A1',
-      to: 'F1'
+      to: {
+        row: 1,
+        column: baseColumns.length + initialFilesColumns.length + completionFilesColumns.length
+      }
     };
     
     // Create a buffer
@@ -247,6 +229,6 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
     
   } catch (error) {
     console.error('Error exporting Excel:', error);
-    throw error; // Re-throw to allow handling in the UI
+    throw error;
   }
 };
