@@ -159,16 +159,20 @@ function App() {
       // Check if defect matches any of the selected filters (or all if none selected)
       const matchesVessel = currentVessel.length === 0 || currentVessel.includes(defect.vessel_id);
       const matchesStatus = () => {
+        // If no status filters, include all
         if (statusFilter.length === 0) return true;
         
-        // Handle regular status matches
-        const statusMatch = statusFilter.includes(defect['Status (Vessel)']);
+        // Check if the defect is overdue
+        const isDefectOverdue = isOverdue();
         
-        // Handle overdue status
-        const overdueMatch = statusFilter.includes('OVERDUE') && isOverdue();
+        // Check if we should include based on regular status
+        const matchesRegularStatus = statusFilter.includes(defect['Status (Vessel)']);
         
-        // Return true if either condition is met
-        return statusMatch || overdueMatch;
+        // Check if we should include based on overdue status
+        const matchesOverdueStatus = statusFilter.includes('OVERDUE') && isDefectOverdue;
+        
+        // Include if either condition is true
+        return matchesRegularStatus || matchesOverdueStatus;
       };
       const matchesCriticality = criticalityFilter.length === 0 || criticalityFilter.includes(defect.Criticality);
       const matchesRaisedBy = raisedByFilter.length === 0 || raisedByFilter.includes(defect.raised_by);
