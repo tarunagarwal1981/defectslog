@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Input } from './ui/input';
 import { 
   DropdownMenu, 
@@ -108,8 +108,12 @@ const SearchBar = ({
     }));
   };
 
-  // Custom handler for status filter to handle the special OVERDUE case
-  const handleStatusFilterToggle = (value, currentSelection) => {
+  // Status options
+  const statusOptions = ['OPEN', 'IN PROGRESS', 'CLOSED', 'OVERDUE'];
+
+  // Memoized handlers to prevent unnecessary re-renders
+  const handleStatusFilterToggle = useCallback((value, currentSelection) => {
+    // If clicking "All Status", clear selection
     if (value === '') {
       onFilterStatus([]);
       return;
@@ -120,27 +124,27 @@ const SearchBar = ({
       : [...currentSelection, value];
     
     onFilterStatus(updatedSelection);
-  };
+  }, [onFilterStatus]);
   
-  const handleFilterToggle = (type, value, currentSelection, onFilter) => {
+  const handleFilterToggle = useCallback((type, value, currentSelection, onFilter) => {
+    // If clicking "All", clear selection
     if (value === '') {
       onFilter([]);
       return;
     }
+    
     const updatedSelection = currentSelection.includes(value)
       ? currentSelection.filter(item => item !== value)
       : [...currentSelection, value];
+    
     onFilter(updatedSelection);
-  };
+  }, []);
 
-  const getFilterDisplayText = (type, selection, options) => {
+  const getFilterDisplayText = useCallback((type, selection) => {
     if (selection.length === 0) return `All ${type}`;
     if (selection.length === 1) return selection[0];
     return `${selection.length} Selected`;
-  };
-
-  // Add OVERDUE to status options
-  const statusOptions = ['OPEN', 'IN PROGRESS', 'CLOSED', 'OVERDUE'];
+  }, []);
 
   const FilterDropdown = ({ type, options, selection, onFilter, label, isStatus = false, dropdownKey }) => (
     <DropdownMenu open={openDropdowns[dropdownKey]} onOpenChange={() => toggleDropdown(dropdownKey)}>
@@ -151,38 +155,58 @@ const SearchBar = ({
         </span>
         <ChevronDown className="h-4 w-4 opacity-50 group-hover:opacity-80 transition-opacity" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="filter-dropdown-content w-[180px] p-2" onClick={(e) => e.stopPropagation()}>
+      <DropdownMenuContent className="filter-dropdown-content w-[180px] p-2">
         <DropdownMenuLabel className="text-xs text-[#3BADE5]/80 px-2 py-1">
           {label}
         </DropdownMenuLabel>
         <DropdownMenuSeparator className="bg-white/5 my-2" />
         <div className="max-h-[200px] overflow-y-auto custom-scrollbar">
-          <div className="filter-item rounded-sm px-2 py-1.5">
-            <label className="flex items-center cursor-pointer">
+          {/* "All" option */}
+          <div 
+            className="filter-item rounded-sm px-2 py-1.5"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (isStatus) {
+                handleStatusFilterToggle('', selection);
+              } else {
+                handleFilterToggle(type, '', selection, onFilter);
+              }
+            }}
+          >
+            <label className="flex items-center cursor-pointer w-full">
               <input
                 type="checkbox"
                 className="custom-checkbox mr-2 h-4 w-4 rounded"
                 checked={selection.length === 0}
-                onChange={() => isStatus 
-                  ? handleStatusFilterToggle('', selection) 
-                  : handleFilterToggle(type, '', selection, onFilter)
-                }
+                onChange={() => {}}
                 onClick={(e) => e.stopPropagation()}
               />
               <span className="text-sm text-white/80">All {type}</span>
             </label>
           </div>
+          
+          {/* Individual options */}
           {options.map((value) => (
-            <div key={value} className="filter-item rounded-sm px-2 py-1.5">
-              <label className="flex items-center cursor-pointer">
+            <div 
+              key={value}
+              className="filter-item rounded-sm px-2 py-1.5"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (isStatus) {
+                  handleStatusFilterToggle(value, selection);
+                } else {
+                  handleFilterToggle(type, value, selection, onFilter);
+                }
+              }}
+            >
+              <label className="flex items-center cursor-pointer w-full">
                 <input
                   type="checkbox"
                   className="custom-checkbox mr-2 h-4 w-4 rounded"
                   checked={selection.includes(value)}
-                  onChange={() => isStatus 
-                    ? handleStatusFilterToggle(value, selection) 
-                    : handleFilterToggle(type, value, selection, onFilter)
-                  }
+                  onChange={() => {}}
                   onClick={(e) => e.stopPropagation()}
                 />
                 {isStatus ? (
