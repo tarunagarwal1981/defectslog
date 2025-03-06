@@ -1,90 +1,4 @@
 import ExcelJS from 'exceljs';
-
-export const exportToCSV = (data, vesselNames, filters = {}) => {
-  try {
-    // Apply filters
-    let filteredData = [...data];
-    
-    if (filters.status) {
-      filteredData = filteredData.filter(item => 
-        item['Status (Vessel)'] === filters.status
-      );
-    }
-    
-    if (filters.criticality) {
-      filteredData = filteredData.filter(item => 
-        item.Criticality === filters.criticality
-      );
-    }
-    
-    if (filters.search) {
-      const searchLower = filters.search.toLowerCase();
-      filteredData = filteredData.filter(item =>
-        Object.values(item).some(val =>
-          String(val).toLowerCase().includes(searchLower)
-        )
-      );
-    }
-    // Helper function to format date as ddmmyyyy
-    const formatDate = (date) => {
-      if (!date) return '';
-      const d = new Date(date);
-      const day = String(d.getDate()).padStart(2, '0');
-      const month = String(d.getMonth() + 1).padStart(2, '0'); // Months are zero-based
-      const year = d.getFullYear();
-      return `${day}/${month}/${year}`;
-    };
-    // Format data for CSV
-    const csvData = filteredData.map((item, index) => {
-      return {
-        'No.': index + 1,
-        'Vessel Name': item.vessel_name || vesselNames[item.vessel_id] || '-',
-        'Status': item['Status (Vessel)'],
-        'Criticality': item.Criticality || '',
-        'Equipment': item.Equipments || '',
-        'Description': item.Description || '',
-        'Action Planned': item['Action Planned'] || '',
-        'Date Reported': formatDate(item['Date Reported']),
-        'Target Date': formatDate(item.target_date),
-        'Date Completed': formatDate(item['Date Completed']),
-        'Comments': item.Comments || '',
-        'Closure Comments': item.closure_comments || '',  
-        'Defect Source': item.raised_by || ''
-      };
-    });
-    // Convert to CSV string
-    const headers = Object.keys(csvData[0]);
-    const csvRows = [
-      headers.join(','),
-      ...csvData.map(row =>
-        headers.map(header => {
-          let cell = row[header] || '';
-          // Escape quotes and commas
-          if (cell.toString().includes(',') || cell.toString().includes('"') || cell.toString().includes('\n')) {
-            cell = `"${cell.toString().replace(/"/g, '""')}"`;
-          }
-          return cell;
-        }).join(',')
-      )
-    ];
-    // Create and download file
-    const csvString = csvRows.join('\n');
-    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    
-    link.setAttribute('href', url);
-    link.setAttribute('download', `defects-report-${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  } catch (error) {
-    console.error('Error exporting CSV:', error);
-    // You might want to add a toast notification here
-  }
-};
-
 export const exportToExcel = async (data, vesselNames, filters = {}) => {
   try {
     // Apply filters
@@ -127,12 +41,32 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
       return `${process.env.REACT_APP_SUPABASE_URL}/storage/v1/object/public/defect-files/${filePath}`;
     };
     
-    // Create a new workbook and worksheet
+    // Create a new workbook and worksheets
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Defects');
+    const defectsSheet = workbook.addWorksheet('Defects');
+    const filesSheet = workbook.addWorksheet('Files');
     
-    // Define columns
-    worksheet.columns = [
+    // Set up the files worksheet
+    filesSheet.columns = [
+      { header: 'Defect ID', key: 'defectId', width: 15 },
+      { header: 'Vessel', key: 'vessel', width: 15 },
+      { header: 'Equipment', key: 'equipment', width: 20 },
+      { header: 'File Type', key: 'fileType', width: 15 },
+      { header: 'File Name', key: 'fileName', width: 30 },
+      { header: 'Link', key: 'link', width: 40 }
+    ];
+    
+    // Style header row for files sheet
+    filesSheet.getRow(1).font = { bold: true };
+    filesSheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF4F81BD' }
+    };
+    filesSheet.getRow(1).font = { color: { argb: 'FFFFFFFF' }, bold: true };
+    
+    // Define columns for defects sheet
+    defectsSheet.columns = [
       { header: 'No.', key: 'no', width: 5 },
       { header: 'Vessel Name', key: 'vesselName', width: 15 },
       { header: 'Status', key: 'status', width: 10 },
@@ -146,22 +80,30 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
       { header: 'Comments', key: 'comments', width: 20 },
       { header: 'Closure Comments', key: 'closureComments', width: 20 },
       { header: 'Defect Source', key: 'defectSource', width: 15 },
-      { header: 'Before Files', key: 'beforeFiles', width: 30 },
-      { header: 'After Files', key: 'afterFiles', width: 30 }
+      { header: 'Files Count', key: 'filesCount', width: 10 }
     ];
     
-    // Style the header row
-    worksheet.getRow(1).font = { bold: true };
-    worksheet.getRow(1).fill = {
+    // Style header row for defects sheet
+    defectsSheet.getRow(1).font = { bold: true };
+    defectsSheet.getRow(1).fill = {
       type: 'pattern',
       pattern: 'solid',
       fgColor: { argb: 'FF4F81BD' }
     };
-    worksheet.getRow(1).font = { color: { argb: 'FFFFFFFF' }, bold: true };
+    defectsSheet.getRow(1).font = { color: { argb: 'FFFFFFFF' }, bold: true };
     
-    // Add data rows
+    // Add file references
+    let fileRowIndex = 2; // Start after header
+    
+    // Add data rows to defects sheet
     filteredData.forEach((item, index) => {
-      const row = worksheet.addRow({
+      // Count files for reference
+      const initialFilesCount = item.initial_files?.length || 0;
+      const completionFilesCount = item.completion_files?.length || 0;
+      const totalFilesCount = initialFilesCount + completionFilesCount;
+      
+      // Add primary defect data
+      const row = defectsSheet.addRow({
         no: index + 1,
         vesselName: item.vessel_name || vesselNames[item.vessel_id] || '-',
         status: item['Status (Vessel)'],
@@ -175,9 +117,7 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
         comments: item.Comments || '',
         closureComments: item.closure_comments || '',
         defectSource: item.raised_by || '',
-        // Leave file cells empty initially
-        beforeFiles: '',
-        afterFiles: ''
+        filesCount: totalFilesCount > 0 ? `${totalFilesCount} files (see Files tab)` : 'No files'
       });
       
       // Color code criticality
@@ -209,88 +149,86 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
         }
       }
       
-      // Add hyperlinks for Before Files
+      // Add file links to files worksheet
       if (item.initial_files?.length) {
-        const beforeFilesCell = row.getCell('beforeFiles');
-        
-        if (item.initial_files.length === 1) {
-          const file = item.initial_files[0];
-          beforeFilesCell.value = {
+        item.initial_files.forEach(file => {
+          const fileRow = filesSheet.addRow({
+            defectId: item.id,
+            vessel: item.vessel_name || vesselNames[item.vessel_id] || '-',
+            equipment: item.Equipments || '',
+            fileType: 'Initial Documentation',
+            fileName: file.name,
+            link: getFileUrl(file.path)
+          });
+          
+          // Make the link clickable
+          const linkCell = fileRow.getCell('link');
+          linkCell.value = {
             text: file.name,
             hyperlink: getFileUrl(file.path),
-            tooltip: file.name
+            tooltip: 'Click to open file'
           };
-          beforeFilesCell.font = {
+          linkCell.font = {
             color: { argb: 'FF0000FF' },
             underline: true
           };
-        } else {
-          // Create a text representation with multiple links not supported directly
-          let fileText = '';
-          item.initial_files.forEach((file, i) => {
-            if (i === 0) {
-              // Make just the first link clickable
-              beforeFilesCell.value = {
-                text: file.name,
-                hyperlink: getFileUrl(file.path),
-                tooltip: 'Click to open file'
-              };
-              beforeFilesCell.font = {
-                color: { argb: 'FF0000FF' },
-                underline: true
-              };
-              fileText = `${file.name} `;
-            } else {
-              fileText += `| ${file.name} `;
-            }
-          });
           
-          // Note: Excel can't have multiple hyperlinks in one cell
-          beforeFilesCell.value = `${fileText} (${item.initial_files.length} files)`;
-        }
+          fileRowIndex++;
+        });
       }
       
-      // Add hyperlinks for After Files
       if (item.completion_files?.length) {
-        const afterFilesCell = row.getCell('afterFiles');
-        
-        if (item.completion_files.length === 1) {
-          const file = item.completion_files[0];
-          afterFilesCell.value = {
+        item.completion_files.forEach(file => {
+          const fileRow = filesSheet.addRow({
+            defectId: item.id,
+            vessel: item.vessel_name || vesselNames[item.vessel_id] || '-',
+            equipment: item.Equipments || '',
+            fileType: 'Closure Documentation',
+            fileName: file.name,
+            link: getFileUrl(file.path)
+          });
+          
+          // Make the link clickable
+          const linkCell = fileRow.getCell('link');
+          linkCell.value = {
             text: file.name,
             hyperlink: getFileUrl(file.path),
-            tooltip: file.name
+            tooltip: 'Click to open file'
           };
-          afterFilesCell.font = {
+          linkCell.font = {
             color: { argb: 'FF0000FF' },
             underline: true
           };
-        } else {
-          // Create a text representation with multiple links not supported directly
-          let fileText = '';
-          item.completion_files.forEach((file, i) => {
-            if (i === 0) {
-              // Make just the first link clickable
-              afterFilesCell.value = {
-                text: file.name,
-                hyperlink: getFileUrl(file.path),
-                tooltip: 'Click to open file'
-              };
-              afterFilesCell.font = {
-                color: { argb: 'FF0000FF' },
-                underline: true
-              };
-              fileText = `${file.name} `;
-            } else {
-              fileText += `| ${file.name} `;
-            }
-          });
           
-          // Note: Excel can't have multiple hyperlinks in one cell
-          afterFilesCell.value = `${fileText} (${item.completion_files.length} files)`;
-        }
+          fileRowIndex++;
+        });
+      }
+      
+      // Add hyperlink to files tab if there are files
+      if (totalFilesCount > 0) {
+        const filesCountCell = row.getCell('filesCount');
+        filesCountCell.value = {
+          text: `${totalFilesCount} files (see Files tab)`,
+          hyperlink: `#Files!A1`, // Link to the Files sheet
+          tooltip: 'Click to view files'
+        };
+        filesCountCell.font = {
+          color: { argb: 'FF0000FF' },
+          underline: true
+        };
       }
     });
+    
+    // Auto-filter for both sheets
+    defectsSheet.autoFilter = {
+      from: 'A1',
+      to: 'N1'
+    };
+    
+    filesSheet.autoFilter = {
+      from: 'A1',
+      to: 'F1'
+    };
     
     // Create a buffer
     const buffer = await workbook.xlsx.writeBuffer();
@@ -309,6 +247,6 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
     
   } catch (error) {
     console.error('Error exporting Excel:', error);
-    // You might want to add a toast notification here
+    throw error; // Re-throw to allow handling in the UI
   }
 };
