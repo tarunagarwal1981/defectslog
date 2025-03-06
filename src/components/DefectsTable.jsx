@@ -17,7 +17,7 @@ import {
   TooltipTrigger,
 } from './ui/tooltip';
 import { CORE_FIELDS } from '../config/fieldMappings';
-
+import { exportToCSV, exportToExcel } from '../utils/exportToCSV';
 
 
 
@@ -627,12 +627,22 @@ const DefectsTable = ({
     return sortedData;
   };
 
-  const handleExport = () => {
-    exportToCSV(getSortedData(), {
-      search: searchTerm,
-      status: statusFilter,
-      criticality: criticalityFilter
-    });
+  const handleExport = async () => {
+    try {
+      // Call the Excel export function instead of CSV
+      await exportToExcel(getSortedData(), {
+        search: searchTerm,
+        status: statusFilter,
+        criticality: criticalityFilter
+      });
+    } catch (error) {
+      console.error('Error exporting Excel:', error);
+      toast({
+        title: "Export Failed",
+        description: "Failed to export data to Excel. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const sortedData = getSortedData();
@@ -652,7 +662,7 @@ const DefectsTable = ({
       <div className="flex justify-between items-center px-3 py-2 border-b border-white/10 bg-gradient-to-r from-[#132337] to-[#0B1623]">
         <h2 className="text-sm font-medium text-[#f4f4f4]">Defects Register</h2>
         <div className="flex items-center gap-2">
-          <ExportButton onClick={handleExport} />
+          <ExportButton onClick={handleExport} label="Export Excel" />
           <button 
             onClick={onAddDefect}
             disabled={!canPerformAction('create', permissions)}
