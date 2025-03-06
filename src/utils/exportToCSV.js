@@ -1,3 +1,5 @@
+import ExcelJS from 'exceljs';
+
 export const exportToExcel = async (data, vesselNames, filters = {}) => {
   try {
     // Apply filters
