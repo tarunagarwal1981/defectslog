@@ -147,6 +147,7 @@ function App() {
   const filteredData = React.useMemo(() => {
     return data.filter(defect => {
       
+      // Determine if a defect is overdue
       const isOverdue = () => {
         if (defect['Status (Vessel)'] === 'CLOSED') return false;
         if (!defect.target_date) return false;
@@ -156,31 +157,28 @@ function App() {
         return targetDate < today;
       };
       
-      // Check if defect matches any of the selected filters (or all if none selected)
+      // Check vessel filter
       const matchesVessel = currentVessel.length === 0 || currentVessel.includes(defect.vessel_id);
+      
+      // Check status filter - this is the updated part
       const matchesStatus = () => {
-        if (statusFilter.length === 0) {
-          console.log(`Status filter empty, including all defects`);
+        // If no status filters are selected, show all statuses
+        if (statusFilter.length === 0) return true;
+        
+        // Get the actual status and overdue state
+        const actualStatus = defect['Status (Vessel)'];
+        const defectIsOverdue = isOverdue();
+        
+        // If the defect is overdue and OVERDUE filter is selected, include it
+        if (defectIsOverdue && statusFilter.includes('OVERDUE')) {
           return true;
         }
         
-        const defectStatus = defect['Status (Vessel)'];
-        const isDefectOverdue = isOverdue();
-        
-        console.log(`Defect status: ${defectStatus}, Is overdue: ${isDefectOverdue}`);
-        
-        // If OVERDUE is selected, include defects that are overdue
-        if (statusFilter.includes('OVERDUE') && isDefectOverdue) {
-          console.log(`Including defect because it's overdue and OVERDUE filter is selected`);
-          return true;
-        }
-        
-        // Check if the defect's status is in the selected filters
-        const statusIncluded = statusFilter.includes(defectStatus);
-        console.log(`Status match: ${statusIncluded}`);
-        
-        return statusIncluded;
+        // Otherwise, check if the actual status is in the filter list
+        return statusFilter.includes(actualStatus);
       };
+      
+      // Rest of your filters
       const matchesCriticality = criticalityFilter.length === 0 || criticalityFilter.includes(defect.Criticality);
       const matchesRaisedBy = raisedByFilter.length === 0 || raisedByFilter.includes(defect.raised_by);
       
@@ -206,7 +204,8 @@ function App() {
         return true;
       })();
   
-      return matchesVessel && matchesStatus && matchesCriticality && 
+      // Call the matchesStatus function instead of just referencing it
+      return matchesVessel && matchesStatus() && matchesCriticality && 
              matchesRaisedBy && matchesSearch && matchesDateRange;
     });
   }, [data, currentVessel, statusFilter, criticalityFilter, raisedByFilter, 
