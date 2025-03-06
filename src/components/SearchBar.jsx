@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Input } from './ui/input';
 import { 
   DropdownMenu, 
@@ -93,6 +93,21 @@ const SearchBar = ({
   raisedBy = [],
   raisedByOptions = []
 }) => {
+  // State to control open/closed state of each dropdown
+  const [openDropdowns, setOpenDropdowns] = useState({
+    status: false,
+    criticality: false,
+    raisedBy: false
+  });
+
+  // Toggle dropdown open/closed state
+  const toggleDropdown = (dropdown) => {
+    setOpenDropdowns(prev => ({
+      ...prev,
+      [dropdown]: !prev[dropdown]
+    }));
+  };
+
   // Custom handler for status filter to handle the special OVERDUE case
   const handleStatusFilterToggle = (value, currentSelection) => {
     if (value === '') {
@@ -127,8 +142,8 @@ const SearchBar = ({
   // Add OVERDUE to status options
   const statusOptions = ['OPEN', 'IN PROGRESS', 'CLOSED', 'OVERDUE'];
 
-  const FilterDropdown = ({ type, options, selection, onFilter, label, isStatus = false }) => (
-    <DropdownMenu>
+  const FilterDropdown = ({ type, options, selection, onFilter, label, isStatus = false, dropdownKey }) => (
+    <DropdownMenu open={openDropdowns[dropdownKey]} onOpenChange={() => toggleDropdown(dropdownKey)}>
       <DropdownMenuTrigger className="filter-dropdown-trigger flex items-center justify-between w-[140px] h-8 px-3 text-xs border border-white/10 rounded-md hover:border-[#3BADE5]/30 group">
         <span className="flex items-center gap-2">
           <Filter className="w-3 h-3 opacity-50 group-hover:opacity-80 transition-opacity" />
@@ -136,7 +151,7 @@ const SearchBar = ({
         </span>
         <ChevronDown className="h-4 w-4 opacity-50 group-hover:opacity-80 transition-opacity" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="filter-dropdown-content w-[180px] p-2">
+      <DropdownMenuContent className="filter-dropdown-content w-[180px] p-2" onClick={(e) => e.stopPropagation()}>
         <DropdownMenuLabel className="text-xs text-[#3BADE5]/80 px-2 py-1">
           {label}
         </DropdownMenuLabel>
@@ -152,6 +167,7 @@ const SearchBar = ({
                   ? handleStatusFilterToggle('', selection) 
                   : handleFilterToggle(type, '', selection, onFilter)
                 }
+                onClick={(e) => e.stopPropagation()}
               />
               <span className="text-sm text-white/80">All {type}</span>
             </label>
@@ -167,6 +183,7 @@ const SearchBar = ({
                     ? handleStatusFilterToggle(value, selection) 
                     : handleFilterToggle(type, value, selection, onFilter)
                   }
+                  onClick={(e) => e.stopPropagation()}
                 />
                 {isStatus ? (
                   <span className="text-sm text-white/80 flex items-center">
@@ -213,6 +230,7 @@ const SearchBar = ({
             onFilter={onFilterStatus}
             label="Select Status"
             isStatus={true}
+            dropdownKey="status"
           />
           
           <FilterDropdown
@@ -221,15 +239,19 @@ const SearchBar = ({
             selection={criticality}
             onFilter={onFilterCriticality}
             label="Select Criticality"
+            dropdownKey="criticality"
           />
           
-          <FilterDropdown
-            type="Defect Source"
-            options={raisedByOptions}
-            selection={raisedBy}
-            onFilter={onFilterRaisedBy}
-            label="Select Source"
-          />
+          {raisedByOptions.length > 0 && (
+            <FilterDropdown
+              type="Defect Source"
+              options={raisedByOptions}
+              selection={raisedBy}
+              onFilter={onFilterRaisedBy}
+              label="Select Source"
+              dropdownKey="raisedBy"
+            />
+          )}
         </div>
       </div>
     </>
