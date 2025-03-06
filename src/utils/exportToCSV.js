@@ -23,7 +23,7 @@ export const exportToCSV = (data, vesselNames, filters = {}) => {
         )
       );
     }
-
+    
     // Helper function to format date as ddmmyyyy
     const formatDate = (date) => {
       if (!date) return '';
@@ -33,9 +33,25 @@ export const exportToCSV = (data, vesselNames, filters = {}) => {
       const year = d.getFullYear();
       return `${day}/${month}/${year}`;
     };
-
+    
+    // Helper function to generate Supabase public file URL
+    const getFileUrl = (filePath) => {
+      if (!filePath) return '';
+      return `${process.env.REACT_APP_SUPABASE_URL}/storage/v1/object/public/defect-files/${filePath}`;
+    };
+    
+    // Helper function to get file links as a comma-separated list
+    const getFileLinks = (files) => {
+      if (!files || !Array.isArray(files) || files.length === 0) return '';
+      return files.map(file => `${file.name}: ${getFileUrl(file.path)}`).join('\n');
+    };
+    
     // Format data for CSV
     const csvData = filteredData.map((item, index) => {
+      // Get before (initial) and after (completion) file links
+      const beforeFileLinks = getFileLinks(item.initial_files);
+      const afterFileLinks = getFileLinks(item.completion_files);
+      
       return {
         'No.': index + 1,
         'Vessel Name': item.vessel_name || vesselNames[item.vessel_id] || '-',
@@ -49,10 +65,12 @@ export const exportToCSV = (data, vesselNames, filters = {}) => {
         'Date Completed': formatDate(item['Date Completed']),
         'Comments': item.Comments || '',
         'Closure Comments': item.closure_comments || '',  
-        'Defect Source': item.raised_by || ''
+        'Defect Source': item.raised_by || '',
+        'Before Files': beforeFileLinks,
+        'After Files': afterFileLinks
       };
     });
-
+    
     // Convert to CSV string
     const headers = Object.keys(csvData[0]);
     const csvRows = [
@@ -68,7 +86,7 @@ export const exportToCSV = (data, vesselNames, filters = {}) => {
         }).join(',')
       )
     ];
-
+    
     // Create and download file
     const csvString = csvRows.join('\n');
     const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
