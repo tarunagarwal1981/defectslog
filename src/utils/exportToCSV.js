@@ -45,6 +45,7 @@ export const exportToCSV = (data, vesselNames, filters = {}) => {
         'Description': item.Description || '',
         'Action Planned': item['Action Planned'] || '',
         'Date Reported': formatDate(item['Date Reported']),
+        'Target Date': formatDate(item.target_date),
         'Date Completed': formatDate(item['Date Completed']),
         'Comments': item.Comments || '',
         'Closure Comments': item.closure_comments || '',  
