@@ -159,20 +159,27 @@ function App() {
       // Check if defect matches any of the selected filters (or all if none selected)
       const matchesVessel = currentVessel.length === 0 || currentVessel.includes(defect.vessel_id);
       const matchesStatus = () => {
-        // If no status filters, include all
-        if (statusFilter.length === 0) return true;
+        if (statusFilter.length === 0) {
+          console.log(`Status filter empty, including all defects`);
+          return true;
+        }
         
-        // Check if the defect is overdue
+        const defectStatus = defect['Status (Vessel)'];
         const isDefectOverdue = isOverdue();
         
-        // Check if we should include based on regular status
-        const matchesRegularStatus = statusFilter.includes(defect['Status (Vessel)']);
+        console.log(`Defect status: ${defectStatus}, Is overdue: ${isDefectOverdue}`);
         
-        // Check if we should include based on overdue status
-        const matchesOverdueStatus = statusFilter.includes('OVERDUE') && isDefectOverdue;
+        // If OVERDUE is selected, include defects that are overdue
+        if (statusFilter.includes('OVERDUE') && isDefectOverdue) {
+          console.log(`Including defect because it's overdue and OVERDUE filter is selected`);
+          return true;
+        }
         
-        // Include if either condition is true
-        return matchesRegularStatus || matchesOverdueStatus;
+        // Check if the defect's status is in the selected filters
+        const statusIncluded = statusFilter.includes(defectStatus);
+        console.log(`Status match: ${statusIncluded}`);
+        
+        return statusIncluded;
       };
       const matchesCriticality = criticalityFilter.length === 0 || criticalityFilter.includes(defect.Criticality);
       const matchesRaisedBy = raisedByFilter.length === 0 || raisedByFilter.includes(defect.raised_by);
