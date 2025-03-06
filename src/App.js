@@ -161,13 +161,14 @@ function App() {
       const matchesStatus = () => {
         if (statusFilter.length === 0) return true;
         
-        // If OVERDUE is selected, include defects that are overdue
-        if (statusFilter.includes('OVERDUE') && isOverdue()) {
-          return true;
-        }
+        // Handle regular status matches
+        const statusMatch = statusFilter.includes(defect['Status (Vessel)']);
         
-        // Also include defects that match other selected statuses
-        return statusFilter.includes(defect['Status (Vessel)']);
+        // Handle overdue status
+        const overdueMatch = statusFilter.includes('OVERDUE') && isOverdue();
+        
+        // Return true if either condition is met
+        return statusMatch || overdueMatch;
       };
       const matchesCriticality = criticalityFilter.length === 0 || criticalityFilter.includes(defect.Criticality);
       const matchesRaisedBy = raisedByFilter.length === 0 || raisedByFilter.includes(defect.raised_by);
