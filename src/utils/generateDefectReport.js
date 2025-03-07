@@ -156,43 +156,88 @@ export const generateDefectReport = async (defect, signedUrls = {}) => {
         const margin = 15;
         const spacing = 5;
         const imageWidth = (pageWidth - 2 * margin - spacing) / 2;
+        const imageHeight = 50; // Fixed height for all images
 
+        // Add images in rows of 2
         for (let i = 0; i < imageFiles.length; i += 2) {
-          if (currentY > doc.internal.pageSize.height - 60) {
+          // Check if we need a new page
+          if (currentY + imageHeight + 10 > doc.internal.pageSize.height) {
             doc.addPage();
             currentY = 15;
           }
 
           try {
+            // First image
             const file1 = imageFiles[i];
-            doc.addImage(
-              signedUrls[file1.path],
-              'JPEG',
-              margin,
-              currentY,
-              imageWidth,
-              50,
-              file1.name,
-              'MEDIUM'
-            );
-
-            if (imageFiles[i + 1]) {
-              const file2 = imageFiles[i + 1];
+            
+            // Use a simplified approach to add images
+            try {
+              // Add first image with fixed dimensions and compression
               doc.addImage(
-                signedUrls[file2.path],
+                signedUrls[file1.path],
                 'JPEG',
-                margin + imageWidth + spacing,
+                margin,
                 currentY,
                 imageWidth,
-                50,
-                file2.name,
-                'MEDIUM'
+                imageHeight,
+                undefined, // No alias needed
+                'FAST',    // Use FAST compression
+                0          // Rotation
               );
+              
+              // Add a small caption with the file name below the image
+              doc.setFontSize(8);
+              doc.setTextColor(100, 100, 100);
+              const filename1 = file1.name.length > 20 ? file1.name.substring(0, 17) + '...' : file1.name;
+              doc.text(filename1, margin + imageWidth/2, currentY + imageHeight + 5, { align: 'center' });
+            } catch (error) {
+              console.error('Error adding first image:', error);
+              // Show error placeholder
+              doc.setFillColor(240, 240, 240);
+              doc.rect(margin, currentY, imageWidth, imageHeight, 'F');
+              doc.setTextColor(150, 150, 150);
+              doc.setFontSize(10);
+              doc.text('Image Error', margin + imageWidth/2, currentY + imageHeight/2, { align: 'center' });
             }
 
-            currentY += 50 + 8;
+            // Second image (if available)
+            if (imageFiles[i + 1]) {
+              const file2 = imageFiles[i + 1];
+              try {
+                // Add second image with fixed dimensions and compression
+                doc.addImage(
+                  signedUrls[file2.path],
+                  'JPEG',
+                  margin + imageWidth + spacing,
+                  currentY,
+                  imageWidth,
+                  imageHeight,
+                  undefined, // No alias needed
+                  'FAST',    // Use FAST compression
+                  0          // Rotation
+                );
+                
+                // Add a small caption with the file name below the image
+                doc.setFontSize(8);
+                doc.setTextColor(100, 100, 100);
+                const filename2 = file2.name.length > 20 ? file2.name.substring(0, 17) + '...' : file2.name;
+                doc.text(filename2, margin + imageWidth + spacing + imageWidth/2, currentY + imageHeight + 5, { align: 'center' });
+              } catch (error) {
+                console.error('Error adding second image:', error);
+                // Show error placeholder
+                doc.setFillColor(240, 240, 240);
+                doc.rect(margin + imageWidth + spacing, currentY, imageWidth, imageHeight, 'F');
+                doc.setTextColor(150, 150, 150);
+                doc.setFontSize(10);
+                doc.text('Image Error', margin + imageWidth + spacing + imageWidth/2, currentY + imageHeight/2, { align: 'center' });
+              }
+            }
+
+            // Move down for the next row of images (including space for captions)
+            currentY += imageHeight + 10;
           } catch (error) {
-            console.error('Error adding images:', error);
+            console.error('Error processing images:', error);
+            currentY += 10; // Move down a bit in case of error
           }
         }
       }

@@ -147,6 +147,7 @@ function App() {
   const filteredData = React.useMemo(() => {
     return data.filter(defect => {
       
+      // Determine if a defect is overdue
       const isOverdue = () => {
         if (defect['Status (Vessel)'] === 'CLOSED') return false;
         if (!defect.target_date) return false;
@@ -156,19 +157,28 @@ function App() {
         return targetDate < today;
       };
       
-      // Check if defect matches any of the selected filters (or all if none selected)
+      // Check vessel filter
       const matchesVessel = currentVessel.length === 0 || currentVessel.includes(defect.vessel_id);
+      
+      // Check status filter - this is the updated part
       const matchesStatus = () => {
+        // If no status filters are selected, show all statuses
         if (statusFilter.length === 0) return true;
         
-        // If OVERDUE is selected, include defects that are overdue
-        if (statusFilter.includes('OVERDUE') && isOverdue()) {
+        // Get the actual status and overdue state
+        const actualStatus = defect['Status (Vessel)'];
+        const defectIsOverdue = isOverdue();
+        
+        // If the defect is overdue and OVERDUE filter is selected, include it
+        if (defectIsOverdue && statusFilter.includes('OVERDUE')) {
           return true;
         }
         
-        // Also include defects that match other selected statuses
-        return statusFilter.includes(defect['Status (Vessel)']);
+        // Otherwise, check if the actual status is in the filter list
+        return statusFilter.includes(actualStatus);
       };
+      
+      // Rest of your filters
       const matchesCriticality = criticalityFilter.length === 0 || criticalityFilter.includes(defect.Criticality);
       const matchesRaisedBy = raisedByFilter.length === 0 || raisedByFilter.includes(defect.raised_by);
       
@@ -194,7 +204,8 @@ function App() {
         return true;
       })();
   
-      return matchesVessel && matchesStatus && matchesCriticality && 
+      // Call the matchesStatus function instead of just referencing it
+      return matchesVessel && matchesStatus() && matchesCriticality && 
              matchesRaisedBy && matchesSearch && matchesDateRange;
     });
   }, [data, currentVessel, statusFilter, criticalityFilter, raisedByFilter, 

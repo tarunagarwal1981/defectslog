@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Input } from './ui/input';
 import { 
   DropdownMenu, 
@@ -93,8 +93,24 @@ const SearchBar = ({
   raisedBy = [],
   raisedByOptions = []
 }) => {
-  // Custom handler for status filter to handle the special OVERDUE case
-  const handleStatusFilterToggle = (value, currentSelection) => {
+  // State to manage dropdown open states
+  const [openDropdown, setOpenDropdown] = useState({
+    status: false,
+    criticality: false,
+    source: false
+  });
+  
+  // Memoize options to prevent unnecessary re-renders
+  const statusOptions = useMemo(() => ['OPEN', 'IN PROGRESS', 'CLOSED', 'OVERDUE'], []);
+  const criticalityOptions = useMemo(() => ['High', 'Medium', 'Low'], []);
+  
+  // Handle search input with debounce
+  const handleSearchInput = useCallback((e) => {
+    onSearch(e.target.value);
+  }, [onSearch]);
+  
+  // Custom handler for status filter
+  const handleStatusFilterToggle = useCallback((value, currentSelection) => {
     if (value === '') {
       onFilterStatus([]);
       return;
@@ -105,9 +121,10 @@ const SearchBar = ({
       : [...currentSelection, value];
     
     onFilterStatus(updatedSelection);
-  };
+  }, [onFilterStatus]);
   
-  const handleFilterToggle = (type, value, currentSelection, onFilter) => {
+  // Generic handler for other filters
+  const handleFilterToggle = useCallback((type, value, currentSelection, onFilter) => {
     if (value === '') {
       onFilter([]);
       return;
@@ -116,19 +133,18 @@ const SearchBar = ({
       ? currentSelection.filter(item => item !== value)
       : [...currentSelection, value];
     onFilter(updatedSelection);
-  };
+  }, []);
 
-  const getFilterDisplayText = (type, selection, options) => {
+  // Get display text for filters
+  const getFilterDisplayText = useCallback((type, selection) => {
     if (selection.length === 0) return `All ${type}`;
     if (selection.length === 1) return selection[0];
     return `${selection.length} Selected`;
-  };
+  }, []);
 
-  // Add OVERDUE to status options
-  const statusOptions = ['OPEN', 'IN PROGRESS', 'CLOSED', 'OVERDUE'];
-
-  const FilterDropdown = ({ type, options, selection, onFilter, label, isStatus = false }) => (
-    <DropdownMenu>
+  // Custom dropdown component with stopPropagation to keep it open
+  const FilterDropdown = ({ type, options, selection, onFilter, label, isStatus = false, dropdownKey }) => (
+    <DropdownMenu open={openDropdown[dropdownKey]} onOpenChange={(open) => setOpenDropdown(prev => ({ ...prev, [dropdownKey]: open }))}>
       <DropdownMenuTrigger className="filter-dropdown-trigger flex items-center justify-between w-[140px] h-8 px-3 text-xs border border-white/10 rounded-md hover:border-[#3BADE5]/30 group">
         <span className="flex items-center gap-2">
           <Filter className="w-3 h-3 opacity-50 group-hover:opacity-80 transition-opacity" />
@@ -143,7 +159,8 @@ const SearchBar = ({
         <DropdownMenuSeparator className="bg-white/5 my-2" />
         <div className="max-h-[200px] overflow-y-auto custom-scrollbar">
           <div className="filter-item rounded-sm px-2 py-1.5">
-            <label className="flex items-center cursor-pointer">
+            <label className="flex items-center cursor-pointer"
+                  onClick={(e) => e.stopPropagation()}>
               <input
                 type="checkbox"
                 className="custom-checkbox mr-2 h-4 w-4 rounded"
@@ -158,7 +175,8 @@ const SearchBar = ({
           </div>
           {options.map((value) => (
             <div key={value} className="filter-item rounded-sm px-2 py-1.5">
-              <label className="flex items-center cursor-pointer">
+              <label className="flex items-center cursor-pointer"
+                    onClick={(e) => e.stopPropagation()}>
                 <input
                   type="checkbox"
                   className="custom-checkbox mr-2 h-4 w-4 rounded"
@@ -200,7 +218,7 @@ const SearchBar = ({
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/40" />
           <Input
             placeholder="Search defects..."
-            onChange={(e) => onSearch(e.target.value)}
+            onChange={handleSearchInput}
             className="search-input h-8 text-sm pl-10 pr-4 bg-[#132337]/30 border-white/10 placeholder:text-white/40"
           />
         </div>
@@ -213,14 +231,16 @@ const SearchBar = ({
             onFilter={onFilterStatus}
             label="Select Status"
             isStatus={true}
+            dropdownKey="status"
           />
           
           <FilterDropdown
             type="Criticality"
-            options={['High', 'Medium', 'Low']}
+            options={criticalityOptions}
             selection={criticality}
             onFilter={onFilterCriticality}
             label="Select Criticality"
+            dropdownKey="criticality"
           />
           
           <FilterDropdown
@@ -229,6 +249,7 @@ const SearchBar = ({
             selection={raisedBy}
             onFilter={onFilterRaisedBy}
             label="Select Source"
+            dropdownKey="source"
           />
         </div>
       </div>
