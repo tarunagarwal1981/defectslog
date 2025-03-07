@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PlusCircle, FileText, Trash2, ChevronDown, ChevronUp, X } from 'lucide-react';
 import {
   Dialog,
@@ -107,58 +107,86 @@ const TruncatedText = ({ text, maxWidth = "max-w-[200px]" }) => {
 };
 
 // File Viewer Component
-// Completely Scroll-Free FileViewer Component
+// Optimized FileViewer Component that perfectly fits images
 const FileViewer = ({ url, filename, onClose }) => {
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [hasDialogRendered, setHasDialogRendered] = useState(false);
-  const imageContainerRef = useRef(null);
-  
-  // Force absolutely no scrolling
-  useEffect(() => {
-    if (hasDialogRendered && imageContainerRef.current) {
-      const container = imageContainerRef.current;
-      
-      // Trick to force a reflow and ensure proper dimensions
-      setTimeout(() => {
-        if (container) {
-          // Get the available container dimensions
-          const containerWidth = container.clientWidth;
-          const containerHeight = container.clientHeight;
-          
-          // Find the image element if it exists
-          const imageElement = container.querySelector('img');
-          if (imageElement) {
-            // Set max dimensions to ensure no overflow
-            imageElement.style.maxWidth = `${containerWidth}px`;
-            imageElement.style.maxHeight = `${containerHeight}px`;
-          }
-        }
-      }, 50); // Small delay to ensure dialog is rendered
-    }
-  }, [hasDialogRendered, isLoading]);
 
-  // Load the image
   useEffect(() => {
+    // Only run for image files
     if (url.match(/\.(jpg|jpeg|png|gif)$/i)) {
       setIsLoading(true);
       const img = new Image();
       
       img.onload = () => {
+        // Get natural dimensions of the image
+        const { naturalWidth, naturalHeight } = img;
+        
+        // Set maximum container dimensions
+        const maxContainerWidth = Math.min(window.innerWidth * 0.85, 1000);
+        const maxContainerHeight = Math.min(window.innerHeight * 0.85, 800);
+
+        // Allow space for dialog header and padding
+        const availableWidth = maxContainerWidth - 40;
+        const availableHeight = maxContainerHeight - 80;
+        
+        // Calculate actual display dimensions
+        let displayWidth, displayHeight, containerWidth, containerHeight;
+        
+        // If image is smaller than available space, use its natural size
+        if (naturalWidth <= availableWidth && naturalHeight <= availableHeight) {
+          displayWidth = naturalWidth;
+          displayHeight = naturalHeight;
+          
+          // Container should be just big enough for the image plus padding
+          containerWidth = displayWidth + 40; // 20px padding on each side
+          containerHeight = displayHeight + 80; // header + padding
+        } else {
+          // Image is larger than available space, scale it down
+          const widthRatio = availableWidth / naturalWidth;
+          const heightRatio = availableHeight / naturalHeight;
+          
+          // Use the smaller ratio to ensure image fits in both dimensions
+          const scaleFactor = Math.min(widthRatio, heightRatio);
+          
+          displayWidth = Math.floor(naturalWidth * scaleFactor);
+          displayHeight = Math.floor(naturalHeight * scaleFactor);
+          
+          // For large images, use the maximum container size
+          containerWidth = maxContainerWidth;
+          containerHeight = maxContainerHeight;
+        }
+        
+        setDimensions({
+          imageWidth: displayWidth,
+          imageHeight: displayHeight,
+          containerWidth: containerWidth,
+          containerHeight: containerHeight
+        });
+        
         setIsLoading(false);
-        // Dialog should be rendered now
-        setHasDialogRendered(true);
       };
       
       img.onerror = () => {
         setError("Failed to load image");
         setIsLoading(false);
+        
+        // Set default dimensions for error state
+        setDimensions({
+          containerWidth: 400,
+          containerHeight: 300
+        });
       };
       
       img.src = url;
     } else {
+      // For non-image files (like PDFs), use maximum size
+      setDimensions({
+        containerWidth: Math.min(window.innerWidth * 0.85, 1000),
+        containerHeight: Math.min(window.innerHeight * 0.85, 800)
+      });
       setIsLoading(false);
-      setHasDialogRendered(true);
     }
   }, [url]);
 
@@ -167,69 +195,63 @@ const FileViewer = ({ url, filename, onClose }) => {
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent 
-        className="bg-[#0B1623] border border-white/10 overflow-hidden" 
+        className="bg-[#0B1623] border border-white/10 p-0 overflow-hidden"
         style={{
-          maxWidth: '85vw',
-          maxHeight: '85vh',
-          width: isImage ? 'auto' : '85vw',
-          height: isImage ? 'auto' : '85vh'
+          width: `${dimensions.containerWidth}px`,
+          height: `${dimensions.containerHeight}px`,
+          maxWidth: '95vw',
+          maxHeight: '95vh'
         }}
       >
-        <DialogHeader>
-          <DialogTitle className="text-sm font-medium text-white flex justify-between items-center">
-            <span className="truncate max-w-[calc(100%-24px)]">{filename}</span>
-            <button onClick={onClose} className="text-white/60 hover:text-white">
-              <X className="h-4 w-4" />
-            </button>
-          </DialogTitle>
-        </DialogHeader>
-        
-        <div 
-          ref={imageContainerRef}
-          className="relative flex items-center justify-center"
-          style={{ 
-            overflow: 'hidden',
-            maxHeight: isImage ? 'calc(85vh - 80px)' : 'none' // Adjust for header
-          }}
-        >
-          {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="flex items-center space-x-2">
-                <div className="h-2 w-2 bg-[#3BADE5] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                <div className="h-2 w-2 bg-[#3BADE5] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                <div className="h-2 w-2 bg-[#3BADE5] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+        <div className="flex flex-col h-full">
+          <DialogHeader className="p-3 shrink-0 border-b border-white/10">
+            <DialogTitle className="text-sm font-medium text-white flex justify-between items-center">
+              <span className="truncate max-w-[calc(100%-24px)]">{filename}</span>
+              <button onClick={onClose} className="text-white/60 hover:text-white">
+                <X className="h-4 w-4" />
+              </button>
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="flex-1 flex items-center justify-center p-4 relative">
+            {isLoading && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="flex items-center space-x-2">
+                  <div className="h-2 w-2 bg-[#3BADE5] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                  <div className="h-2 w-2 bg-[#3BADE5] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                  <div className="h-2 w-2 bg-[#3BADE5] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                </div>
               </div>
-            </div>
-          )}
-          
-          {error && (
-            <div className="text-red-400 py-4 text-center">
-              {error}
-            </div>
-          )}
-          
-          {!isLoading && !error && (
-            <>
-              {isImage ? (
-                <img 
-                  src={url} 
-                  alt={filename}
-                  className="object-contain"
-                  style={{
-                    display: 'block',
-                    maxWidth: '100%', // Will be set more precisely by useEffect
-                    maxHeight: '100%'  // Will be set more precisely by useEffect
-                  }}
-                />
-              ) : (
-                <iframe 
-                  src={url} 
-                  className="w-full h-[65vh]" 
-                  title={filename} 
-                />
-              )}
-            </>
-          )}
+            )}
+            
+            {error && (
+              <div className="text-red-400 py-4 text-center">
+                {error}
+              </div>
+            )}
+            
+            {!isLoading && !error && (
+              <>
+                {isImage ? (
+                  <img 
+                    src={url} 
+                    alt={filename} 
+                    className="object-contain" 
+                    style={{
+                      width: dimensions.imageWidth ? `${dimensions.imageWidth}px` : 'auto',
+                      height: dimensions.imageHeight ? `${dimensions.imageHeight}px` : 'auto'
+                    }}
+                  />
+                ) : (
+                  <iframe 
+                    src={url} 
+                    className="w-full h-full" 
+                    title={filename} 
+                  />
+                )}
+              </>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>
