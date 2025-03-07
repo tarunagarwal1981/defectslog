@@ -108,6 +108,7 @@ const TruncatedText = ({ text, maxWidth = "max-w-[200px]" }) => {
 
 // File Viewer Component
 // Enhanced FileViewer Component
+// Enhanced FileViewer Component with proper image containment
 const FileViewer = ({ url, filename, onClose }) => {
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
   const [isLoading, setIsLoading] = useState(true);
@@ -132,25 +133,24 @@ const FileViewer = ({ url, filename, onClose }) => {
         const aspectRatio = naturalWidth / naturalHeight;
         
         // Set initial dimensions based on the image size
-        let width = naturalWidth;
-        let height = naturalHeight;
+        let width = Math.min(naturalWidth, maxWidth - 80); // Account for padding
+        let height = Math.min(naturalHeight, maxHeight - 140); // Account for header and padding
         
-        // If image is too big, scale it down proportionally
-        if (width > maxWidth || height > maxHeight) {
-          if (width / maxWidth > height / maxHeight) {
-            // Width is the limiting factor
-            width = maxWidth;
-            height = width / aspectRatio;
-          } else {
+        // If image still doesn't fit after capping width/height, scale it properly
+        if (width / height !== aspectRatio) {
+          // Recalculate to maintain aspect ratio within our constraints
+          if (width / aspectRatio > height) {
             // Height is the limiting factor
-            height = maxHeight;
             width = height * aspectRatio;
+          } else {
+            // Width is the limiting factor
+            height = width / aspectRatio;
           }
         }
         
-        // Add some padding for the dialog UI
-        const dialogWidth = Math.max(width + 40, 300); // At least 300px wide
-        const dialogHeight = Math.max(height + 100, 200); // At least 200px tall
+        // Dialog dimensions with some padding
+        const dialogWidth = Math.min(width + 80, maxWidth);
+        const dialogHeight = Math.min(height + 140, maxHeight);
         
         setImageSize({
           width: dialogWidth,
@@ -182,15 +182,17 @@ const FileViewer = ({ url, filename, onClose }) => {
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent 
-        className="bg-[#0B1623] overflow-hidden border border-white/10"
+        className="bg-[#0B1623] border border-white/10"
         style={{
           maxWidth: isImage ? `${imageSize.width}px` : '80vw',
-          maxHeight: isImage ? `${imageSize.height}px` : '80vh',
           width: isImage ? `${imageSize.width}px` : '80vw',
-          height: isImage ? 'auto' : '80vh',
+          // Set explicit max-height for the entire dialog
+          maxHeight: isImage ? `${imageSize.height}px` : '80vh',
+          height: isImage ? `${imageSize.height}px` : '80vh',
+          overflow: 'hidden' // Prevent scrolling on the dialog itself
         }}
       >
-        <DialogHeader>
+        <DialogHeader className="mb-2">
           <DialogTitle className="text-sm font-medium text-white flex justify-between items-center">
             <span className="truncate max-w-[calc(100%-24px)]">{filename}</span>
             <button onClick={onClose} className="text-white/60 hover:text-white">
@@ -199,7 +201,7 @@ const FileViewer = ({ url, filename, onClose }) => {
           </DialogTitle>
         </DialogHeader>
         
-        <div className={`relative ${isLoading ? 'min-h-20' : ''}`}>
+        <div className="flex-1 flex items-center justify-center relative">
           {isLoading && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="flex items-center space-x-2">
@@ -219,21 +221,23 @@ const FileViewer = ({ url, filename, onClose }) => {
           {!isLoading && !error && (
             <>
               {isImage ? (
-                <div className="flex items-center justify-center overflow-hidden">
+                <div className="flex items-center justify-center overflow-hidden w-full h-full">
                   <img 
                     src={url} 
                     alt={filename} 
-                    className="max-w-full max-h-full object-contain" 
-                    style={imageSize.contentWidth ? {
-                      width: imageSize.contentWidth,
-                      height: imageSize.contentHeight
-                    } : {}}
+                    className="object-contain" 
+                    style={{
+                      width: imageSize.contentWidth ? `${imageSize.contentWidth}px` : 'auto',
+                      height: imageSize.contentHeight ? `${imageSize.contentHeight}px` : 'auto',
+                      maxWidth: '100%',
+                      maxHeight: '100%'
+                    }}
                   />
                 </div>
               ) : (
                 <iframe 
                   src={url} 
-                  className="w-full h-[calc(80vh-80px)]" 
+                  className="w-full h-full" 
                   title={filename} 
                 />
               )}
