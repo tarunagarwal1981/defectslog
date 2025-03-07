@@ -107,10 +107,9 @@ const TruncatedText = ({ text, maxWidth = "max-w-[200px]" }) => {
 };
 
 // File Viewer Component
-// Enhanced FileViewer Component
-// Enhanced FileViewer Component with proper image containment
+// Optimized FileViewer Component that perfectly fits images
 const FileViewer = ({ url, filename, onClose }) => {
-  const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -124,54 +123,68 @@ const FileViewer = ({ url, filename, onClose }) => {
         // Get natural dimensions of the image
         const { naturalWidth, naturalHeight } = img;
         
-        // Calculate appropriate dialog dimensions
-        // Maximum dimensions for the dialog
-        const maxWidth = Math.min(window.innerWidth * 0.8, 1200);
-        const maxHeight = window.innerHeight * 0.8;
+        // Set maximum container dimensions
+        const maxContainerWidth = Math.min(window.innerWidth * 0.85, 1000);
+        const maxContainerHeight = Math.min(window.innerHeight * 0.85, 800);
+
+        // Allow space for dialog header and padding
+        const availableWidth = maxContainerWidth - 40;
+        const availableHeight = maxContainerHeight - 80;
         
-        // Calculate aspect ratio
-        const aspectRatio = naturalWidth / naturalHeight;
+        // Calculate actual display dimensions
+        let displayWidth, displayHeight, containerWidth, containerHeight;
         
-        // Set initial dimensions based on the image size
-        let width = Math.min(naturalWidth, maxWidth - 80); // Account for padding
-        let height = Math.min(naturalHeight, maxHeight - 140); // Account for header and padding
-        
-        // If image still doesn't fit after capping width/height, scale it properly
-        if (width / height !== aspectRatio) {
-          // Recalculate to maintain aspect ratio within our constraints
-          if (width / aspectRatio > height) {
-            // Height is the limiting factor
-            width = height * aspectRatio;
-          } else {
-            // Width is the limiting factor
-            height = width / aspectRatio;
-          }
+        // If image is smaller than available space, use its natural size
+        if (naturalWidth <= availableWidth && naturalHeight <= availableHeight) {
+          displayWidth = naturalWidth;
+          displayHeight = naturalHeight;
+          
+          // Container should be just big enough for the image plus padding
+          containerWidth = displayWidth + 40; // 20px padding on each side
+          containerHeight = displayHeight + 80; // header + padding
+        } else {
+          // Image is larger than available space, scale it down
+          const widthRatio = availableWidth / naturalWidth;
+          const heightRatio = availableHeight / naturalHeight;
+          
+          // Use the smaller ratio to ensure image fits in both dimensions
+          const scaleFactor = Math.min(widthRatio, heightRatio);
+          
+          displayWidth = Math.floor(naturalWidth * scaleFactor);
+          displayHeight = Math.floor(naturalHeight * scaleFactor);
+          
+          // For large images, use the maximum container size
+          containerWidth = maxContainerWidth;
+          containerHeight = maxContainerHeight;
         }
         
-        // Dialog dimensions with some padding
-        const dialogWidth = Math.min(width + 80, maxWidth);
-        const dialogHeight = Math.min(height + 140, maxHeight);
-        
-        setImageSize({
-          width: dialogWidth,
-          height: dialogHeight,
-          contentWidth: width,
-          contentHeight: height
+        setDimensions({
+          imageWidth: displayWidth,
+          imageHeight: displayHeight,
+          containerWidth: containerWidth,
+          containerHeight: containerHeight
         });
+        
         setIsLoading(false);
       };
       
       img.onerror = () => {
         setError("Failed to load image");
         setIsLoading(false);
+        
+        // Set default dimensions for error state
+        setDimensions({
+          containerWidth: 400,
+          containerHeight: 300
+        });
       };
       
       img.src = url;
     } else {
       // For non-image files (like PDFs), use maximum size
-      setImageSize({
-        width: Math.min(window.innerWidth * 0.8, 1200),
-        height: window.innerHeight * 0.8
+      setDimensions({
+        containerWidth: Math.min(window.innerWidth * 0.85, 1000),
+        containerHeight: Math.min(window.innerHeight * 0.85, 800)
       });
       setIsLoading(false);
     }
@@ -182,67 +195,63 @@ const FileViewer = ({ url, filename, onClose }) => {
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent 
-        className="bg-[#0B1623] border border-white/10"
+        className="bg-[#0B1623] border border-white/10 p-0 overflow-hidden"
         style={{
-          maxWidth: isImage ? `${imageSize.width}px` : '80vw',
-          width: isImage ? `${imageSize.width}px` : '80vw',
-          // Set explicit max-height for the entire dialog
-          maxHeight: isImage ? `${imageSize.height}px` : '80vh',
-          height: isImage ? `${imageSize.height}px` : '80vh',
-          overflow: 'hidden' // Prevent scrolling on the dialog itself
+          width: `${dimensions.containerWidth}px`,
+          height: `${dimensions.containerHeight}px`,
+          maxWidth: '95vw',
+          maxHeight: '95vh'
         }}
       >
-        <DialogHeader className="mb-2">
-          <DialogTitle className="text-sm font-medium text-white flex justify-between items-center">
-            <span className="truncate max-w-[calc(100%-24px)]">{filename}</span>
-            <button onClick={onClose} className="text-white/60 hover:text-white">
-              <X className="h-4 w-4" />
-            </button>
-          </DialogTitle>
-        </DialogHeader>
-        
-        <div className="flex-1 flex items-center justify-center relative">
-          {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="flex items-center space-x-2">
-                <div className="h-2 w-2 bg-[#3BADE5] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                <div className="h-2 w-2 bg-[#3BADE5] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                <div className="h-2 w-2 bg-[#3BADE5] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+        <div className="flex flex-col h-full">
+          <DialogHeader className="p-3 shrink-0 border-b border-white/10">
+            <DialogTitle className="text-sm font-medium text-white flex justify-between items-center">
+              <span className="truncate max-w-[calc(100%-24px)]">{filename}</span>
+              <button onClick={onClose} className="text-white/60 hover:text-white">
+                <X className="h-4 w-4" />
+              </button>
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="flex-1 flex items-center justify-center p-4 relative">
+            {isLoading && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="flex items-center space-x-2">
+                  <div className="h-2 w-2 bg-[#3BADE5] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                  <div className="h-2 w-2 bg-[#3BADE5] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                  <div className="h-2 w-2 bg-[#3BADE5] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                </div>
               </div>
-            </div>
-          )}
-          
-          {error && (
-            <div className="text-red-400 py-4 text-center">
-              {error}
-            </div>
-          )}
-          
-          {!isLoading && !error && (
-            <>
-              {isImage ? (
-                <div className="flex items-center justify-center overflow-hidden w-full h-full">
+            )}
+            
+            {error && (
+              <div className="text-red-400 py-4 text-center">
+                {error}
+              </div>
+            )}
+            
+            {!isLoading && !error && (
+              <>
+                {isImage ? (
                   <img 
                     src={url} 
                     alt={filename} 
                     className="object-contain" 
                     style={{
-                      width: imageSize.contentWidth ? `${imageSize.contentWidth}px` : 'auto',
-                      height: imageSize.contentHeight ? `${imageSize.contentHeight}px` : 'auto',
-                      maxWidth: '100%',
-                      maxHeight: '100%'
+                      width: dimensions.imageWidth ? `${dimensions.imageWidth}px` : 'auto',
+                      height: dimensions.imageHeight ? `${dimensions.imageHeight}px` : 'auto'
                     }}
                   />
-                </div>
-              ) : (
-                <iframe 
-                  src={url} 
-                  className="w-full h-full" 
-                  title={filename} 
-                />
-              )}
-            </>
-          )}
+                ) : (
+                  <iframe 
+                    src={url} 
+                    className="w-full h-full" 
+                    title={filename} 
+                  />
+                )}
+              </>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>
