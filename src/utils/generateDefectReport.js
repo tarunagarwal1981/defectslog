@@ -138,6 +138,31 @@ export const generateDefectReport = async (defect, signedUrls = {}) => {
       return '[FILE] ';
     };
 
+    // Function to load and get image dimensions
+    const getImageDimensions = (url) => {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve({ width: img.width, height: img.height });
+        img.onerror = reject;
+        img.src = url;
+      });
+    };
+
+    // Function to calculate dimensions while maintaining aspect ratio
+    const calculateDimensions = (originalWidth, originalHeight, maxWidth, maxHeight) => {
+      let width = originalWidth;
+      let height = originalHeight;
+      
+      // Calculate aspect ratio
+      const ratio = Math.min(maxWidth / originalWidth, maxHeight / originalHeight);
+      
+      // Set new dimensions
+      width = originalWidth * ratio;
+      height = originalHeight * ratio;
+      
+      return { width, height };
+    };
+
     // Function to add images and documents section
     const addSection = async (title, files, startY) => {
       let currentY = startY;
@@ -155,7 +180,8 @@ export const generateDefectReport = async (defect, signedUrls = {}) => {
         const pageWidth = doc.internal.pageSize.width;
         const margin = 15;
         const spacing = 5;
-        const imageWidth = (pageWidth - 2 * margin - spacing) / 2;
+        const maxImageWidth = (pageWidth - 2 * margin - spacing) / 2;
+        const maxImageHeight = 50; // Fixed height container
 
         for (let i = 0; i < imageFiles.length; i += 2) {
           if (currentY > doc.internal.pageSize.height - 60) {
@@ -164,33 +190,115 @@ export const generateDefectReport = async (defect, signedUrls = {}) => {
           }
 
           try {
+            // First image
             const file1 = imageFiles[i];
-            doc.addImage(
-              signedUrls[file1.path],
-              'JPEG',
-              margin,
-              currentY,
-              imageWidth,
-              50,
-              file1.name,
-              'MEDIUM'
-            );
-
-            if (imageFiles[i + 1]) {
-              const file2 = imageFiles[i + 1];
+            const url1 = signedUrls[file1.path];
+            
+            try {
+              // Get image dimensions - we'll simulate this since we can't actually load the image in this context
+              let dims;
+              try {
+                // Try to get actual dimensions (in a browser environment)
+                dims = await getImageDimensions(url1);
+              } catch (e) {
+                // If we can't load the image (e.g., Node environment), use default dimensions
+                dims = { width: 800, height: 600 };
+              }
+              
+              // Calculate scaled dimensions to fit container while maintaining aspect ratio
+              const scaledDims = calculateDimensions(
+                dims.width, 
+                dims.height, 
+                maxImageWidth, 
+                maxImageHeight
+              );
+              
+              // Center the image within its container
+              const xOffset = margin + (maxImageWidth - scaledDims.width) / 2;
+              const yOffset = currentY + (maxImageHeight - scaledDims.height) / 2;
+              
               doc.addImage(
-                signedUrls[file2.path],
+                url1,
                 'JPEG',
-                margin + imageWidth + spacing,
+                xOffset,
+                yOffset,
+                scaledDims.width,
+                scaledDims.height,
+                file1.name,
+                'MEDIUM',
+                90 // Quality compression level (0-100)
+              );
+            } catch (imgError) {
+              console.error('Error processing image:', imgError);
+              // Fallback to basic rendering if dimensions can't be determined
+              doc.addImage(
+                url1,
+                'JPEG',
+                margin,
                 currentY,
-                imageWidth,
-                50,
-                file2.name,
-                'MEDIUM'
+                maxImageWidth,
+                maxImageHeight,
+                file1.name,
+                'MEDIUM', 
+                90
               );
             }
 
-            currentY += 50 + 8;
+            // Second image (if available)
+            if (imageFiles[i + 1]) {
+              const file2 = imageFiles[i + 1];
+              const url2 = signedUrls[file2.path];
+              
+              try {
+                // Get image dimensions
+                let dims;
+                try {
+                  dims = await getImageDimensions(url2);
+                } catch (e) {
+                  dims = { width: 800, height: 600 };
+                }
+                
+                // Calculate scaled dimensions
+                const scaledDims = calculateDimensions(
+                  dims.width, 
+                  dims.height, 
+                  maxImageWidth, 
+                  maxImageHeight
+                );
+                
+                // Center the image
+                const xOffset = margin + maxImageWidth + spacing + (maxImageWidth - scaledDims.width) / 2;
+                const yOffset = currentY + (maxImageHeight - scaledDims.height) / 2;
+                
+                doc.addImage(
+                  url2,
+                  'JPEG',
+                  xOffset,
+                  yOffset,
+                  scaledDims.width,
+                  scaledDims.height,
+                  file2.name,
+                  'MEDIUM',
+                  90
+                );
+              } catch (imgError) {
+                console.error('Error processing second image:', imgError);
+                // Fallback
+                doc.addImage(
+                  url2,
+                  'JPEG',
+                  margin + maxImageWidth + spacing,
+                  currentY,
+                  maxImageWidth,
+                  maxImageHeight,
+                  file2.name,
+                  'MEDIUM',
+                  90
+                );
+              }
+            }
+
+            currentY += maxImageHeight + 8; // Fixed height plus spacing
           } catch (error) {
             console.error('Error adding images:', error);
           }
