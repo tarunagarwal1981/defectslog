@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from './ui/dialog';
 import ExportButton from './ui/ExportButton';
-import { exportToCSV } from '../utils/exportToCSV';
+
 import { supabase } from '../supabaseClient';
 import { toast } from './ui/use-toast';
 import {
@@ -17,7 +17,7 @@ import {
   TooltipTrigger,
 } from './ui/tooltip';
 import { CORE_FIELDS } from '../config/fieldMappings';
-
+import { exportToCSV, exportToExcel } from '../utils/exportToCSV';
 
 
 
@@ -107,145 +107,29 @@ const TruncatedText = ({ text, maxWidth = "max-w-[200px]" }) => {
 };
 
 // File Viewer Component
-// Enhanced FileViewer Component
-const FileViewer = ({ url, filename, onClose }) => {
-  const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+const FileViewer = ({ url, filename, onClose }) => (
+  <Dialog open={true} onOpenChange={onClose}>
+    <DialogContent className="max-w-4xl max-h-[90vh] bg-[#0B1623]">
+      <DialogHeader>
+        <DialogTitle className="text-sm font-medium text-white flex justify-between items-center">
+          <span>{filename}</span>
+          <button onClick={onClose} className="text-white/60 hover:text-white">
+            <X className="h-4 w-4" />
+          </button>
+        </DialogTitle>
+      </DialogHeader>
+      <div className="mt-4">
+        {url.match(/\.(jpg|jpeg|png|gif)$/i) ? (
+          <img src={url} alt={filename} className="max-w-full h-auto" />
+        ) : (
+          <iframe src={url} className="w-full h-[70vh]" title={filename} />
+        )}
+      </div>
+    </DialogContent>
+  </Dialog>
+);
 
-  useEffect(() => {
-    // Only run for image files
-    if (url.match(/\.(jpg|jpeg|png|gif)$/i)) {
-      setIsLoading(true);
-      const img = new Image();
-      
-      img.onload = () => {
-        // Get natural dimensions of the image
-        const { naturalWidth, naturalHeight } = img;
-        
-        // Calculate appropriate dialog dimensions
-        // Maximum dimensions for the dialog
-        const maxWidth = Math.min(window.innerWidth * 0.8, 1200);
-        const maxHeight = window.innerHeight * 0.8;
-        
-        // Calculate aspect ratio
-        const aspectRatio = naturalWidth / naturalHeight;
-        
-        // Set initial dimensions based on the image size
-        let width = naturalWidth;
-        let height = naturalHeight;
-        
-        // If image is too big, scale it down proportionally
-        if (width > maxWidth || height > maxHeight) {
-          if (width / maxWidth > height / maxHeight) {
-            // Width is the limiting factor
-            width = maxWidth;
-            height = width / aspectRatio;
-          } else {
-            // Height is the limiting factor
-            height = maxHeight;
-            width = height * aspectRatio;
-          }
-        }
-        
-        // Add some padding for the dialog UI
-        const dialogWidth = Math.max(width + 40, 300); // At least 300px wide
-        const dialogHeight = Math.max(height + 100, 200); // At least 200px tall
-        
-        setImageSize({
-          width: dialogWidth,
-          height: dialogHeight,
-          contentWidth: width,
-          contentHeight: height
-        });
-        setIsLoading(false);
-      };
-      
-      img.onerror = () => {
-        setError("Failed to load image");
-        setIsLoading(false);
-      };
-      
-      img.src = url;
-    } else {
-      // For non-image files (like PDFs), use maximum size
-      setImageSize({
-        width: Math.min(window.innerWidth * 0.8, 1200),
-        height: window.innerHeight * 0.8
-      });
-      setIsLoading(false);
-    }
-  }, [url]);
-
-  const isImage = url.match(/\.(jpg|jpeg|png|gif)$/i);
-
-  return (
-    <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent 
-        className="bg-[#0B1623] overflow-hidden border border-white/10"
-        style={{
-          maxWidth: isImage ? `${imageSize.width}px` : '80vw',
-          maxHeight: isImage ? `${imageSize.height}px` : '80vh',
-          width: isImage ? `${imageSize.width}px` : '80vw',
-          height: isImage ? 'auto' : '80vh',
-        }}
-      >
-        <DialogHeader>
-          <DialogTitle className="text-sm font-medium text-white flex justify-between items-center">
-            <span className="truncate max-w-[calc(100%-24px)]">{filename}</span>
-            <button onClick={onClose} className="text-white/60 hover:text-white">
-              <X className="h-4 w-4" />
-            </button>
-          </DialogTitle>
-        </DialogHeader>
-        
-        <div className={`relative ${isLoading ? 'min-h-20' : ''}`}>
-          {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="flex items-center space-x-2">
-                <div className="h-2 w-2 bg-[#3BADE5] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                <div className="h-2 w-2 bg-[#3BADE5] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                <div className="h-2 w-2 bg-[#3BADE5] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-              </div>
-            </div>
-          )}
-          
-          {error && (
-            <div className="text-red-400 py-4 text-center">
-              {error}
-            </div>
-          )}
-          
-          {!isLoading && !error && (
-            <>
-              {isImage ? (
-                <div className="flex items-center justify-center overflow-hidden">
-                  <img 
-                    src={url} 
-                    alt={filename} 
-                    className="max-w-full max-h-full object-contain" 
-                    style={imageSize.contentWidth ? {
-                      width: imageSize.contentWidth,
-                      height: imageSize.contentHeight
-                    } : {}}
-                  />
-                </div>
-              ) : (
-                <iframe 
-                  src={url} 
-                  className="w-full h-[calc(80vh-80px)]" 
-                  title={filename} 
-                />
-              )}
-            </>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-// The updated FileList component that uses the improved FileViewer
+// File List Component
 const FileList = ({ files, onDelete, title }) => {
   const [selectedFile, setSelectedFile] = useState(null);
 
@@ -743,12 +627,22 @@ const DefectsTable = ({
     return sortedData;
   };
 
-  const handleExport = () => {
-    exportToCSV(getSortedData(), {
-      search: searchTerm,
-      status: statusFilter,
-      criticality: criticalityFilter
-    });
+  const handleExport = async () => {
+    try {
+      // Call the Excel export function instead of CSV
+      await exportToExcel(getSortedData(), {
+        search: searchTerm,
+        status: statusFilter,
+        criticality: criticalityFilter
+      });
+    } catch (error) {
+      console.error('Error exporting Excel:', error);
+      toast({
+        title: "Export Failed",
+        description: "Failed to export data to Excel. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const sortedData = getSortedData();
@@ -768,7 +662,7 @@ const DefectsTable = ({
       <div className="flex justify-between items-center px-3 py-2 border-b border-white/10 bg-gradient-to-r from-[#132337] to-[#0B1623]">
         <h2 className="text-sm font-medium text-[#f4f4f4]">Defects Register</h2>
         <div className="flex items-center gap-2">
-          <ExportButton onClick={handleExport} />
+          <ExportButton onClick={handleExport} label="Export Excel" />
           <button 
             onClick={onAddDefect}
             disabled={!canPerformAction('create', permissions)}
