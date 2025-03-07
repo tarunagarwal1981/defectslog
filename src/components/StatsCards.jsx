@@ -1,9 +1,7 @@
-import React, { useMemo, useState } from 'react';
-import { Activity, AlertCircle, Triangle, Info } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { Activity, AlertCircle, Triangle } from 'lucide-react';
 
 const StatsCards = ({ data = [] }) => {
-  const [hoveredEquipment, setHoveredEquipment] = useState(null);
-
   const stats = useMemo(() => {
     // Count totals
     const totalDefects = data.length;
@@ -67,7 +65,7 @@ const StatsCards = ({ data = [] }) => {
       }
     });
     
-    // Process equipment data for display
+    // Process equipment data for display - show ALL equipment types
     let equipmentData = Object.entries(equipmentCounts)
       .map(([name, count]) => ({
         name,
@@ -97,67 +95,6 @@ const StatsCards = ({ data = [] }) => {
       equipmentData
     };
   }, [data]);
-
-  // Generate data for treemap visualization
-  const treemapData = useMemo(() => {
-    if (!stats.equipmentData.length) return [];
-    
-    const colors = [
-      '#3BADE5', '#805AD5', '#38B2AC', '#4299E1', 
-      '#F56565', '#ED8936', '#ECC94B', '#48BB78',
-      '#667EEA', '#9F7AEA', '#ED64A6', '#FC8181',
-      '#68D391', '#4FD1C5', '#63B3ED', '#7F9CF5'
-    ];
-    
-    return stats.equipmentData.map((item, index) => ({
-      ...item,
-      color: colors[index % colors.length],
-      // Add brightness variation based on count to create visual hierarchy
-      brightness: Math.max(0.7, Math.min(1.3, 1 + (item.count / stats.totalDefects)))
-    }));
-  }, [stats.equipmentData]);
-  
-  // Layout algorithm for treemap (simplified version)
-  const treemapLayout = useMemo(() => {
-    if (!treemapData.length) return [];
-    
-    // We'll use a simple grid-based layout that adapts to the number of items
-    const totalItems = treemapData.length;
-    
-    // Determine grid dimensions based on total items
-    let cols = Math.ceil(Math.sqrt(totalItems));
-    let rows = Math.ceil(totalItems / cols);
-    
-    // Calculate cell dimensions
-    const containerWidth = 100; // percentage
-    const containerHeight = 200; // pixels
-    const cellWidth = containerWidth / cols;
-    const cellHeight = containerHeight / rows;
-    
-    return treemapData.map((item, index) => {
-      const row = Math.floor(index / cols);
-      const col = index % cols;
-      
-      // Calculate box position and size
-      const x = col * cellWidth;
-      const y = row * cellHeight;
-      const width = cellWidth;
-      const height = cellHeight;
-      
-      // Adjust size based on percentage (for items that take more than 1 cell)
-      const adjustedWidth = width * (Math.sqrt(item.percentage) / 10 + 0.9);
-      const adjustedHeight = height * (Math.sqrt(item.percentage) / 10 + 0.9);
-      
-      return {
-        ...item,
-        x: `${x}%`,
-        y,
-        width: `${adjustedWidth}%`,
-        height: adjustedHeight,
-        fontSize: Math.max(9, Math.min(12, 9 + (item.percentage / 5)))
-      };
-    });
-  }, [treemapData]);
   
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -324,79 +261,62 @@ const StatsCards = ({ data = [] }) => {
         )}
       </div>
       
-      {/* Card 3: Equipment Distribution - Waffle Chart */}
-      <div className="glass-card rounded-[4px] p-4 shadow-lg border border-white/5 backdrop-blur-sm">
-        <h3 className="text-sm font-medium text-[#f4f4f4] mb-3">Equipment Distribution</h3>
+      {/* Card 3: Equipment Distribution */}
+      <div className="glass-card rounded-[4px] p-4 shadow-lg border border-white/5 backdrop-blur-sm flex flex-col">
+        <h3 className="text-sm font-medium text-[#f4f4f4] mb-2">Equipment Distribution</h3>
         
-        {stats.equipmentData.length === 0 ? (
+        {/* Scrollable Area - with fixed height to match other cards */}
+        <div className="overflow-y-auto pr-2 custom-scrollbar flex-grow" style={{ height: "150px" }}>
+          <div className="space-y-2">
+            {stats.equipmentData.map((item, index) => {
+              // Generate colors for different equipment types using a color palette
+              const colors = [
+                '#3BADE5', '#805AD5', '#38B2AC', '#718096', 
+                '#F56565', '#ED8936', '#ECC94B', '#48BB78',
+                '#4299E1', '#667EEA', '#9F7AEA', '#ED64A6'
+              ];
+              const color = colors[index % colors.length];
+              
+              return (
+                <div key={index} className="space-y-1">
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-white/80 truncate max-w-[180px]" title={item.name}>{item.name}</span>
+                    <span className="text-white/60">{item.count} ({item.percentage}%)</span>
+                  </div>
+                  <div className="h-1.5 bg-[#132337] rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full"
+                      style={{ 
+                        width: `${item.percentage}%`,
+                        backgroundColor: color
+                      }}
+                    ></div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        
+        {stats.equipmentData.length === 0 && (
           <div className="flex items-center justify-center h-32 text-white/40 text-xs">
             No equipment data available
           </div>
-        ) : (
-          <div className="flex flex-col">
-            {/* Heatmap/Waffle Chart */}
-            <div className="relative h-56 mb-2">
-              <div 
-                className="absolute inset-0 flex flex-wrap content-start"
-                style={{ gap: '2px' }}
-              >
-                {treemapLayout.map((item, index) => (
-                  <div
-                    key={index}
-                    className="relative rounded overflow-hidden shadow-md transition-all duration-150"
-                    style={{
-                      width: item.width,
-                      height: Math.max(22, item.height / 4),
-                      backgroundColor: item.color,
-                      boxShadow: hoveredEquipment === item.name ? '0 0 0 2px white' : 'none',
-                      opacity: hoveredEquipment === item.name ? 1 : 0.85,
-                      cursor: 'pointer'
-                    }}
-                    onMouseEnter={() => setHoveredEquipment(item.name)}
-                    onMouseLeave={() => setHoveredEquipment(null)}
-                  >
-                    <div 
-                      className="absolute inset-0 p-1 flex items-center justify-center"
-                      style={{ fontSize: `${item.fontSize}px` }}
-                    >
-                      <span className="text-white text-center truncate font-medium leading-tight">
-                        {item.name}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+        )}
+        
+        {/* Equipment count summary - positioned at the bottom */}
+        {stats.equipmentData.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-white/10">
+            <div className="text-xs text-white/60 mb-2">
+              Equipment Types: <span className="text-white/80">{stats.equipmentData.length}</span>
             </div>
             
-            {/* Selected Equipment Detail Panel */}
-            {hoveredEquipment && (
-              <div className="bg-[#132337] rounded p-2 text-center mb-2">
-                <div className="text-sm font-medium text-white truncate">
-                  {hoveredEquipment}
-                </div>
-                <div className="text-xs text-white/80 mt-1">
-                  {stats.equipmentData.find(e => e.name === hoveredEquipment)?.count} defects
-                  ({stats.equipmentData.find(e => e.name === hoveredEquipment)?.percentage}%)
-                </div>
-              </div>
-            )}
-            
-            {/* Equipment count summary */}
-            <div className="mt-auto pt-2 border-t border-white/10 flex justify-between items-center">
-              <div className="text-xs text-white/60">
-                Equipment Types: <span className="text-white/80">{stats.equipmentData.length}</span>
-              </div>
-              <div className="text-xs text-white/60">
-                Hover for details
-              </div>
-            </div>
-            
-            {/* Warning for high defect count equipment */}
+            {/* Show a warning if any equipment has high number of defects */}
             {stats.equipmentData[0]?.percentage > 30 && (
               <div className="flex items-start gap-2 bg-[#132337] p-2 rounded-md mt-2">
                 <AlertCircle className="h-4 w-4 text-[#3BADE5] flex-shrink-0 mt-0.5" />
                 <div className="text-[10px] text-white/80">
-                  <span className="font-medium text-[#3BADE5]">{stats.equipmentData[0].name}</span> accounts for {stats.equipmentData[0].percentage}% of all defects.
+                  <span className="font-medium text-[#3BADE5]">{stats.equipmentData[0].name}</span> accounts for {stats.equipmentData[0].percentage}% of all defects, which may require focused attention.
                 </div>
               </div>
             )}
@@ -406,5 +326,23 @@ const StatsCards = ({ data = [] }) => {
     </div>
   );
 };
+
+// Add custom scrollbar styles to your global CSS or as a style tag in your component
+const scrollbarStyles = `
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #132337;
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #3BADE5;
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #3BA0D5;
+}
+`;
 
 export default StatsCards;
