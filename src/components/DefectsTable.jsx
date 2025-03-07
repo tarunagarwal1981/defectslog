@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { PlusCircle, FileText, Trash2, ChevronDown, ChevronUp, X } from 'lucide-react';
 import {
   Dialog,
