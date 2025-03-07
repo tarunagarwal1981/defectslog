@@ -65,7 +65,7 @@ const StatsCards = ({ data = [] }) => {
       }
     });
     
-    // Process equipment data for display
+    // Process equipment data for display - show ALL equipment types
     let equipmentData = Object.entries(equipmentCounts)
       .map(([name, count]) => ({
         name,
@@ -73,18 +73,6 @@ const StatsCards = ({ data = [] }) => {
         percentage: Math.round((count / totalDefects) * 100)
       }))
       .sort((a, b) => b.count - a.count);
-    
-    // Limit to top 4 equipment types and group the rest as "Others"
-    if (equipmentData.length > 4) {
-      const topEquipment = equipmentData.slice(0, 3);
-      const otherCount = equipmentData.slice(3).reduce((sum, item) => sum + item.count, 0);
-      const otherPercentage = Math.round((otherCount / totalDefects) * 100);
-      
-      equipmentData = [
-        ...topEquipment,
-        { name: 'Others', count: otherCount, percentage: otherPercentage }
-      ];
-    }
     
     // Calculate percentages
     const openPercentage = totalDefects > 0 ? (openCount / totalDefects) * 100 : 0;
@@ -277,30 +265,37 @@ const StatsCards = ({ data = [] }) => {
       <div className="glass-card rounded-[4px] p-4 shadow-lg border border-white/5 backdrop-blur-sm">
         <h3 className="text-sm font-medium text-[#f4f4f4] mb-4">Equipment Distribution</h3>
         
-        <div className="space-y-3">
-          {stats.equipmentData.map((item, index) => {
-            // Colors for different equipment types
-            const colors = ['#3BADE5', '#805AD5', '#38B2AC', '#718096'];
-            const color = colors[index % colors.length];
-            
-            return (
-              <div key={index} className="space-y-1">
-                <div className="flex justify-between text-[10px]">
-                  <span className="text-white/80 truncate max-w-[180px]" title={item.name}>{item.name}</span>
-                  <span className="text-white/60">{item.count} ({item.percentage}%)</span>
+        {/* Scrollable area for all equipment types */}
+        <div className="max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+          <div className="space-y-3">
+            {stats.equipmentData.map((item, index) => {
+              // Generate colors for different equipment types using a color palette
+              const colors = [
+                '#3BADE5', '#805AD5', '#38B2AC', '#718096', 
+                '#F56565', '#ED8936', '#ECC94B', '#48BB78',
+                '#4299E1', '#667EEA', '#9F7AEA', '#ED64A6'
+              ];
+              const color = colors[index % colors.length];
+              
+              return (
+                <div key={index} className="space-y-1">
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-white/80 truncate max-w-[180px]" title={item.name}>{item.name}</span>
+                    <span className="text-white/60">{item.count} ({item.percentage}%)</span>
+                  </div>
+                  <div className="h-1.5 bg-[#132337] rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full"
+                      style={{ 
+                        width: `${item.percentage}%`,
+                        backgroundColor: color
+                      }}
+                    ></div>
+                  </div>
                 </div>
-                <div className="h-1.5 bg-[#132337] rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full"
-                    style={{ 
-                      width: `${item.percentage}%`,
-                      backgroundColor: color
-                    }}
-                  ></div>
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
         
         {stats.equipmentData.length === 0 && (
@@ -313,7 +308,7 @@ const StatsCards = ({ data = [] }) => {
         {stats.equipmentData.length > 0 && (
           <div className="mt-4 pt-3 border-t border-white/10">
             <div className="text-xs text-white/60 mb-2">
-              Equipment Types: <span className="text-white/80">{Object.keys(stats.equipmentData).length}</span>
+              Equipment Types: <span className="text-white/80">{stats.equipmentData.length}</span>
             </div>
             
             {/* Show a warning if any equipment has high number of defects */}
@@ -331,5 +326,23 @@ const StatsCards = ({ data = [] }) => {
     </div>
   );
 };
+
+// Add custom scrollbar styles to your global CSS or as an inline style
+const customScrollbarStyles = `
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #132337;
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #3BADE5;
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #3BA0D5;
+}
+`;
 
 export default StatsCards;
