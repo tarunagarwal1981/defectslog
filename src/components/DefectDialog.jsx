@@ -10,6 +10,7 @@ import { toast } from './ui/use-toast';
 import { supabase } from '../supabaseClient';
 import { formatDateForInput, formatDateDisplay } from '../utils/dateUtils';
 import { CORE_FIELDS } from '../config/fieldMappings';
+import { generateDefectPDF } from '../utils/generateDefectPDF';
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 const ALLOWED_FILE_TYPES = [
@@ -363,11 +364,68 @@ const DefectDialog = ({
         target_date: updatedDefectData.target_date || null
       };
   
-      await onSave(finalDefect);
+      // Save the defect
+      const savedDefect = await onSave(finalDefect);
+      
+      // Generate and store PDF after save
+      if (savedDefect && savedDefect.id) {
+        try {
+          console.log('Generating PDF for defect:', savedDefect.id);
+          
+          // Get file URLs for the PDF
+          const fileSignedUrls = {};
+          if (savedDefect.initial_files?.length || savedDefect.completion_files?.length) {
+            const allPaths = [
+              ...(savedDefect.initial_files || []).map(f => f.path),
+              ...(savedDefect.completion_files || []).map(f => f.path)
+            ].filter(Boolean);
+            
+            if (allPaths.length > 0) {
+              const { data: urlsData } = await supabase.storage
+                .from('defect-files')
+                .createSignedUrls(allPaths, 60);
+                
+              if (urlsData) {
+                urlsData.forEach(item => {
+                  fileSignedUrls[item.path] = item.signedUrl;
+                });
+              }
+            }
+          }
+          
+          // Generate PDF blob
+          const pdfBlob = await generateDefectPDF(
+            { 
+              ...savedDefect, 
+              vessel_name: vessels[savedDefect.vessel_id] || 'Unknown Vessel'
+            }, 
+            fileSignedUrls
+          );
+          
+          // Upload PDF to storage
+          const pdfPath = `defect-reports/${savedDefect.id}.pdf`;
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('defect-files')
+            .upload(pdfPath, pdfBlob, {
+              contentType: 'application/pdf',
+              upsert: true // Replace if exists
+            });
+            
+          if (uploadError) {
+            console.error('Error uploading PDF:', uploadError);
+          } else {
+            console.log('PDF successfully saved:', pdfPath);
+          }
+        } catch (pdfError) {
+          console.error('Error generating PDF:', pdfError);
+          // Continue without failing the save operation
+        }
+      }
+  
       setInitialFiles([]);
       setClosureFiles([]);
       setUploadProgress(0);
-    
+      
     } catch (error) {
       console.error('Error in DefectDialog save:', error);
       toast({
