@@ -136,7 +136,7 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
       
       // Add PDF report link for any defect (not just closed)
       const pdfCell = row.getCell('pdfReport');
-      const pdfPath = `defect-reports/${item.id}.pdf`;
+      const pdfPath = `uploads/defect-reports/${item.id}.pdf`;
       const { data: pdfUrlData } = supabase.storage
         .from('defect-files')
         .getPublicUrl(pdfPath);
