@@ -103,7 +103,7 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
       // Add row
       const row = worksheet.addRow(rowData);
       
-      // Add PDF report link
+      // Add PDF report link - FIXED PATH HERE
       const pdfCell = row.getCell('pdfReport');
       const pdfPath = `uploads/defect-reports/${item.id}.pdf`;
       console.log(`Defect ID ${item.id}: Looking for PDF at path: ${pdfPath}`);
