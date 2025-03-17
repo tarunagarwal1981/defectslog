@@ -3,6 +3,8 @@ import { supabase } from '../supabaseClient';
 
 export const exportToExcel = async (data, vesselNames, filters = {}) => {
   try {
+    console.log("Starting Excel export with filters:", filters);
+    
     // Apply filters
     let filteredData = [...data];
     
@@ -27,7 +29,9 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
       );
     }
     
-    // Helper function to format date as ddmmyyyy
+    console.log(`Filtered data: ${filteredData.length} records`);
+    
+    // Helper function to format date as dd/mm/yyyy
     const formatDate = (date) => {
       if (!date) return '';
       const d = new Date(date);
@@ -37,17 +41,8 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
       return `${day}/${month}/${year}`;
     };
     
-    // Helper function to generate Supabase public file URL
-    const getFileUrl = (filePath) => {
-      if (!filePath) return '';
-      const { data } = supabase.storage
-        .from('defect-files')
-        .getPublicUrl(filePath);
-      return data?.publicUrl || '';
-    };
-    
     // Define columns with specific widths
-    const baseColumns = [
+    const columns = [
       { header: 'No.', key: 'no', width: 5 },
       { header: 'Vessel Name', key: 'vesselName', width: 15 },
       { header: 'Status', key: 'status', width: 10 },
@@ -61,43 +56,15 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
       { header: 'Comments', key: 'comments', width: 20 },
       { header: 'Closure Comments', key: 'closureComments', width: 20 },
       { header: 'Defect Source', key: 'defectSource', width: 15 },
-      { header: 'PDF Report', key: 'pdfReport', width: 15 }  // PDF reports column
+      { header: 'PDF Report', key: 'pdfReport', width: 15 }
     ];
-    
-    // Find the maximum number of initial and completion files
-    const maxInitialFiles = Math.min(5, Math.max(0, ...filteredData.map(item => item.initial_files?.length || 0)));
-    const maxCompletionFiles = Math.min(5, Math.max(0, ...filteredData.map(item => item.completion_files?.length || 0)));
-    
-    // Add initial file columns
-    const initialFilesColumns = [];
-    for (let i = 0; i < maxInitialFiles; i++) {
-      initialFilesColumns.push({
-        header: `Initial File ${i + 1}`,
-        key: `initialFile${i}`,
-        width: 25
-      });
-    }
-    
-    // Add completion file columns
-    const completionFilesColumns = [];
-    for (let i = 0; i < maxCompletionFiles; i++) {
-      completionFilesColumns.push({
-        header: `Closure File ${i + 1}`,
-        key: `completionFile${i}`,
-        width: 25
-      });
-    }
     
     // Create a new workbook and worksheet
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Defects');
     
-    // Combine all columns with wrap text enabled
-    worksheet.columns = [
-      ...baseColumns, 
-      ...initialFilesColumns, 
-      ...completionFilesColumns
-    ].map(col => ({
+    // Set columns with wrap text enabled
+    worksheet.columns = columns.map(col => ({
       ...col,
       width: col.width,
       style: { wrapText: true }  // Enable text wrapping for all columns
@@ -114,6 +81,8 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
     
     // Add data rows
     filteredData.forEach((item, index) => {
+      console.log(`Processing defect ID ${item.id} (${index + 1}/${filteredData.length})`);
+      
       // Prepare row data
       const rowData = {
         no: index + 1,
@@ -134,12 +103,16 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
       // Add row
       const row = worksheet.addRow(rowData);
       
-      // Add PDF report link for any defect (not just closed)
+      // Add PDF report link
       const pdfCell = row.getCell('pdfReport');
       const pdfPath = `uploads/defect-reports/${item.id}.pdf`;
+      console.log(`Defect ID ${item.id}: Looking for PDF at path: ${pdfPath}`);
+      
       const { data: pdfUrlData } = supabase.storage
         .from('defect-files')
         .getPublicUrl(pdfPath);
+      
+      console.log(`Defect ID ${item.id}: Generated PDF URL:`, pdfUrlData?.publicUrl || 'No URL generated');
       
       if (pdfUrlData?.publicUrl) {
         pdfCell.value = {
@@ -152,8 +125,10 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
           color: { argb: 'FF0000FF' },
           underline: true
         };
+        console.log(`Defect ID ${item.id}: PDF link added to Excel`);
       } else {
         pdfCell.value = 'Report unavailable';
+        console.log(`Defect ID ${item.id}: PDF report unavailable`);
       }
       
       // Color code criticality
@@ -184,86 +159,6 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
             break;
         }
       }
-      
-      // Add initial file links
-      if (item.initial_files?.length) {
-        item.initial_files.slice(0, maxInitialFiles).forEach((file, i) => {
-          const fileCell = row.getCell(`initialFile${i}`);
-          const fileUrl = getFileUrl(file.path);
-          
-          if (fileUrl) {
-            fileCell.value = {
-              text: file.name,
-              hyperlink: fileUrl,
-              tooltip: 'Click to open file'
-            };
-            
-            fileCell.font = {
-              color: { argb: 'FF0000FF' },
-              underline: true
-            };
-          } else {
-            fileCell.value = file.name;
-          }
-        });
-        
-        // Add indicator if there are more files than shown
-        if (item.initial_files.length > maxInitialFiles) {
-          const lastFileCell = row.getCell(`initialFile${maxInitialFiles - 1}`);
-          const lastFile = item.initial_files[maxInitialFiles - 1];
-          const fileUrl = getFileUrl(lastFile.path);
-          
-          if (fileUrl) {
-            lastFileCell.value = {
-              text: `${lastFile.name} (+${item.initial_files.length - maxInitialFiles} more)`,
-              hyperlink: fileUrl,
-              tooltip: 'Click to open file - there are more files not shown'
-            };
-          } else {
-            lastFileCell.value = `${lastFile.name} (+${item.initial_files.length - maxInitialFiles} more)`;
-          }
-        }
-      }
-      
-      // Add completion file links
-      if (item.completion_files?.length) {
-        item.completion_files.slice(0, maxCompletionFiles).forEach((file, i) => {
-          const fileCell = row.getCell(`completionFile${i}`);
-          const fileUrl = getFileUrl(file.path);
-          
-          if (fileUrl) {
-            fileCell.value = {
-              text: file.name,
-              hyperlink: fileUrl,
-              tooltip: 'Click to open file'
-            };
-            
-            fileCell.font = {
-              color: { argb: 'FF0000FF' },
-              underline: true
-            };
-          } else {
-            fileCell.value = file.name;
-          }
-        });
-        
-        // Add indicator if there are more files than shown
-        if (item.completion_files.length > maxCompletionFiles) {
-          const lastFileCell = row.getCell(`completionFile${maxCompletionFiles - 1}`);
-          const lastFile = item.completion_files[maxCompletionFiles - 1];
-          const fileUrl = getFileUrl(lastFile.path);
-          
-          if (fileUrl) {
-            lastFileCell.value = {
-              text: `${lastFile.name} (+${item.completion_files.length - maxCompletionFiles} more)`,
-              hyperlink: fileUrl,
-              tooltip: 'Click to open file - there are more files not shown'
-            };
-          } else {
-            lastFileCell.value = `${lastFile.name} (+${item.completion_files.length - maxCompletionFiles} more)`;
-          }
-        }
-      }
     });
     
     // Add auto filter
@@ -271,10 +166,11 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
       from: 'A1',
       to: {
         row: 1,
-        column: baseColumns.length + initialFilesColumns.length + completionFilesColumns.length
+        column: columns.length
       }
     };
     
+    console.log("Creating Excel file buffer...");
     // Create a buffer
     const buffer = await workbook.xlsx.writeBuffer();
     
@@ -283,12 +179,17 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     
+    const filename = `defects-report-${new Date().toISOString().split('T')[0]}.xlsx`;
     link.setAttribute('href', url);
-    link.setAttribute('download', `defects-report-${new Date().toISOString().split('T')[0]}.xlsx`);
+    link.setAttribute('download', filename);
     document.body.appendChild(link);
+    
+    console.log(`Download initiated for file: ${filename}`);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+    
+    console.log("Excel export completed successfully");
     
   } catch (error) {
     console.error('Error exporting Excel:', error);
