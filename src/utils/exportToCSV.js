@@ -4,44 +4,58 @@ import { supabase } from '../supabaseClient';
 export const exportToExcel = async (data, vesselNames, filters = {}) => {
   try {
     console.log("Starting Excel export with filters:", filters);
-    
-    // Apply filters
-    let filteredData = [...data];
-    
-    if (filters.status) {
-      filteredData = filteredData.filter(item => 
-        item['Status (Vessel)'] === filters.status
-      );
-    }
-    
-    if (filters.criticality) {
-      filteredData = filteredData.filter(item => 
-        item.Criticality === filters.criticality
-      );
-    }
-    
-    if (filters.search) {
-      const searchLower = filters.search.toLowerCase();
-      filteredData = filteredData.filter(item =>
-        Object.values(item).some(val =>
-          String(val).toLowerCase().includes(searchLower)
-        )
-      );
-    }
-    
-    console.log(`Filtered data: ${filteredData.length} records`);
-    
-    // Helper function to format date as dd/mm/yyyy
+
+    // Helper functions
     const formatDate = (date) => {
       if (!date) return '';
       const d = new Date(date);
-      const day = String(d.getDate()).padStart(2, '0');
-      const month = String(d.getMonth() + 1).padStart(2, '0'); // Months are zero-based
-      const year = d.getFullYear();
-      return `${day}/${month}/${year}`;
+      return d instanceof Date && !isNaN(d) 
+        ? `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+        : '';
     };
-    
-    // Define columns with specific widths
+
+    const checkPDFExists = async (defectId) => {
+      try {
+        const pdfPath = `uploads/defect-reports/${defectId}.pdf`;
+        const { data: fileList, error } = await supabase.storage
+          .from('defect-files')
+          .list('uploads/defect-reports', {
+            search: `${defectId}.pdf`
+          });
+
+        if (error) {
+          console.error(`Error checking PDF for defect ${defectId}:`, error);
+          return false;
+        }
+
+        return fileList && fileList.length > 0;
+      } catch (error) {
+        console.error(`Error in checkPDFExists for defect ${defectId}:`, error);
+        return false;
+      }
+    };
+
+    const getPublicUrl = (defectId) => {
+      const pdfPath = `uploads/defect-reports/${defectId}.pdf`;
+      const { data: urlData } = supabase.storage
+        .from('defect-files')
+        .getPublicUrl(pdfPath);
+      return urlData?.publicUrl || null;
+    };
+
+    // Apply filters
+    let filteredData = [...data].filter(item => {
+      const matchesStatus = !filters.status || item['Status (Vessel)'] === filters.status;
+      const matchesCriticality = !filters.criticality || item.Criticality === filters.criticality;
+      const matchesSearch = !filters.search || Object.values(item).some(val =>
+        String(val).toLowerCase().includes(filters.search.toLowerCase())
+      );
+      return matchesStatus && matchesCriticality && matchesSearch;
+    });
+
+    console.log(`Filtered data: ${filteredData.length} records`);
+
+    // Define columns
     const columns = [
       { header: 'No.', key: 'no', width: 5 },
       { header: 'Vessel Name', key: 'vesselName', width: 15 },
@@ -58,36 +72,35 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
       { header: 'Defect Source', key: 'defectSource', width: 15 },
       { header: 'PDF Report', key: 'pdfReport', width: 15 }
     ];
-    
-    // Create a new workbook and worksheet
+
+    // Create workbook and worksheet
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Defects');
-    
-    // Set columns with wrap text enabled
+
+    // Set columns with wrap text
     worksheet.columns = columns.map(col => ({
       ...col,
-      width: col.width,
-      style: { wrapText: true }  // Enable text wrapping for all columns
+      style: { wrapText: true }
     }));
-    
+
     // Style header row
-    worksheet.getRow(1).font = { bold: true };
-    worksheet.getRow(1).fill = {
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { color: { argb: 'FFFFFFFF' }, bold: true };
+    headerRow.fill = {
       type: 'pattern',
       pattern: 'solid',
       fgColor: { argb: 'FF4F81BD' }
     };
-    worksheet.getRow(1).font = { color: { argb: 'FFFFFFFF' }, bold: true };
-    
-    // Add data rows
-    filteredData.forEach((item, index) => {
+
+    // Process data rows
+    for (const [index, item] of filteredData.entries()) {
       console.log(`Processing defect ID ${item.id} (${index + 1}/${filteredData.length})`);
-      
+
       // Prepare row data
       const rowData = {
         no: index + 1,
         vesselName: item.vessel_name || vesselNames[item.vessel_id] || '-',
-        status: item['Status (Vessel)'],
+        status: item['Status (Vessel)'] || '',
         criticality: item.Criticality || '',
         equipment: item.Equipments || '',
         description: item.Description || '',
@@ -99,98 +112,81 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
         closureComments: item.closure_comments || '',
         defectSource: item.raised_by || ''
       };
-      
-      // Add row
+
       const row = worksheet.addRow(rowData);
-      
-      // Add PDF report link - FIXED PATH HERE
+
+      // Handle PDF report
       const pdfCell = row.getCell('pdfReport');
-      const pdfPath = `uploads/defect-reports/${item.id}.pdf`;
-      console.log(`Defect ID ${item.id}: Looking for PDF at path: ${pdfPath}`);
-      
-      const { data: pdfUrlData } = supabase.storage
-        .from('defect-files')
-        .getPublicUrl(pdfPath);
-      
-      console.log(`Defect ID ${item.id}: Generated PDF URL:`, pdfUrlData?.publicUrl || 'No URL generated');
-      
-      if (pdfUrlData?.publicUrl) {
-        pdfCell.value = {
-          text: 'View Report',
-          hyperlink: pdfUrlData.publicUrl,
-          tooltip: 'Click to view PDF report'
-        };
-        
-        pdfCell.font = {
-          color: { argb: 'FF0000FF' },
-          underline: true
-        };
-        console.log(`Defect ID ${item.id}: PDF link added to Excel`);
+      const pdfExists = await checkPDFExists(item.id);
+
+      if (pdfExists) {
+        const publicUrl = getPublicUrl(item.id);
+        if (publicUrl) {
+          pdfCell.value = {
+            text: 'View Report',
+            hyperlink: publicUrl,
+            tooltip: 'Click to view PDF report'
+          };
+          pdfCell.font = {
+            color: { argb: 'FF0000FF' },
+            underline: true
+          };
+          console.log(`Defect ID ${item.id}: PDF link added`);
+        } else {
+          pdfCell.value = 'Link unavailable';
+          pdfCell.font = { color: { argb: 'FFFF0000' } };
+          console.log(`Defect ID ${item.id}: PDF exists but link generation failed`);
+        }
       } else {
-        pdfCell.value = 'Report unavailable';
-        console.log(`Defect ID ${item.id}: PDF report unavailable`);
+        pdfCell.value = 'No report';
+        pdfCell.font = { color: { argb: 'FF808080' } };
+        console.log(`Defect ID ${item.id}: No PDF found`);
       }
-      
-      // Color code criticality
+
+      // Apply criticality colors
       if (item.Criticality) {
         const criticalityCell = row.getCell('criticality');
-        
-        switch(item.Criticality) {
-          case 'HIGH':
-            criticalityCell.fill = {
-              type: 'pattern',
-              pattern: 'solid',
-              fgColor: { argb: 'FFFF0000' } // Red
-            };
-            break;
-          case 'MEDIUM':
-            criticalityCell.fill = {
-              type: 'pattern',
-              pattern: 'solid',
-              fgColor: { argb: 'FFFFFF00' } // Yellow
-            };
-            break;
-          case 'LOW':
-            criticalityCell.fill = {
-              type: 'pattern',
-              pattern: 'solid',
-              fgColor: { argb: 'FF92D050' } // Green
-            };
-            break;
+        const criticalityColors = {
+          'HIGH': 'FFFF0000',    // Red
+          'MEDIUM': 'FFFFFF00',  // Yellow
+          'LOW': 'FF92D050'      // Green
+        };
+
+        if (criticalityColors[item.Criticality]) {
+          criticalityCell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: criticalityColors[item.Criticality] }
+          };
         }
       }
-    });
-    
+    }
+
     // Add auto filter
     worksheet.autoFilter = {
       from: 'A1',
-      to: {
-        row: 1,
-        column: columns.length
-      }
+      to: { row: 1, column: columns.length }
     };
-    
+
     console.log("Creating Excel file buffer...");
-    // Create a buffer
     const buffer = await workbook.xlsx.writeBuffer();
-    
-    // Create a blob and download
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    
+    const blob = new Blob([buffer], { 
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+    });
+
+    // Trigger download
     const filename = `defects-report-${new Date().toISOString().split('T')[0]}.xlsx`;
-    link.setAttribute('href', url);
-    link.setAttribute('download', filename);
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
     document.body.appendChild(link);
-    
-    console.log(`Download initiated for file: ${filename}`);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    
+
     console.log("Excel export completed successfully");
-    
+
   } catch (error) {
     console.error('Error exporting Excel:', error);
     throw error;
