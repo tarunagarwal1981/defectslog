@@ -92,6 +92,13 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
       fgColor: { argb: 'FF4F81BD' }
     };
 
+    // Define criticality colors
+    const criticalityColors = {
+      'HIGH': 'FFFF0000',    // Red
+      'MEDIUM': 'FFFFFF00',  // Yellow
+      'LOW': 'FF92D050'      // Green
+    };
+
     // Process data rows
     for (const [index, item] of filteredData.entries()) {
       console.log(`Processing defect ID ${item.id} (${index + 1}/${filteredData.length})`);
@@ -114,6 +121,11 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
       };
 
       const row = worksheet.addRow(rowData);
+      
+      // Apply text wrapping to all cells in the row
+      row.eachCell((cell) => {
+        cell.alignment = { wrapText: true, vertical: 'top' };
+      });
 
       // Handle PDF report
       const pdfCell = row.getCell('pdfReport');
@@ -144,20 +156,19 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
       }
 
       // Apply criticality colors
-      if (item.Criticality) {
+      if (item.Criticality && criticalityColors[item.Criticality]) {
         const criticalityCell = row.getCell('criticality');
-        const criticalityColors = {
-          'HIGH': 'FFFF0000',    // Red
-          'MEDIUM': 'FFFFFF00',  // Yellow
-          'LOW': 'FF92D050'      // Green
+        criticalityCell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: criticalityColors[item.Criticality] }
         };
-
-        if (criticalityColors[item.Criticality]) {
-          criticalityCell.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: criticalityColors[item.Criticality] }
-          };
+        
+        // Add font color for better visibility (black on yellow, white on red/green)
+        if (item.Criticality === 'MEDIUM') {
+          criticalityCell.font = { color: { argb: 'FF000000' } }; // Black
+        } else {
+          criticalityCell.font = { color: { argb: 'FFFFFFFF' } }; // White
         }
       }
     }
