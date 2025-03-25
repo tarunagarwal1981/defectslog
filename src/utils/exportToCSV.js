@@ -88,11 +88,39 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
       pattern: 'solid',
       fgColor: { argb: 'FF4F81BD' }
     };
+    headerRow.height = 30; // Set header row height
     
     // Apply text wrapping to header
     headerRow.eachCell((cell) => {
       cell.alignment = { wrapText: true, vertical: 'middle', horizontal: 'center' };
     });
+
+    // Function to estimate required row height based on content length and column width
+    const estimateRowHeight = (rowData, columns) => {
+      let maxLines = 1;
+      
+      // Check each cell's content and estimate lines needed
+      Object.entries(rowData).forEach(([key, value]) => {
+        if (!value) return;
+        
+        const column = columns.find(col => col.key === key);
+        if (!column) return;
+        
+        const text = String(value);
+        const approxCharsPerLine = column.width * 1.5; // Approximate chars per line based on column width
+        const estimatedLines = Math.ceil(text.length / approxCharsPerLine);
+        
+        // Description and Action Planned typically need more space
+        if (key === 'description' || key === 'actionPlanned') {
+          maxLines = Math.max(maxLines, estimatedLines * 1.5);
+        } else {
+          maxLines = Math.max(maxLines, estimatedLines);
+        }
+      });
+      
+      // Calculate height: base height (15) plus additional height per line
+      return Math.max(24, 15 + (maxLines * 12));
+    };
 
     // Process data rows
     for (const [index, item] of filteredData.entries()) {
@@ -117,9 +145,12 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
 
       const row = worksheet.addRow(rowData);
       
-      // Apply text wrapping to ALL cells in the row - this is crucial
+      // Estimate and set row height based on content
+      const estimatedHeight = estimateRowHeight(rowData, columns);
+      row.height = estimatedHeight;
+      
+      // Apply text wrapping to ALL cells in the row
       row.eachCell((cell) => {
-        // Always preserve text wrapping regardless of other formatting
         if (!cell.alignment) cell.alignment = {};
         cell.alignment.wrapText = true;
         cell.alignment.vertical = 'top';
@@ -153,12 +184,10 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
         console.log(`Defect ID ${item.id}: No PDF found`);
       }
 
-      // Apply criticality colors - fixed implementation
-      // Important: Need to get cell AFTER all other formatting is done
-      const criticalityCell = row.getCell(columns.findIndex(col => col.key === 'criticality') + 1);
+      // Apply criticality colors
+      const criticalityCell = row.getCell('criticality');
       const criticality = item.Criticality?.toUpperCase();
       
-      // Set fill while preserving the existing alignment
       if (criticality === 'HIGH') {
         criticalityCell.fill = {
           type: 'pattern',
@@ -191,12 +220,11 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
       criticalityCell.alignment.horizontal = 'center';
     }
 
-    // Ensure all rows have appropriate height for wrapped text
-    worksheet.eachRow((row, rowIndex) => {
-      if (rowIndex > 1) { // Skip header
-        // Set a minimum height that works well for wrapped text
-        row.height = 30;
-      }
+    // Force Excel to recognize text wrapping by setting column widths explicitly
+    columns.forEach((col, index) => {
+      const column = worksheet.getColumn(index + 1);
+      column.width = col.width;
+      column.alignment = { wrapText: true };
     });
 
     // Add auto filter
@@ -204,13 +232,6 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
       from: 'A1',
       to: { row: 1, column: columns.length }
     };
-
-    // Force Excel to recognize text wrapping by setting column widths explicitly
-    columns.forEach((col, index) => {
-      const column = worksheet.getColumn(index + 1);
-      column.width = col.width;
-      column.alignment = { wrapText: true };
-    });
 
     console.log("Creating Excel file buffer...");
     const buffer = await workbook.xlsx.writeBuffer();
