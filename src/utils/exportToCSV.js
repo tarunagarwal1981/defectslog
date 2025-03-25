@@ -55,7 +55,7 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
 
     console.log(`Filtered data: ${filteredData.length} records`);
 
-    // Define columns with appropriate widths for content
+    // Define columns with appropriate widths
     const columns = [
       { header: 'No.', key: 'no', width: 5 },
       { header: 'Vessel Name', key: 'vesselName', width: 15 },
@@ -78,48 +78,7 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
     workbook.creator = 'Defects Manager';
     workbook.created = new Date();
     
-    const worksheet = workbook.addWorksheet('Defects', {
-      properties: {
-        defaultRowHeight: 30, // Increased default minimum height
-        defaultColWidth: 12,
-        tabColor: {argb: '4F81BD'}
-      }
-    });
-
-    // Ultra-generous row height calculation
-    const calculateRowHeight = (rowData) => {
-      // Column indices where we expect more text
-      const textHeavyColumns = [5, 6, 10, 11]; // Description, Action Planned, Comments, Closure Comments
-      
-      let totalTextLength = 0;
-      let maxSingleCellLength = 0;
-      
-      // Calculate total text length across all cells and find the longest single cell
-      Object.entries(rowData).forEach(([key, value]) => {
-        if (!value) return;
-        
-        const textLength = String(value).length;
-        totalTextLength += textLength;
-        
-        // For text-heavy columns, give more weight
-        if (key === 'description' || key === 'actionPlanned' || 
-            key === 'comments' || key === 'closureComments') {
-          maxSingleCellLength = Math.max(maxSingleCellLength, textLength);
-        }
-      });
-      
-      // Base height calculation using total text and max cell length
-      let calculatedHeight = 30; // Start with minimum height
-      
-      // Add height based on total text in the row (1px per 5 chars)
-      calculatedHeight += Math.floor(totalTextLength / 5);
-      
-      // Add height based on longest text-heavy cell (3px per 10 chars)
-      calculatedHeight += Math.floor(maxSingleCellLength / 10) * 3;
-      
-      // Ensure there's always adequate minimum height
-      return Math.max(60, calculatedHeight);
-    };
+    const worksheet = workbook.addWorksheet('Defects');
 
     // Add columns to worksheet
     worksheet.columns = columns;
@@ -138,6 +97,41 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
     headerRow.eachCell((cell) => {
       cell.alignment = { wrapText: true, vertical: 'middle', horizontal: 'center' };
     });
+
+    // Balanced row height calculation
+    const calculateRowHeight = (rowData) => {
+      // Simple but effective calculation based on the length of key fields
+      const descriptionLength = String(rowData.description || '').length;
+      const actionPlannedLength = String(rowData.actionPlanned || '').length;
+      const commentsLength = String(rowData.comments || '').length;
+      const closureCommentsLength = String(rowData.closureComments || '').length;
+      
+      // Base height
+      let height = 20;
+      
+      // Column widths (approximate characters per line)
+      const descCharsPerLine = 38; // Description column width
+      const actionCharsPerLine = 38; // Action Planned column width
+      const commentsCharsPerLine = 23; // Comments column width
+      
+      // Calculate lines for key fields
+      const descLines = Math.ceil(descriptionLength / descCharsPerLine);
+      const actionLines = Math.ceil(actionPlannedLength / actionCharsPerLine);
+      const commentsLines = Math.ceil(commentsLength / commentsCharsPerLine);
+      const closureLines = Math.ceil(closureCommentsLength / commentsCharsPerLine);
+      
+      // Find max lines needed
+      const maxLines = Math.max(descLines, actionLines, commentsLines, closureLines, 1);
+      
+      // Each line is approximately 14.5 pixels high
+      height = Math.max(height, maxLines * 14.5);
+      
+      // Add a bit of padding for readability
+      height += 10;
+      
+      // Cap height to keep the spreadsheet manageable
+      return Math.min(Math.max(25, height), 150);
+    };
 
     // Process data rows
     for (const [index, item] of filteredData.entries()) {
@@ -160,11 +154,7 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
         defectSource: item.raised_by || ''
       };
 
-      // Pre-calculate row height based on data
-      const rowHeight = calculateRowHeight(rowData);
-      
       const row = worksheet.addRow(rowData);
-      row.height = rowHeight; // Apply height immediately
       
       // Apply text wrapping to ALL cells in the row
       row.eachCell((cell) => {
@@ -173,6 +163,9 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
         cell.alignment.vertical = 'top';
         cell.font = { size: 11 };
       });
+      
+      // Calculate and set row height based on content
+      row.height = calculateRowHeight(rowData);
 
       // Handle PDF report
       const pdfCell = row.getCell('pdfReport');
@@ -191,16 +184,13 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
             underline: true,
             size: 11
           };
-          console.log(`Defect ID ${item.id}: PDF link added`);
         } else {
           pdfCell.value = 'Link unavailable';
           pdfCell.font = { color: { argb: 'FFFF0000' }, size: 11 };
-          console.log(`Defect ID ${item.id}: PDF exists but link generation failed`);
         }
       } else {
         pdfCell.value = 'No report';
         pdfCell.font = { color: { argb: 'FF808080' }, size: 11 };
-        console.log(`Defect ID ${item.id}: No PDF found`);
       }
 
       // Apply criticality colors
@@ -239,20 +229,19 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
       criticalityCell.alignment.horizontal = 'center';
     }
 
-    // Set wider column widths for text-heavy columns and ensure text wrapping
+    // Force Excel to recognize text wrapping by setting column widths explicitly
     columns.forEach((col, index) => {
       const column = worksheet.getColumn(index + 1);
       column.width = col.width;
       column.alignment = { wrapText: true };
     });
 
-    // Add auto filter
+    // Add auto filter and freeze header
     worksheet.autoFilter = {
       from: 'A1',
       to: { row: 1, column: columns.length }
     };
-
-    // Add Excel optional features
+    
     worksheet.views = [
       { state: 'frozen', xSplit: 0, ySplit: 1, activeCell: 'A2' } // Freeze header row
     ];
