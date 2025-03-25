@@ -80,7 +80,10 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
     // Set columns with wrap text
     worksheet.columns = columns.map(col => ({
       ...col,
-      style: { wrapText: true }
+      style: { 
+        wrapText: true,
+        alignment: { vertical: 'top', horizontal: 'left' }
+      }
     }));
 
     // Style header row
@@ -91,13 +94,7 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
       pattern: 'solid',
       fgColor: { argb: 'FF4F81BD' }
     };
-
-    // Define criticality colors
-    const criticalityColors = {
-      'HIGH': 'FFFF0000',    // Red
-      'MEDIUM': 'FFFFFF00',  // Yellow
-      'LOW': 'FF92D050'      // Green
-    };
+    headerRow.alignment = { wrapText: true, vertical: 'middle', horizontal: 'center' };
 
     // Process data rows
     for (const [index, item] of filteredData.entries()) {
@@ -155,23 +152,51 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
         console.log(`Defect ID ${item.id}: No PDF found`);
       }
 
-      // Apply criticality colors
-      if (item.Criticality && criticalityColors[item.Criticality]) {
-        const criticalityCell = row.getCell('criticality');
+      // Apply criticality colors - fixed implementation
+      const criticalityCell = row.getCell('criticality');
+      
+      // Explicitly check and apply criticality color coding
+      const criticality = item.Criticality?.toUpperCase();
+      if (criticality === 'HIGH') {
         criticalityCell.fill = {
           type: 'pattern',
           pattern: 'solid',
-          fgColor: { argb: criticalityColors[item.Criticality] }
+          fgColor: { argb: 'FFFF0000' } // Red
         };
-        
-        // Add font color for better visibility (black on yellow, white on red/green)
-        if (item.Criticality === 'MEDIUM') {
-          criticalityCell.font = { color: { argb: 'FF000000' } }; // Black
-        } else {
-          criticalityCell.font = { color: { argb: 'FFFFFFFF' } }; // White
-        }
+        criticalityCell.font = { color: { argb: 'FFFFFFFF' } }; // White
+      } 
+      else if (criticality === 'MEDIUM') {
+        criticalityCell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFFFFF00' } // Yellow 
+        };
+        criticalityCell.font = { color: { argb: 'FF000000' } }; // Black
       }
+      else if (criticality === 'LOW') {
+        criticalityCell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF92D050' } // Green
+        };
+        criticalityCell.font = { color: { argb: 'FFFFFFFF' } }; // White
+      }
+      
+      // Center the criticality text
+      criticalityCell.alignment = { 
+        wrapText: true, 
+        vertical: 'middle', 
+        horizontal: 'center' 
+      };
     }
+
+    // Set row heights to accommodate wrap text
+    worksheet.eachRow((row, rowIndex) => {
+      // Skip header row
+      if (rowIndex > 1) {
+        row.height = 24; // Set a minimum height for better readability
+      }
+    });
 
     // Add auto filter
     worksheet.autoFilter = {
