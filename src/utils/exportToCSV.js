@@ -62,70 +62,63 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
       { header: 'Status', key: 'status', width: 10 },
       { header: 'Criticality', key: 'criticality', width: 12 },
       { header: 'Equipment', key: 'equipment', width: 15 },
-      { header: 'Description', key: 'description', width: 40 }, // Wider for more text
-      { header: 'Action Planned', key: 'actionPlanned', width: 40 }, // Wider for more text
+      { header: 'Description', key: 'description', width: 40 },
+      { header: 'Action Planned', key: 'actionPlanned', width: 40 },
       { header: 'Date Reported', key: 'dateReported', width: 12 },
       { header: 'Target Date', key: 'targetDate', width: 12 },
       { header: 'Date Completed', key: 'dateCompleted', width: 12 },
-      { header: 'Comments', key: 'comments', width: 25 }, // Wider for more text
-      { header: 'Closure Comments', key: 'closureComments', width: 25 }, // Wider for more text
+      { header: 'Comments', key: 'comments', width: 25 },
+      { header: 'Closure Comments', key: 'closureComments', width: 25 },
       { header: 'Defect Source', key: 'defectSource', width: 15 },
       { header: 'PDF Report', key: 'pdfReport', width: 15 }
     ];
 
-    // Create workbook and worksheet with optimal settings for text wrapping
+    // Create workbook and worksheet
     const workbook = new ExcelJS.Workbook();
-    
-    // Set workbook properties to encourage proper text wrapping
     workbook.creator = 'Defects Manager';
     workbook.created = new Date();
     
     const worksheet = workbook.addWorksheet('Defects', {
       properties: {
-        defaultRowHeight: 25, // Default minimum height
+        defaultRowHeight: 30, // Increased default minimum height
         defaultColWidth: 12,
         tabColor: {argb: '4F81BD'}
       }
     });
 
-    // Calculate better row height based on content
-    const calculateRowHeight = (row) => {
-      // Improved algorithm to better handle text wrapping:
-      // 1. Count number of characters in each cell
-      // 2. Estimate lines based on column width and average characters per line
-      // 3. Add extra lines for newlines in the text
-      // 4. Apply a multiplication factor for safety
+    // Ultra-generous row height calculation
+    const calculateRowHeight = (rowData) => {
+      // Column indices where we expect more text
+      const textHeavyColumns = [5, 6, 10, 11]; // Description, Action Planned, Comments, Closure Comments
       
-      let maxLines = 1;
+      let totalTextLength = 0;
+      let maxSingleCellLength = 0;
       
-      row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
-        if (!cell.value) return;
+      // Calculate total text length across all cells and find the longest single cell
+      Object.entries(rowData).forEach(([key, value]) => {
+        if (!value) return;
         
-        const columnWidth = worksheet.getColumn(colNumber).width || 10;
-        const text = String(cell.value);
+        const textLength = String(value).length;
+        totalTextLength += textLength;
         
-        // Count explicit line breaks
-        const newlines = (text.match(/\n/g) || []).length;
-        
-        // Average characters per line (based on font size and column width)
-        const charsPerLine = columnWidth * 1.8; // Approximation
-        
-        // Calculate lines needed
-        const textLines = Math.ceil(text.length / charsPerLine);
-        
-        // Total estimated lines (text wrapping + explicit breaks)
-        const totalLines = textLines + newlines;
-        
-        // For certain columns (like description), add extra space
-        if (colNumber === 6 || colNumber === 7) { // Description & Action Planned columns
-          maxLines = Math.max(maxLines, totalLines * 1.2);
-        } else {
-          maxLines = Math.max(maxLines, totalLines);
+        // For text-heavy columns, give more weight
+        if (key === 'description' || key === 'actionPlanned' || 
+            key === 'comments' || key === 'closureComments') {
+          maxSingleCellLength = Math.max(maxSingleCellLength, textLength);
         }
       });
       
-      // Convert lines to height (pixels) - approximately 15px per line plus padding
-      return Math.max(25, Math.ceil(maxLines * 15) + 10);
+      // Base height calculation using total text and max cell length
+      let calculatedHeight = 30; // Start with minimum height
+      
+      // Add height based on total text in the row (1px per 5 chars)
+      calculatedHeight += Math.floor(totalTextLength / 5);
+      
+      // Add height based on longest text-heavy cell (3px per 10 chars)
+      calculatedHeight += Math.floor(maxSingleCellLength / 10) * 3;
+      
+      // Ensure there's always adequate minimum height
+      return Math.max(60, calculatedHeight);
     };
 
     // Add columns to worksheet
@@ -139,9 +132,9 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
       pattern: 'solid',
       fgColor: { argb: 'FF4F81BD' }
     };
-    headerRow.height = 30; // Set header row height
+    headerRow.height = 30;
     
-    // Apply text wrapping to header and all cells
+    // Apply text wrapping to header
     headerRow.eachCell((cell) => {
       cell.alignment = { wrapText: true, vertical: 'middle', horizontal: 'center' };
     });
@@ -167,19 +160,19 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
         defectSource: item.raised_by || ''
       };
 
+      // Pre-calculate row height based on data
+      const rowHeight = calculateRowHeight(rowData);
+      
       const row = worksheet.addRow(rowData);
+      row.height = rowHeight; // Apply height immediately
       
       // Apply text wrapping to ALL cells in the row
       row.eachCell((cell) => {
         if (!cell.alignment) cell.alignment = {};
         cell.alignment.wrapText = true;
         cell.alignment.vertical = 'top';
-        // Larger font height makes text more readable when wrapped
         cell.font = { size: 11 };
       });
-      
-      // Set row height based on content - Do this AFTER cell formatting
-      row.height = calculateRowHeight(row);
 
       // Handle PDF report
       const pdfCell = row.getCell('pdfReport');
@@ -246,7 +239,7 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
       criticalityCell.alignment.horizontal = 'center';
     }
 
-    // Force Excel to recognize text wrapping by setting column widths explicitly
+    // Set wider column widths for text-heavy columns and ensure text wrapping
     columns.forEach((col, index) => {
       const column = worksheet.getColumn(index + 1);
       column.width = col.width;
@@ -259,16 +252,10 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
       to: { row: 1, column: columns.length }
     };
 
-    // Add protection to help Excel preserve formatting (protection without password)
-    worksheet.protect('', {
-      autoFilter: true,
-      selectLockedCells: true,
-      selectUnlockedCells: true,
-      sort: true,
-      formatCells: true,
-      formatColumns: true,
-      formatRows: true,
-    });
+    // Add Excel optional features
+    worksheet.views = [
+      { state: 'frozen', xSplit: 0, ySplit: 1, activeCell: 'A2' } // Freeze header row
+    ];
 
     console.log("Creating Excel file buffer...");
     const buffer = await workbook.xlsx.writeBuffer();
