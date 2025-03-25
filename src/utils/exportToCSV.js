@@ -77,14 +77,8 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Defects');
 
-    // Set columns with wrap text
-    worksheet.columns = columns.map(col => ({
-      ...col,
-      style: { 
-        wrapText: true,
-        alignment: { vertical: 'top', horizontal: 'left' }
-      }
-    }));
+    // Add columns to worksheet
+    worksheet.columns = columns;
 
     // Style header row
     const headerRow = worksheet.getRow(1);
@@ -94,7 +88,11 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
       pattern: 'solid',
       fgColor: { argb: 'FF4F81BD' }
     };
-    headerRow.alignment = { wrapText: true, vertical: 'middle', horizontal: 'center' };
+    
+    // Apply text wrapping to header
+    headerRow.eachCell((cell) => {
+      cell.alignment = { wrapText: true, vertical: 'middle', horizontal: 'center' };
+    });
 
     // Process data rows
     for (const [index, item] of filteredData.entries()) {
@@ -119,9 +117,12 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
 
       const row = worksheet.addRow(rowData);
       
-      // Apply text wrapping to all cells in the row
+      // Apply text wrapping to ALL cells in the row - this is crucial
       row.eachCell((cell) => {
-        cell.alignment = { wrapText: true, vertical: 'top' };
+        // Always preserve text wrapping regardless of other formatting
+        if (!cell.alignment) cell.alignment = {};
+        cell.alignment.wrapText = true;
+        cell.alignment.vertical = 'top';
       });
 
       // Handle PDF report
@@ -153,10 +154,11 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
       }
 
       // Apply criticality colors - fixed implementation
-      const criticalityCell = row.getCell('criticality');
-      
-      // Explicitly check and apply criticality color coding
+      // Important: Need to get cell AFTER all other formatting is done
+      const criticalityCell = row.getCell(columns.findIndex(col => col.key === 'criticality') + 1);
       const criticality = item.Criticality?.toUpperCase();
+      
+      // Set fill while preserving the existing alignment
       if (criticality === 'HIGH') {
         criticalityCell.fill = {
           type: 'pattern',
@@ -182,19 +184,18 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
         criticalityCell.font = { color: { argb: 'FFFFFFFF' } }; // White
       }
       
-      // Center the criticality text
-      criticalityCell.alignment = { 
-        wrapText: true, 
-        vertical: 'middle', 
-        horizontal: 'center' 
-      };
+      // Ensure text wrap is preserved for criticality cell
+      if (!criticalityCell.alignment) criticalityCell.alignment = {};
+      criticalityCell.alignment.wrapText = true;
+      criticalityCell.alignment.vertical = 'middle';
+      criticalityCell.alignment.horizontal = 'center';
     }
 
-    // Set row heights to accommodate wrap text
+    // Ensure all rows have appropriate height for wrapped text
     worksheet.eachRow((row, rowIndex) => {
-      // Skip header row
-      if (rowIndex > 1) {
-        row.height = 24; // Set a minimum height for better readability
+      if (rowIndex > 1) { // Skip header
+        // Set a minimum height that works well for wrapped text
+        row.height = 30;
       }
     });
 
@@ -203,6 +204,13 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
       from: 'A1',
       to: { row: 1, column: columns.length }
     };
+
+    // Force Excel to recognize text wrapping by setting column widths explicitly
+    columns.forEach((col, index) => {
+      const column = worksheet.getColumn(index + 1);
+      column.width = col.width;
+      column.alignment = { wrapText: true };
+    });
 
     console.log("Creating Excel file buffer...");
     const buffer = await workbook.xlsx.writeBuffer();
