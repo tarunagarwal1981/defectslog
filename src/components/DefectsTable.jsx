@@ -19,6 +19,7 @@ import {
 import { CORE_FIELDS } from '../config/fieldMappings';
 import { exportToCSV, exportToExcel } from '../utils/exportToCSV';
 
+import { generateDefectPDF } from '../utils/generateDefectPDF';
 
 
 const isColumnVisible = (fieldId, permissions) => {
@@ -634,10 +635,29 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
                 </div>
 
                 {/* Generate Report Button */}
+                // Generate Report Button
                 <button
                   onClick={async (e) => {
                     e.stopPropagation();
                     try {
+                      // First, check if PDF already exists
+                      const pdfPath = `uploads/defect-reports/${defect.id}.pdf`;
+                      
+                      // Try to get a signed URL for the existing PDF
+                      const { data: existingPdf, error: pdfError } = await supabase.storage
+                        .from('defect-files')
+                        .createSignedUrl(pdfPath, 3600); // 1 hour expiry
+                      
+                      // If PDF exists, open it in a new tab
+                      if (existingPdf && !pdfError) {
+                        window.open(existingPdf.signedUrl, '_blank');
+                        return;
+                      }
+                      
+                      // If PDF doesn't exist or there was an error, generate a new one
+                      console.log('PDF does not exist, generating a new one...');
+                      
+                      // Get signed URLs for file attachments
                       const getSignedUrls = async (files) => {
                         const urls = {};
                         for (const file of files || []) {
@@ -657,16 +677,73 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
                         }
                         return urls;
                       };
-                
-                      const initialUrls = await getSignedUrls(defect.initial_files);
-                      const completionUrls = await getSignedUrls(defect.completion_files);
                       
-                      const { generateDefectReport } = await import('../utils/generateDefectReport');
-                      await generateDefectReport(defect, {
-                        ...initialUrls,
-                        ...completionUrls
-                      });
-                
+                      // Get public URLs for file attachments
+                      const getPublicUrls = async (files) => {
+                        const urls = {};
+                        for (const file of files || []) {
+                          try {
+                            const { data } = supabase.storage
+                              .from('defect-files')
+                              .getPublicUrl(file.path);
+                              
+                            if (data?.publicUrl) {
+                              urls[file.path] = data.publicUrl;
+                            }
+                          } catch (error) {
+                            console.error('Error getting public URL for file:', file.name, error);
+                          }
+                        }
+                        return urls;
+                      };
+                      
+                      // Get URLs for attachments
+                      const fileSignedUrls = {
+                        ...(await getSignedUrls(defect.initial_files)),
+                        ...(await getSignedUrls(defect.completion_files))
+                      };
+                      
+                      const filePublicUrls = {
+                        ...(await getPublicUrls(defect.initial_files)),
+                        ...(await getPublicUrls(defect.completion_files))
+                      };
+                      
+                      // Use the imported generateDefectPDF function directly
+                      const pdfBlob = await generateDefectPDF(
+                        {
+                          ...defect,
+                          vessel_name: defect.vessel_name
+                        },
+                        fileSignedUrls,
+                        filePublicUrls
+                      );
+                      
+                      // Upload the PDF
+                      const { data: uploadData, error: uploadError } = await supabase.storage
+                        .from('defect-files')
+                        .upload(pdfPath, pdfBlob, {
+                          contentType: 'application/pdf',
+                          upsert: true // Replace if exists
+                        });
+                      
+                      if (uploadError) {
+                        console.error('Error uploading PDF:', uploadError);
+                        throw uploadError;
+                      }
+                      
+                      // Get a signed URL for the newly uploaded PDF
+                      const { data: newPdf, error: newPdfError } = await supabase.storage
+                        .from('defect-files')
+                        .createSignedUrl(pdfPath, 3600);
+                      
+                      if (newPdfError) {
+                        console.error('Error getting signed URL for new PDF:', newPdfError);
+                        throw newPdfError;
+                      }
+                      
+                      // Open the PDF in a new tab
+                      window.open(newPdf.signedUrl, '_blank');
+                      
                       toast({
                         title: "Success",
                         description: "Report generated successfully",
