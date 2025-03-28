@@ -527,7 +527,7 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
               {/* Main Content in 3-column Grid */}
               <div className="grid grid-cols-3 gap-4">
                 {/* Basic Details */}
-                <div className="bg-[#0B1623] rounded-md p-3 shadow-lg hover:shadow-[0_4px_15px_rgba(0,0,0,0.3)] transition-all duration-300 border border-white/5">
+{/*                 <div className="bg-[#0B1623] rounded-md p-3 shadow-lg hover:shadow-[0_4px_15px_rgba(0,0,0,0.3)] transition-all duration-300 border border-white/5">
                   <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Description</h4>
                   <div className="text-xs leading-relaxed text-white/90 break-words">
                     {defect.Description || '-'}
@@ -539,7 +539,7 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
                   <div className="text-xs leading-relaxed text-white/90 break-words">
                     {defect['Action Planned'] || '-'}
                   </div>
-                </div>
+                </div> */}
       
                 <div className="bg-[#0B1623] rounded-md p-3 shadow-lg hover:shadow-[0_4px_15px_rgba(0,0,0,0.3)] transition-all duration-300 border border-white/5">
                   <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Follow-Up</h4>
@@ -635,7 +635,7 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
                 </div>
 
                 {/* Generate Report Button */}
-                // Generate Report Button
+                
                 <button
                   onClick={async (e) => {
                     e.stopPropagation();
