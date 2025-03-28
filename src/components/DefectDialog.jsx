@@ -372,9 +372,33 @@ const DefectDialog = ({
       if (savedDefect && savedDefect.id) {
         try {
           console.log('Generating PDF for defect:', savedDefect.id);
+          console.log('Defect data for PDF:', savedDefect);
           
           // Define the PDF path
           const pdfPath = `uploads/defect-reports/${savedDefect.id}.pdf`;
+          
+          // Check if the folder structure exists, create if needed
+          try {
+            // Try to create uploads folder if it doesn't exist
+            const { error: createFolderError } = await supabase.storage
+              .from('defect-files')
+              .upload('uploads/.placeholder', new Blob(['placeholder']), { upsert: true });
+            
+            if (createFolderError && !createFolderError.message.includes('already exists')) {
+              console.error('Error creating uploads folder:', createFolderError);
+            }
+            
+            // Try to create defect-reports subfolder
+            const { error: createSubfolderError } = await supabase.storage
+              .from('defect-files')
+              .upload('uploads/defect-reports/.placeholder', new Blob(['placeholder']), { upsert: true });
+            
+            if (createSubfolderError && !createSubfolderError.message.includes('already exists')) {
+              console.error('Error creating defect-reports subfolder:', createSubfolderError);
+            }
+          } catch (folderError) {
+            console.error('Error checking/creating folders:', folderError);
+          }
           
           // First, explicitly delete any existing PDF
           try {
@@ -403,32 +427,50 @@ const DefectDialog = ({
               ...(savedDefect.completion_files || []).map(f => f.path)
             ].filter(Boolean);
             
+            console.log('Files to include in PDF:', allPaths);
+            
             if (allPaths.length > 0) {
               // Get signed URLs for embedding
-              const { data: urlsData } = await supabase.storage
+              const { data: urlsData, error: urlsError } = await supabase.storage
                 .from('defect-files')
                 .createSignedUrls(allPaths, 60);
                 
+              if (urlsError) {
+                console.error('Error getting signed URLs:', urlsError);
+              }
+              
               if (urlsData) {
                 urlsData.forEach(item => {
                   fileSignedUrls[item.path] = item.signedUrl;
                 });
+                console.log('Obtained signed URLs for', Object.keys(fileSignedUrls).length, 'files');
               }
               
               // Also get public URLs for permanent links
               for (const path of allPaths) {
-                const { data } = supabase.storage
-                  .from('defect-files')
-                  .getPublicUrl(path);
-                  
-                if (data?.publicUrl) {
-                  filePublicUrls[path] = data.publicUrl;
+                try {
+                  const { data } = supabase.storage
+                    .from('defect-files')
+                    .getPublicUrl(path);
+                    
+                  if (data?.publicUrl) {
+                    filePublicUrls[path] = data.publicUrl;
+                  }
+                } catch (urlError) {
+                  console.error('Error getting public URL for:', path, urlError);
                 }
               }
+              console.log('Obtained public URLs for', Object.keys(filePublicUrls).length, 'files');
             }
           }
           
           // Generate PDF blob with both signed and public URLs
+          console.log('Calling generateDefectPDF with:', { 
+            vesselName: vessels[savedDefect.vessel_id] || 'Unknown Vessel',
+            signedUrlCount: Object.keys(fileSignedUrls).length,
+            publicUrlCount: Object.keys(filePublicUrls).length
+          });
+          
           const pdfBlob = await generateDefectPDF(
             { 
               ...savedDefect, 
@@ -437,6 +479,8 @@ const DefectDialog = ({
             fileSignedUrls,
             filePublicUrls
           );
+          
+          console.log('PDF blob generated, size:', pdfBlob.size, 'bytes');
           
           // Add a small delay to ensure any delete operation is complete
           await new Promise(resolve => setTimeout(resolve, 500));
@@ -447,14 +491,14 @@ const DefectDialog = ({
             .from('defect-files')
             .upload(pdfPath, pdfBlob, {
               contentType: 'application/pdf',
-              upsert: true // Still use upsert as a fallback
+              upsert: true
             });
               
           if (uploadError) {
             console.error('Error uploading PDF:', uploadError);
             throw uploadError;
           } else {
-            console.log('PDF successfully saved:', pdfPath);
+            console.log('PDF successfully saved:', pdfPath, 'Response:', uploadData);
             
             // Verify the upload was successful by trying to get the file
             const { data: verifyData, error: verifyError } = await supabase.storage
@@ -468,7 +512,7 @@ const DefectDialog = ({
             }
           }
         } catch (pdfError) {
-          console.error('Error generating PDF:', pdfError);
+          console.error('Error in PDF generation process:', pdfError);
           // Continue without failing the save operation
         }
       }
