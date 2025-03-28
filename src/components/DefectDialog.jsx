@@ -368,12 +368,15 @@ const DefectDialog = ({
       const savedDefect = await onSave(finalDefect);
       
       // Generate and store PDF after save
+      // Generate and store PDF after save
       if (savedDefect && savedDefect.id) {
         try {
           console.log('Generating PDF for defect:', savedDefect.id);
           
           // Get file URLs for the PDF
           const fileSignedUrls = {};
+          const filePublicUrls = {}; // Add this
+          
           if (savedDefect.initial_files?.length || savedDefect.completion_files?.length) {
             const allPaths = [
               ...(savedDefect.initial_files || []).map(f => f.path),
@@ -381,6 +384,7 @@ const DefectDialog = ({
             ].filter(Boolean);
             
             if (allPaths.length > 0) {
+              // Get signed URLs for embedding
               const { data: urlsData } = await supabase.storage
                 .from('defect-files')
                 .createSignedUrls(allPaths, 60);
@@ -390,20 +394,32 @@ const DefectDialog = ({
                   fileSignedUrls[item.path] = item.signedUrl;
                 });
               }
+              
+              // Also get public URLs for permanent links
+              for (const path of allPaths) {
+                const { data } = supabase.storage
+                  .from('defect-files')
+                  .getPublicUrl(path);
+                  
+                if (data?.publicUrl) {
+                  filePublicUrls[path] = data.publicUrl;
+                }
+              }
             }
           }
           
-          // Generate PDF blob
+          // Generate PDF blob with both signed and public URLs
           const pdfBlob = await generateDefectPDF(
             { 
               ...savedDefect, 
               vessel_name: vessels[savedDefect.vessel_id] || 'Unknown Vessel'
             }, 
-            fileSignedUrls
+            fileSignedUrls,
+            filePublicUrls  // Add this parameter
           );
           
           // Upload PDF to storage
-          const pdfPath = `defect-reports/${savedDefect.id}.pdf`;
+          const pdfPath = `uploads/defect-reports/${savedDefect.id}.pdf`; // Updated path
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from('defect-files')
             .upload(pdfPath, pdfBlob, {
