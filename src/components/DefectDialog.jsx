@@ -373,9 +373,29 @@ const DefectDialog = ({
         try {
           console.log('Generating PDF for defect:', savedDefect.id);
           
+          // Define the PDF path
+          const pdfPath = `uploads/defect-reports/${savedDefect.id}.pdf`;
+          
+          // First, explicitly delete any existing PDF
+          try {
+            console.log('Attempting to delete existing PDF if present:', pdfPath);
+            const { error: deleteError } = await supabase.storage
+              .from('defect-files')
+              .remove([pdfPath]);
+              
+            if (deleteError) {
+              console.log('No existing PDF found or error deleting:', deleteError.message);
+            } else {
+              console.log('Existing PDF successfully deleted');
+            }
+          } catch (deleteError) {
+            console.warn('Error checking/deleting existing PDF:', deleteError);
+            // Continue regardless of delete result
+          }
+          
           // Get file URLs for the PDF
           const fileSignedUrls = {};
-          const filePublicUrls = {}; // Add this
+          const filePublicUrls = {};
           
           if (savedDefect.initial_files?.length || savedDefect.completion_files?.length) {
             const allPaths = [
@@ -415,22 +435,37 @@ const DefectDialog = ({
               vessel_name: vessels[savedDefect.vessel_id] || 'Unknown Vessel'
             }, 
             fileSignedUrls,
-            filePublicUrls  // Add this parameter
+            filePublicUrls
           );
           
-          // Upload PDF to storage
-          const pdfPath = `uploads/defect-reports/${savedDefect.id}.pdf`; // Updated path
+          // Add a small delay to ensure any delete operation is complete
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Upload the new PDF
+          console.log('Uploading new PDF to:', pdfPath);
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from('defect-files')
             .upload(pdfPath, pdfBlob, {
               contentType: 'application/pdf',
-              upsert: true // Replace if exists
+              upsert: true // Still use upsert as a fallback
             });
-            
+              
           if (uploadError) {
             console.error('Error uploading PDF:', uploadError);
+            throw uploadError;
           } else {
             console.log('PDF successfully saved:', pdfPath);
+            
+            // Verify the upload was successful by trying to get the file
+            const { data: verifyData, error: verifyError } = await supabase.storage
+              .from('defect-files')
+              .createSignedUrl(pdfPath, 10); // Short expiry just to verify
+              
+            if (verifyError) {
+              console.error('PDF verification failed:', verifyError);
+            } else {
+              console.log('PDF verified successfully:', verifyData);
+            }
           }
         } catch (pdfError) {
           console.error('Error generating PDF:', pdfError);
