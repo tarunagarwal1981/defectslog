@@ -71,7 +71,7 @@ export const CORE_FIELDS = {
         label: 'Action Planned',
         dbField: 'Action Planned',
         type: 'textarea',
-        required: true,
+        required: false,
         section: 'basic',
         displayOrder: 4,
         width: 'full',
