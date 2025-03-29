@@ -77,7 +77,7 @@ function App() {
 
   const fetchUserData = useCallback(async () => {
     if (!session?.user?.id) return;
-
+  
     try {
       setLoading(true);
       
@@ -92,7 +92,6 @@ function App() {
       // Get user's vessels with names
       const userVessels = await getUserVessels(session.user.id);
       
-      // Your existing vessel logic...
       const vesselIds = userVessels.map(v => v.vessel_id);
       const vesselsMap = userVessels.reduce((acc, v) => {
         if (v.vessels) {
@@ -100,27 +99,54 @@ function App() {
         }
         return acc;
       }, {});
-
-      // Modify defects query for external users
-      let query = supabase
-        .from('defects register')
-        .select('*')
-        .in('vessel_id', vesselIds)
-        .eq('is_deleted', false)
-        .order('Date Reported', { ascending: false });
-
-      // Add external visibility filter for external users
-      if (external) {
-        query = query.eq('external_visibility', true);
+  
+      // Implement pagination to fetch all defects
+      const PAGE_SIZE = 1000; // Supabase max limit
+      let allDefects = [];
+      let hasMore = true;
+      let page = 0;
+      
+      while (hasMore) {
+        // Base query with pagination
+        let query = supabase
+          .from('defects register')
+          .select('*')
+          .in('vessel_id', vesselIds)
+          .eq('is_deleted', false)
+          .order('Date Reported', { ascending: false })
+          .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+  
+        // Add external visibility filter for external users
+        if (external) {
+          query = query.eq('external_visibility', true);
+        }
+  
+        const { data: defects, error: defectsError } = await query;
+  
+        if (defectsError) throw defectsError;
+        
+        if (defects && defects.length > 0) {
+          allDefects = [...allDefects, ...defects];
+          
+          // Check if we need to fetch more pages
+          hasMore = defects.length === PAGE_SIZE;
+          page++;
+          
+          // Optional: Update UI to show progress
+          if (hasMore) {
+            console.log(`Fetched ${allDefects.length} defects so far...`);
+            // You could also update a progress state here
+          }
+        } else {
+          hasMore = false;
+        }
       }
-
-      const { data: defects, error: defectsError } = await query;
-
-      if (defectsError) throw defectsError;
-
+  
       setAssignedVessels(vesselIds);
       setVesselNames(vesselsMap);
-      setData(defects || []);
+      setData(allDefects || []);
+      
+      console.log(`Total defects fetched: ${allDefects.length}`);
       
     } catch (error) {
       console.error("Error fetching data:", error);
