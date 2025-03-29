@@ -260,7 +260,7 @@ function App() {
       if (!assignedVessels.includes(updatedDefect.vessel_id)) {
         throw new Error("Not authorized for this vessel");
       }
-
+  
       const isNewDefect = updatedDefect.id?.startsWith('temp-');
       
       const defectData = {
@@ -280,7 +280,7 @@ function App() {
         raised_by: updatedDefect.raised_by || '',
         target_date: updatedDefect.target_date || null
       };
-
+  
       let result;
       if (isNewDefect) {
         const { data: insertedData, error: insertError } = await supabase
@@ -288,7 +288,7 @@ function App() {
           .insert([defectData])
           .select('*')
           .single();
-
+  
         if (insertError) throw insertError;
         result = insertedData;
         setData(prevData => [result, ...prevData]);
@@ -299,7 +299,7 @@ function App() {
           .eq('id', updatedDefect.id)
           .select('*')
           .single();
-
+  
         if (updateError) throw updateError;
         result = updatedData;
         setData(prevData => {
@@ -309,15 +309,18 @@ function App() {
           );
         });
       }
-
+  
       toast({
         title: isNewDefect ? "Defect Added" : "Defect Updated",
         description: "Successfully saved the defect",
       });
-
+  
       setIsDefectDialogOpen(false);
       setCurrentDefect(null);
-
+  
+      // IMPORTANT: Return the saved defect object with ID
+      return result;
+  
     } catch (error) {
       console.error("Error saving defect:", error);
       toast({
@@ -325,6 +328,7 @@ function App() {
         description: error.message || "Failed to save defect",
         variant: "destructive",
       });
+      throw error; // Re-throw to be caught by the calling function
     }
   };
 
