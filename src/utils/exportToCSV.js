@@ -40,7 +40,12 @@ export const exportToExcel = async (data, vesselNames, filters = {}) => {
       const { data: urlData } = supabase.storage
         .from('defect-files')
         .getPublicUrl(pdfPath);
-      return urlData?.publicUrl || null;
+      
+      // Add cache-busting parameter
+      if (urlData?.publicUrl) {
+        return `${urlData.publicUrl}?t=${Date.now()}`;
+      }
+      return null;
     };
 
     // Apply filters
