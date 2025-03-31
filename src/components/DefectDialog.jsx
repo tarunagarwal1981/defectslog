@@ -10,6 +10,7 @@ import { toast } from './ui/use-toast';
 import { supabase } from '../supabaseClient';
 import { formatDateForInput, formatDateDisplay } from '../utils/dateUtils';
 import { CORE_FIELDS } from '../config/fieldMappings';
+import { generateDefectPDF } from '../utils/generateDefectPDF';
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 const ALLOWED_FILE_TYPES = [
@@ -320,8 +321,11 @@ const DefectDialog = ({
     setClosureFiles(prevFiles => prevFiles.filter((_, i) => i !== index));
   };
 
+  // Add this function to the DefectDialog component after the handleSave function
+
   const handleSave = async () => {
     try {
+      console.log("Starting save operation...");
       setSaving(true);
       setUploadProgress(0);
   
@@ -332,6 +336,7 @@ const DefectDialog = ({
       };
   
       if (!validateDefect(updatedDefectData)) {
+        console.log("Validation failed, exiting save operation");
         setSaving(false);
         return;
       }
@@ -341,10 +346,12 @@ const DefectDialog = ({
       let uploadedClosureFiles = [];
   
       if (initialFiles.length > 0) {
+        console.log(`Uploading ${initialFiles.length} initial files...`);
         uploadedInitialFiles = await uploadFiles(initialFiles, updatedDefectData.id || 'temp', 'initial');
       }
   
       if (closureFiles.length > 0 && updatedDefectData['Status (Vessel)'] === 'CLOSED') {
+        console.log(`Uploading ${closureFiles.length} closure files...`);
         uploadedClosureFiles = await uploadFiles(closureFiles, updatedDefectData.id || 'temp', 'closure');
       }
   
@@ -363,13 +370,215 @@ const DefectDialog = ({
         target_date: updatedDefectData.target_date || null
       };
   
-      await onSave(finalDefect);
+      console.log("Saving defect to database...");
+      // Save the defect - IMPORTANT: make sure this returns the saved object with ID
+      let savedDefect;
+      try {
+        savedDefect = await onSave(finalDefect);
+        console.log("Defect saved successfully:", savedDefect?.id);
+      } catch (saveError) {
+        console.error("Error saving defect:", saveError);
+        throw saveError; // Rethrow to be caught by outer try/catch
+      }
+      
+      console.log("Checking if we can generate PDF...");
+      console.log("savedDefect exists:", !!savedDefect);
+      console.log("savedDefect.id exists:", !!savedDefect?.id);
+      
+      // Only proceed with PDF generation if we have a valid savedDefect with ID
+      if (savedDefect && savedDefect.id) {
+        console.log("Starting PDF generation process for defect:", savedDefect.id);
+        
+        try {
+          // Define the PDF path
+          const pdfPath = `uploads/defect-reports/${savedDefect.id}.pdf`;
+          console.log("PDF will be saved to:", pdfPath);
+          
+          // Get signed URLs for file attachments
+          console.log("Getting signed URLs for attachments...");
+          const fileSignedUrls = {};
+          const filePublicUrls = {};
+          
+          // Get all file paths
+          const initialFilePaths = (savedDefect.initial_files || []).map(f => f.path);
+          const completionFilePaths = (savedDefect.completion_files || []).map(f => f.path);
+          const allFilePaths = [...initialFilePaths, ...completionFilePaths].filter(Boolean);
+          
+          console.log(`Processing ${allFilePaths.length} files for PDF`);
+          console.log("Initial files:", initialFilePaths.length);
+          console.log("Completion files:", completionFilePaths.length);
+          
+          if (allFilePaths.length > 0) {
+            // Get signed URLs for embedding
+            try {
+              const { data: urlsData, error: urlsError } = await supabase.storage
+                .from('defect-files')
+                .createSignedUrls(allFilePaths, 3600);
+              
+              if (urlsError) {
+                console.error("Error getting signed URLs:", urlsError);
+              } else if (urlsData) {
+                urlsData.forEach(item => {
+                  fileSignedUrls[item.path] = item.signedUrl;
+                });
+                console.log(`Obtained ${Object.keys(fileSignedUrls).length} signed URLs`);
+              }
+            } catch (urlError) {
+              console.error("Error in createSignedUrls call:", urlError);
+            }
+            
+            // Get public URLs
+            try {
+              for (const path of allFilePaths) {
+                const { data } = supabase.storage
+                  .from('defect-files')
+                  .getPublicUrl(path);
+                
+                if (data?.publicUrl) {
+                  filePublicUrls[path] = data.publicUrl;
+                }
+              }
+              console.log(`Obtained ${Object.keys(filePublicUrls).length} public URLs`);
+            } catch (publicUrlError) {
+              console.error("Error getting public URLs:", publicUrlError);
+            }
+          }
+          
+          // Generate PDF blob
+          console.log("Calling generateDefectPDF function with:", {
+            defectId: savedDefect.id,
+            vesselName: vessels[savedDefect.vessel_id] || 'Unknown Vessel',
+            signedUrlCount: Object.keys(fileSignedUrls).length,
+            publicUrlCount: Object.keys(filePublicUrls).length
+          });
+          
+          let pdfBlob;
+          try {
+            pdfBlob = await generateDefectPDF(
+              { 
+                ...savedDefect, 
+                vessel_name: vessels[savedDefect.vessel_id] || 'Unknown Vessel'
+              }, 
+              fileSignedUrls,
+              filePublicUrls
+            );
+            
+            console.log(`PDF generated successfully, size: ${pdfBlob?.size || 0} bytes`);
+            
+            if (!pdfBlob || pdfBlob.size === 0) {
+              throw new Error('Generated PDF is empty or invalid');
+            }
+          } catch (pdfGenError) {
+            console.error("Error generating PDF:", pdfGenError);
+            throw pdfGenError;
+          }
+          
+          // Upload the PDF
+          console.log("Preparing to upload PDF...");
+          
+          // Try to remove any existing PDF first
+          try {
+            console.log("Checking for existing PDF...");
+            const { error: removeError } = await supabase.storage
+              .from('defect-files')
+              .remove([pdfPath]);
+            
+            if (removeError) {
+              console.log("Remove result:", removeError.message);
+            } else {
+              console.log("Existing PDF removed successfully");
+            }
+          } catch (deleteError) {
+            console.warn("Error checking/deleting existing PDF:", deleteError);
+          }
+          
+          // Add a delay to ensure delete operation completes
+          console.log("Waiting before upload...");
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Upload the PDF
+          console.log(`Uploading PDF (${pdfBlob.size} bytes) to: ${pdfPath}`);
+          try {
+            const { data: uploadData, error: uploadError } = await supabase.storage
+              .from('defect-files')
+              .upload(pdfPath, pdfBlob, {
+                contentType: 'application/pdf',
+                upsert: true
+              });
+            
+            if (uploadError) {
+              console.error("Upload error:", uploadError);
+              throw uploadError;
+            } else {
+              console.log("PDF uploaded successfully:", uploadData);
+            }
+          } catch (uploadError) {
+            console.error("Exception during upload:", uploadError);
+            
+            // Try again with a different approach
+            console.log("Retrying upload with different parameters...");
+            
+            try {
+              // Force delete again
+              await supabase.storage
+                .from('defect-files')
+                .remove([pdfPath]);
+              
+              // Wait longer
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              
+              // Create a fresh Blob
+              const freshBlob = new Blob([await pdfBlob.arrayBuffer()], { type: 'application/pdf' });
+              console.log("Created fresh blob:", freshBlob.size);
+              
+              // Try upload with different parameters
+              const { error: retryError } = await supabase.storage
+                .from('defect-files')
+                .upload(pdfPath, freshBlob, {
+                  contentType: 'application/pdf',
+                  upsert: true
+                });
+              
+              if (retryError) {
+                console.error("Retry upload failed:", retryError);
+                throw retryError;
+              } else {
+                console.log("PDF upload succeeded on retry");
+              }
+            } catch (retryError) {
+              console.error("Final upload attempt failed:", retryError);
+              throw retryError;
+            }
+          }
+        } catch (pdfError) {
+          console.error("PDF generation or upload failed:", pdfError);
+          // Continue without failing the save operation
+          toast({
+            title: "Warning",
+            description: "Defect saved, but PDF report generation failed.",
+            variant: "warning",
+          });
+        }
+      } else {
+        console.warn("Cannot generate PDF - savedDefect or savedDefect.id is missing!");
+      }
+  
+      // Clear file selections 
       setInitialFiles([]);
       setClosureFiles([]);
       setUploadProgress(0);
-    
+      
+      // Show success message
+      toast({
+        title: "Success",
+        description: isNew ? "Defect added successfully" : "Changes saved successfully",
+      });
+      
+      // Close the dialog
+      onClose();
+      
     } catch (error) {
-      console.error('Error in DefectDialog save:', error);
+      console.error("Error in handleSave:", error);
       toast({
         title: "Error",
         description: "Failed to save defect. Please try again.",
@@ -379,7 +588,6 @@ const DefectDialog = ({
       setSaving(false);
     }
   };
-
   // Check if closure file upload should be displayed
   // This is the key function needed to show closure files upload when status is CLOSED
   const shouldShowClosureFiles = () => {
