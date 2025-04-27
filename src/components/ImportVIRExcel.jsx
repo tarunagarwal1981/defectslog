@@ -1,11 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from './ui/dialog';
-import { Upload, FileSpreadsheet, X, AlertTriangle } from 'lucide-react';
+import { Upload, FileSpreadsheet, X, AlertTriangle, Info } from 'lucide-react';
 import { toast } from './ui/use-toast';
 import { supabase } from '../supabaseClient';
 import * as XLSX from 'xlsx';
@@ -25,14 +25,12 @@ const VIR_MAPPING = {
 const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => {
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [vessel, setVessel] = useState('');
   const [detectedVessel, setDetectedVessel] = useState(null);
   const fileInputRef = useRef(null);
   
   // Reset state when dialog closes
   const handleClose = () => {
     setFile(null);
-    setVessel('');
     setDetectedVessel(null);
     setLoading(false);
     if (fileInputRef.current) {
@@ -40,13 +38,6 @@ const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => 
     }
     onClose();
   };
-
-  // Effect to automatically select detected vessel
-  useEffect(() => {
-    if (detectedVessel && detectedVessel.id) {
-      setVessel(detectedVessel.id);
-    }
-  }, [detectedVessel]);
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -151,7 +142,17 @@ const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => 
             
             if (matchedVessel) {
               setDetectedVessel(matchedVessel);
+            } else {
+              // Vessel not found in system
+              setDetectedVessel({ 
+                id: null, 
+                name: shipName, 
+                notFound: true 
+              });
             }
+          } else {
+            // No ship name found in the Excel
+            setDetectedVessel(null);
           }
         } catch (error) {
           console.error("Error extracting vessel info:", error);
@@ -178,10 +179,10 @@ const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => 
       return;
     }
 
-    if (!vessel) {
+    if (!detectedVessel || !detectedVessel.id) {
       toast({
         title: "Error",
-        description: "Please select a vessel",
+        description: "No valid vessel detected from the Excel file",
         variant: "destructive",
       });
       return;
@@ -224,8 +225,8 @@ const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => 
           const defectsToImport = defectsData.map(row => {
             // Create base defect object
             const defect = {
-              vessel_id: vessel,
-              vessel_name: vesselNames[vessel] || 'Unknown Vessel',
+              vessel_id: detectedVessel.id,
+              vessel_name: detectedVessel.name,
               'Status (Vessel)': 'OPEN',
               'Date Reported': new Date().toISOString().split('T')[0],
               external_visibility: true,
@@ -289,7 +290,7 @@ const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => 
           
           toast({
             title: "Success",
-            description: `Successfully imported ${defectsToImport.length} defects`,
+            description: `Successfully imported ${defectsToImport.length} defects for ${detectedVessel.name}`,
           });
           
           if (onImportComplete) {
@@ -393,42 +394,51 @@ const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => 
               </label>
             </div>
             
-            {/* Vessel Selection */}
-            <div className="grid gap-1.5">
-              <label className="text-xs font-medium text-white/80">
-                Select Vessel <span className="text-red-400">*</span>
-              </label>
-              
-              {detectedVessel && (
-                <div className="bg-[#3BADE5]/10 rounded-md p-2 mb-2 flex items-center gap-2">
-                  <div className="text-[#3BADE5] flex items-center">
-                    <AlertTriangle className="h-3.5 w-3.5 mr-1" />
-                  </div>
-                  <div className="text-xs text-white/90">
-                    Detected vessel from file: <span className="font-medium">{detectedVessel.name}</span>
-                  </div>
+            {/* Detected Vessel Information */}
+            {detectedVessel && (
+              <div className={`rounded-md p-3 flex items-start gap-2 ${
+                detectedVessel.notFound ? 'bg-red-500/10 border border-red-500/20' : 'bg-[#3BADE5]/10 border border-[#3BADE5]/20'
+              }`}>
+                <div className={`${
+                  detectedVessel.notFound ? 'text-red-400' : 'text-[#3BADE5]'
+                } flex items-center pt-0.5`}>
+                  {detectedVessel.notFound ? (
+                    <AlertTriangle className="h-4 w-4" />
+                  ) : (
+                    <Info className="h-4 w-4" />
+                  )}
                 </div>
-              )}
-              
-              <div className="relative">
-                <select
-                  value={vessel}
-                  onChange={(e) => setVessel(e.target.value)}
-                  className="flex h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40 appearance-none"
-                  required
-                >
-                  <option value="">-- Select Vessel --</option>
-                  {Object.entries(vesselNames).map(([id, name]) => (
-                    <option key={id} value={id}>{name}</option>
-                  ))}
-                </select>
-                <div className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none text-white/60">
-                  <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
+                <div>
+                  <p className="text-xs text-white/90 font-medium">
+                    {detectedVessel.notFound ? 'Vessel not found in system:' : 'Detected vessel from file:'}
+                  </p>
+                  <p className="text-xs text-white/80 mt-1">
+                    {detectedVessel.name}
+                  </p>
+                  {detectedVessel.notFound && (
+                    <p className="text-xs text-red-300 mt-2">
+                      Please check the Excel file or contact an administrator to add this vessel.
+                    </p>
+                  )}
                 </div>
               </div>
-            </div>
+            )}
+            
+            {!detectedVessel && file && (
+              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-md p-3 flex items-start gap-2">
+                <div className="text-yellow-400 flex items-center pt-0.5">
+                  <AlertTriangle className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-xs text-white/90 font-medium">
+                    No vessel detected
+                  </p>
+                  <p className="text-xs text-white/80 mt-1">
+                    Unable to find vessel information in the Excel file. Please check that the file includes the ship's name.
+                  </p>
+                </div>
+              </div>
+            )}
             
             {/* Information Box */}
             <div className="bg-[#132337]/50 rounded-[4px] p-3 mt-2 border border-[#3BADE5]/10">
@@ -459,7 +469,7 @@ const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => 
           </button>
           <button
             onClick={handleImport}
-            disabled={loading || !file || !vessel}
+            disabled={loading || !file || !detectedVessel || !detectedVessel.id}
             className="h-7 px-3 text-xs font-medium rounded-[4px] bg-[#3BADE5] hover:bg-[#3BADE5]/90 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             style={{
               boxShadow: '0 2px 5px rgba(59,173,229,0.3), 0 0 0 1px rgba(59,173,229,0.4)'
