@@ -1,24 +1,24 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from './ui/dialog';
-import { Upload, FileSpreadsheet, X } from 'lucide-react';
+import { Upload, FileSpreadsheet, X, AlertTriangle } from 'lucide-react';
 import { toast } from './ui/use-toast';
 import { supabase } from '../supabaseClient';
 import * as XLSX from 'xlsx';
 
 // Mapping for VIR Excel columns to database fields
 const VIR_MAPPING = {
-  //'Sl No': 'SNo',
+  'Sl No': 'SNo',
   "Inspector's Observations / Remarks": 'Description',
   'Corrective Action to be taken': 'Action Planned',
   'Target date': 'target_date',
   'Risk Category': 'Criticality',
   'Area of Concern': 'Equipments',
-  //'Task Assigned to': 'raised_by',
+  'Task Assigned to': 'raised_by',
   'Completed Date': 'Date Completed'
 };
 
@@ -26,12 +26,14 @@ const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => 
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [vessel, setVessel] = useState('');
+  const [detectedVessel, setDetectedVessel] = useState(null);
   const fileInputRef = useRef(null);
-
+  
   // Reset state when dialog closes
   const handleClose = () => {
     setFile(null);
     setVessel('');
+    setDetectedVessel(null);
     setLoading(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -39,10 +41,130 @@ const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => 
     onClose();
   };
 
+  // Effect to automatically select detected vessel
+  useEffect(() => {
+    if (detectedVessel && detectedVessel.id) {
+      setVessel(detectedVessel.id);
+    }
+  }, [detectedVessel]);
+
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
     if (selectedFile) {
       setFile(selectedFile);
+      extractVesselInfo(selectedFile);
+    }
+  };
+  
+  // Function to extract vessel information from Excel
+  const extractVesselInfo = async (file) => {
+    try {
+      const reader = new FileReader();
+      
+      reader.onload = async (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          
+          // Try to find header sheet with vessel info
+          // First look for the first sheet
+          const firstSheet = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheet];
+          
+          // Convert to array format with headers
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
+            header: 'A',
+            defval: ''
+          });
+          
+          // Look for Ship's Name pattern
+          let shipName = '';
+          for (let i = 0; i < 20; i++) { // Check first 20 rows
+            if (jsonData[i]) {
+              // Check if it contains "Ship's Name" or similar pattern
+              if (jsonData[i].C && typeof jsonData[i].C === 'string' && 
+                  (jsonData[i].C.includes("Ship") || jsonData[i].C.includes("ship") || 
+                   jsonData[i].C.includes("SHIP"))) {
+                // Look for the vessel name in column F
+                shipName = jsonData[i].F || '';
+                break;
+              }
+            }
+          }
+          
+          if (!shipName) {
+            // Try an alternative approach - look directly at cell values
+            for (const sheetName of workbook.SheetNames) {
+              const sheet = workbook.Sheets[sheetName];
+              // Try common cells where ship name might be
+              // The format in your example suggests F4 contains the ship name
+              const possibleCells = ['F4', 'F5', 'F3', 'E4', 'D4'];
+              
+              for (const cell of possibleCells) {
+                if (sheet[cell] && sheet[cell].v) {
+                  shipName = sheet[cell].v;
+                  break;
+                }
+              }
+              
+              if (shipName) break;
+            }
+          }
+          
+          if (shipName) {
+            console.log("Detected ship name:", shipName);
+            
+            // Clean up the ship name (remove extra spaces, etc.)
+            shipName = shipName.trim();
+            
+            // Try to match with available vessels
+            let matchedVessel = null;
+            
+            // First try exact match
+            Object.entries(vesselNames).forEach(([id, name]) => {
+              if (name === shipName) {
+                matchedVessel = { id, name };
+              }
+            });
+            
+            // If no exact match, try case-insensitive match
+            if (!matchedVessel) {
+              const shipNameLower = shipName.toLowerCase();
+              Object.entries(vesselNames).forEach(([id, name]) => {
+                if (name.toLowerCase() === shipNameLower) {
+                  matchedVessel = { id, name };
+                }
+              });
+            }
+            
+            // If still no match, try to find partial matches
+            if (!matchedVessel) {
+              const shipNameLower = shipName.toLowerCase();
+              Object.entries(vesselNames).forEach(([id, name]) => {
+                // Check if vessel name contains the ship name or vice versa
+                if (name.toLowerCase().includes(shipNameLower) || 
+                    shipNameLower.includes(name.toLowerCase())) {
+                  matchedVessel = { id, name };
+                }
+              });
+            }
+            
+            if (matchedVessel) {
+              setDetectedVessel(matchedVessel);
+            }
+          }
+        } catch (error) {
+          console.error("Error extracting vessel info:", error);
+        }
+      };
+      
+      reader.onerror = () => {
+        console.error("Error reading file for vessel detection");
+      };
+      
+      reader.readAsArrayBuffer(file);
+    } catch (error) {
+      console.error("Error in extractVesselInfo:", error);
     }
   };
 
@@ -236,31 +358,6 @@ const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => 
           }}
         >
           <div className="grid gap-3">
-            {/* Vessel Selection */}
-            <div className="grid gap-1.5">
-              <label className="text-xs font-medium text-white/80">
-                Select Vessel <span className="text-red-400">*</span>
-              </label>
-              <div className="relative">
-                <select
-                  value={vessel}
-                  onChange={(e) => setVessel(e.target.value)}
-                  className="flex h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40 appearance-none"
-                  required
-                >
-                  <option value="">-- Select Vessel --</option>
-                  {Object.entries(vesselNames).map(([id, name]) => (
-                    <option key={id} value={id}>{name}</option>
-                  ))}
-                </select>
-                <div className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none text-white/60">
-                  <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </div>
-              </div>
-            </div>
-            
             {/* File Upload */}
             <div className="grid gap-1.5">
               <label className="text-xs font-medium text-white/80">
@@ -283,6 +380,7 @@ const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => 
                       e.preventDefault();
                       e.stopPropagation();
                       setFile(null);
+                      setDetectedVessel(null);
                       if (fileInputRef.current) {
                         fileInputRef.current.value = '';
                       }
@@ -293,6 +391,43 @@ const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => 
                   </button>
                 )}
               </label>
+            </div>
+            
+            {/* Vessel Selection */}
+            <div className="grid gap-1.5">
+              <label className="text-xs font-medium text-white/80">
+                Select Vessel <span className="text-red-400">*</span>
+              </label>
+              
+              {detectedVessel && (
+                <div className="bg-[#3BADE5]/10 rounded-md p-2 mb-2 flex items-center gap-2">
+                  <div className="text-[#3BADE5] flex items-center">
+                    <AlertTriangle className="h-3.5 w-3.5 mr-1" />
+                  </div>
+                  <div className="text-xs text-white/90">
+                    Detected vessel from file: <span className="font-medium">{detectedVessel.name}</span>
+                  </div>
+                </div>
+              )}
+              
+              <div className="relative">
+                <select
+                  value={vessel}
+                  onChange={(e) => setVessel(e.target.value)}
+                  className="flex h-8 w-full rounded-[4px] border border-[#3BADE5]/20 bg-[#132337] px-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#3BADE5] hover:border-[#3BADE5]/40 appearance-none"
+                  required
+                >
+                  <option value="">-- Select Vessel --</option>
+                  {Object.entries(vesselNames).map(([id, name]) => (
+                    <option key={id} value={id}>{name}</option>
+                  ))}
+                </select>
+                <div className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none text-white/60">
+                  <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+              </div>
             </div>
             
             {/* Information Box */}
