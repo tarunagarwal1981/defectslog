@@ -18,7 +18,7 @@ const VIR_MAPPING = {
   'Target date': 'target_date',
   'Risk Category': 'Criticality',
   'Area of Concern': 'Equipments',
-  'Task Assigned to': 'raised_by',
+  //'Task Assigned to': 'raised_by',
   'Completed Date': 'Date Completed'
 };
 
