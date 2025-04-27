@@ -63,8 +63,8 @@ const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => 
       
       reader.onload = async (e) => {
         try {
-          const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: 'array' });
+          const fileData = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(fileData, { type: 'array' });
           
           // Try to find header sheet with vessel info
           // First look for the first sheet
@@ -195,8 +195,8 @@ const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => 
       
       reader.onload = async (e) => {
         try {
-          const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, { type: 'array' });
+          const fileData = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(fileData, { type: 'array' });
           
           // Find the defects sheet - look for sheet containing "DEFECTS" or "FOLLOW-UP" in name
           const defectsSheetName = workbook.SheetNames.find(name => 
@@ -280,12 +280,12 @@ const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => 
           });
           
           // Insert into database
-          const { data, error } = await supabase
+          const { data: importedDefects, error: importError } = await supabase
             .from('defects register')
             .insert(defectsToImport)
             .select();
           
-          if (error) throw error;
+          if (importError) throw importError;
           
           toast({
             title: "Success",
@@ -293,7 +293,7 @@ const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => 
           });
           
           if (onImportComplete) {
-            onImportComplete(data);
+            onImportComplete(importedDefects);
           }
           
           handleClose();
