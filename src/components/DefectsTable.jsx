@@ -772,7 +772,8 @@ const DefectsTable = ({
   criticalityFilter = '',
   permissions, // Add this
   isExternal,
-  vesselNames
+  vesselNames,
+  onDataUpdated
 }) => {
 
   console.log("Is targetDate visible:", isColumnVisible('targetDate', permissions));
