@@ -17,6 +17,7 @@
     "recharts": "^2.10.3",
     "react-dom": "^18.2.0",
     "react-scripts": "5.0.1",
+    "xlsx": "^0.18.5",
     "pdf-lib": "^1.17.1",
     "clsx": "^2.0.0",
     "tailwind-merge": "^2.0.0",

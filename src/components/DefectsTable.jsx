@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, FileText, Trash2, ChevronDown, ChevronUp, X } from 'lucide-react';
+import { PlusCircle, FileText, Trash2, ChevronDown, ChevronUp, X, Upload } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from './ui/dialog';
 import ExportButton from './ui/ExportButton';
+import { ImportVIRDialog, ImportVIRButton } from './ImportVIRExcel';
 
 import { supabase } from '../supabaseClient';
 import { toast } from './ui/use-toast';
@@ -526,21 +527,6 @@ const DefectRow = ({ defect: initialDefect, index, onEditDefect, onDeleteDefect,
             <div className="space-y-4">
               {/* Main Content in 3-column Grid */}
               <div className="grid grid-cols-3 gap-4">
-                {/* Basic Details */}
-{/*                 <div className="bg-[#0B1623] rounded-md p-3 shadow-lg hover:shadow-[0_4px_15px_rgba(0,0,0,0.3)] transition-all duration-300 border border-white/5">
-                  <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Description</h4>
-                  <div className="text-xs leading-relaxed text-white/90 break-words">
-                    {defect.Description || '-'}
-                  </div>
-                </div>
-                
-                <div className="bg-[#0B1623] rounded-md p-3 shadow-lg hover:shadow-[0_4px_15px_rgba(0,0,0,0.3)] transition-all duration-300 border border-white/5">
-                  <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Action Planned</h4>
-                  <div className="text-xs leading-relaxed text-white/90 break-words">
-                    {defect['Action Planned'] || '-'}
-                  </div>
-                </div> */}
-      
                 <div className="bg-[#0B1623] rounded-md p-3 shadow-lg hover:shadow-[0_4px_15px_rgba(0,0,0,0.3)] transition-all duration-300 border border-white/5">
                   <h4 className="text-xs font-medium text-[#3BADE5] mb-2">Follow-Up</h4>
                   <div className="text-xs leading-relaxed text-white/90 break-words">
@@ -785,7 +771,8 @@ const DefectsTable = ({
   statusFilter = '',
   criticalityFilter = '',
   permissions, // Add this
-  isExternal  
+  isExternal,
+  vesselNames
 }) => {
 
   console.log("Is targetDate visible:", isColumnVisible('targetDate', permissions));
@@ -795,6 +782,9 @@ const DefectsTable = ({
     key: 'Date Reported',
     direction: 'desc'
   });
+  
+  // Add state for Import VIR dialog
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   const handleSort = (key) => {
     // Only allow sorting on visible columns
@@ -850,6 +840,14 @@ const DefectsTable = ({
       });
     }
   };
+  
+  // Add handler for import complete
+  const handleImportComplete = async (importedData) => {
+    // Notify parent component to refresh data
+    if (typeof onDataUpdated === 'function') {
+      onDataUpdated(importedData);
+    }
+  };
 
   const sortedData = getSortedData();
 
@@ -869,6 +867,10 @@ const DefectsTable = ({
         <h2 className="text-sm font-medium text-[#f4f4f4]">Defects Register</h2>
         <div className="flex items-center gap-2">
           <ExportButton onClick={handleExport} label="Export Excel" />
+          
+          {/* Add Import VIR Button */}
+          <ImportVIRButton onClick={() => setIsImportDialogOpen(true)} />
+          
           <button 
             onClick={onAddDefect}
             disabled={!canPerformAction('create', permissions)}
@@ -941,6 +943,14 @@ const DefectsTable = ({
           </table>
         </div>
       </div>
+      
+      {/* Import VIR Dialog */}
+      <ImportVIRDialog 
+        isOpen={isImportDialogOpen}
+        onClose={() => setIsImportDialogOpen(false)}
+        vesselNames={vesselNames || {}}
+        onImportComplete={handleImportComplete}
+      />
     </div>
   );
 };
