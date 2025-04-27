@@ -89,7 +89,7 @@ const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => 
               const sheet = workbook.Sheets[sheetName];
               // Try common cells where ship name might be
               // The format in your example suggests F4 contains the ship name
-              const possibleCells = ['F4', 'F5', 'F3', 'E4', 'D4'];
+              const possibleCells = ['F3'];
               
               for (const cell of possibleCells) {
                 if (sheet[cell] && sheet[cell].v) {
