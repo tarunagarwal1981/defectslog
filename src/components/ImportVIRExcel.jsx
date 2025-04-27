@@ -231,7 +231,8 @@ const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => 
               'Date Reported': new Date().toISOString().split('T')[0],
               external_visibility: true,
               initial_files: [],
-              completion_files: []
+              completion_files: [],
+              'raised_by': 'VIR'
             };
             
             // Map fields from Excel to database
