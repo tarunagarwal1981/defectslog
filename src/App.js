@@ -486,6 +486,7 @@ function App() {
                 loading={loading}
                 permissions={userPermissions}
                 isExternal={isExternal}
+                vesselNames={vesselNames}
               />
 
               <DefectDialog
