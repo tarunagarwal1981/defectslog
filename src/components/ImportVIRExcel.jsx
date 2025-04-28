@@ -229,7 +229,7 @@ const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => 
               vessel_name: detectedVessel.name,
               'Status (Vessel)': 'OPEN',
               'Date Reported': new Date().toISOString().split('T')[0],
-              external_visibility: true,
+              external_visibility: false,
               initial_files: [],
               completion_files: [],
               'raised_by': 'VIR'
