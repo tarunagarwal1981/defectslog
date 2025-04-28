@@ -10,17 +10,15 @@ import { toast } from './ui/use-toast';
 import { supabase } from '../supabaseClient';
 import * as XLSX from 'xlsx';
 
-// Updated mapping for VIR Excel/CSV columns to database fields
-// This needs to be adjusted to match the actual CSV format
+// Mapping for VIR Excel/CSV columns to database fields
 const VIR_MAPPING = {
-  'Sl No': 'SNo',
-  "Inspector's Observations / Remarks": 'Description',
-  'Corrective Action to be taken': 'Action Planned',
-  'Target date': 'target_date',
-  'Risk Category': 'Criticality',
-  'Area of Concern': 'Equipments',
-  //'Task Assigned to': 'raised_by',
-  'Completed Date': 'Date Completed'
+  'observations': { dbField: 'Description', startCell: 'B36' },
+  'actions': { dbField: 'Action Planned', startCell: 'F36' },
+  'targetDate': { dbField: 'target_date', startCell: 'J36' },
+  'riskCategory': { dbField: 'Criticality', startCell: 'Q36' },
+  'areaOfConcern': { dbField: 'Equipments', startCell: 'S36' },
+  'completedDate': { dbField: 'Date Completed', startCell: 'O36' },
+  'slNo': { dbField: 'SNo', startCell: 'A36' }
 };
 
 const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => {
@@ -61,7 +59,7 @@ const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => 
           
           try {
             workbook = XLSX.read(fileData, { type: 'array' });
-            console.log("VESSEL DETECTION - File parsed successfully as Excel/CSV");
+            console.log("VESSEL DETECTION - File parsed successfully");
           } catch (parseError) {
             console.error("VESSEL DETECTION - Error parsing file:", parseError);
             return;
@@ -69,39 +67,36 @@ const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => 
           
           console.log("VESSEL DETECTION - All sheet names:", workbook.SheetNames);
           
-          // Try to find header sheet with vessel info
-          // First look for the first sheet
+          // Get the first sheet
           const firstSheet = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheet];
           
-          // Debug: Show raw cell data from the first sheet
-          console.log("VESSEL DETECTION - Raw cell data from first few cells:");
-          for (let col of ['A', 'B', 'C', 'D', 'E', 'F', 'G']) {
-            for (let row = 1; row <= 10; row++) {
-              const cellRef = `${col}${row}`;
-              if (worksheet[cellRef]) {
-                console.log(`Cell ${cellRef}:`, worksheet[cellRef].v);
-              }
-            }
-          }
-          
-          // Convert to array format with headers
-          const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
-            header: 'A',
-            defval: ''
-          });
-          
-          console.log("VESSEL DETECTION - First sheet data sample:", jsonData.slice(0, 10));
-          
-          // For CSV format, we need to look at specific cells
-          // Based on your shared CSV, "Ship's Name" is in C3 and the actual name is in F3
+          // For VIR CSV format, look specifically at cell F3 for ship name
           let shipName = '';
           
           if (worksheet['F3'] && worksheet['F3'].v) {
             shipName = worksheet['F3'].v;
             console.log("VESSEL DETECTION - Found ship name in cell F3:", shipName);
           } else {
-            // Look for Ship's Name pattern in other rows
+            // If not found in F3, try other common locations
+            const possibleCells = ['F4', 'F5', 'G3', 'G4', 'E3', 'E4'];
+            for (const cell of possibleCells) {
+              if (worksheet[cell] && worksheet[cell].v) {
+                shipName = worksheet[cell].v;
+                console.log(`VESSEL DETECTION - Found possible ship name in cell ${cell}:`, shipName);
+                break;
+              }
+            }
+          }
+          
+          if (!shipName) {
+            console.log("VESSEL DETECTION - No ship name found in expected cells, scanning worksheet...");
+            // Convert to array format to check more cells
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
+              header: 'A',
+              defval: ''
+            });
+            
             for (let i = 0; i < 20; i++) {
               if (jsonData[i]) {
                 // Look for any cell containing "Ship's Name" or "Ship"
@@ -110,7 +105,7 @@ const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => 
                       (value.includes("Ship's Name") || value.includes("Ship") || 
                        value.includes("ship") || value.includes("SHIP"))) {
                     // The ship name might be in this row, a few columns to the right
-                    const possibleNameKeys = ['F', 'G', 'H'];
+                    const possibleNameKeys = ['F', 'G', 'H', 'E'];
                     for (const nameKey of possibleNameKeys) {
                       if (jsonData[i][nameKey] && jsonData[i][nameKey].trim()) {
                         shipName = jsonData[i][nameKey].trim();
@@ -233,221 +228,69 @@ const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => 
           
           console.log("IMPORT - Excel sheets available:", workbook.SheetNames);
           
-          // Find the defects sheet - looking for sheet with defect data
-          // For CSV this is always the first sheet
-          const defectsSheetName = workbook.SheetNames[0];
+          // Get the first sheet
+          const firstSheet = workbook.SheetNames[0];
+          console.log("IMPORT - Using sheet:", firstSheet);
           
-          console.log("IMPORT - Selected sheet for defects:", defectsSheetName);
+          const worksheet = workbook.Sheets[firstSheet];
           
-          const worksheet = workbook.Sheets[defectsSheetName];
-          
-          // Get the range of the worksheet to see where data starts and ends
+          // Get the range of the worksheet
           const range = XLSX.utils.decode_range(worksheet['!ref']);
           console.log("IMPORT - Worksheet range:", range);
           
-          // Log some cell values for debugging specific to your CSV structure
-          console.log("IMPORT - Examining key cells from worksheet:");
-          // Look for header row with column names
-          let headerRowIndex = null;
-          for (let i = 1; i <= 30; i++) {
-            if (worksheet[`A${i}`] && worksheet[`A${i}`].v === 'Sl No') {
-              headerRowIndex = i;
-              console.log(`IMPORT - Found header row at index ${i} with 'Sl No'`);
-              break;
+          // Look at specific cells to extract defect data
+          // Instead of using XLSX.utils.sheet_to_json, we'll directly access cells
+          // This is more reliable for fixed-format reports
+          
+          console.log("IMPORT - Extracting defects using specific cell references");
+          
+          // Extract data by column, starting from specific cells
+          const defectsToImport = [];
+          const maxRows = 200; // Set a reasonable limit to avoid infinite loops
+          
+          // Check if starting cells exist
+          let startingCellsExist = false;
+          for (const [key, mapping] of Object.entries(VIR_MAPPING)) {
+            const { startCell } = mapping;
+            if (worksheet[startCell]) {
+              startingCellsExist = true;
+              console.log(`IMPORT - Found starting cell ${startCell} for ${key}:`, worksheet[startCell].v);
+            } else {
+              console.log(`IMPORT - Starting cell ${startCell} for ${key} not found`);
             }
           }
           
-          if (headerRowIndex) {
-            // Log the header row to see column names
-            const headerCells = {};
-            for (let c = 0; c <= range.e.c; c++) {
-              const cell = XLSX.utils.encode_cell({r: headerRowIndex-1, c});
-              if (worksheet[cell]) {
-                headerCells[cell] = worksheet[cell].v;
-              }
-            }
-            console.log("IMPORT - Header row cells:", headerCells);
-          }
-          
-          // Convert to JSON with proper headers
-          // For your CSV, we need to skip the header metadata rows
-          // Based on your sample, data starts after row 28
-          let jsonData;
-          
-          if (headerRowIndex) {
-            // Use the header row we found
-            jsonData = XLSX.utils.sheet_to_json(worksheet, { 
-              range: headerRowIndex-1,
-              defval: '' 
-            });
-          } else {
-            // Fallback - try to find data starting from a specific row (28 in your example)
-            jsonData = XLSX.utils.sheet_to_json(worksheet, { 
-              range: 27, // 0-based, so row 28
-              defval: '' 
-            });
-          }
-          
-          console.log("IMPORT - Raw JSON data (first 3 rows):", jsonData.slice(0, 3));
-          console.log("IMPORT - All column keys in first row:", jsonData[0] ? Object.keys(jsonData[0]) : "No data");
-          
-          // Check if the expected columns exist
-          const columnCheck = {
-            "Sl No": jsonData.some(row => row["Sl No"] !== undefined),
-            "Inspector's Observations / Remarks": jsonData.some(row => row["Inspector's Observations / Remarks"] !== undefined),
-            "Corrective Action to be taken": jsonData.some(row => row["Corrective Action to be taken"] !== undefined),
-            "Risk Category": jsonData.some(row => row["Risk Category"] !== undefined),
-            "Area of Concern": jsonData.some(row => row["Area of Concern"] !== undefined)
-          };
-          
-          console.log("IMPORT - Column existence check:", columnCheck);
-          
-          // If columns aren't found, look for similar columns or handle accordingly
-          const columnMap = {};
-          
-          if (!columnCheck["Inspector's Observations / Remarks"]) {
-            // Look for alternative column names
-            const allColumns = new Set();
-            jsonData.forEach(row => {
-              Object.keys(row).forEach(key => allColumns.add(key));
-            });
+          if (!startingCellsExist) {
+            console.log("IMPORT - None of the expected starting cells found, checking for alternative format");
             
-            console.log("IMPORT - All column names in the data:", [...allColumns]);
-            
-            // Automatically map columns based on similarity
-            for (const [excelField, dbField] of Object.entries(VIR_MAPPING)) {
-              if (!columnCheck[excelField]) {
-                // Try to find a similar column
-                const possibleMatches = [...allColumns].filter(col => {
-                  // Create variations of the field name to check against
-                  const fieldLower = excelField.toLowerCase();
-                  const colLower = col.toLowerCase();
-                  
-                  return colLower.includes(fieldLower.replace("'s", "s")) || 
-                         colLower.includes(fieldLower.replace("'s", "")) ||
-                         fieldLower.includes(colLower) ||
-                         (fieldLower.includes("observation") && colLower.includes("observation")) ||
-                         (fieldLower.includes("action") && colLower.includes("action")) ||
-                         (fieldLower.includes("risk") && colLower.includes("risk")) ||
-                         (fieldLower.includes("target") && colLower.includes("date")) ||
-                         (fieldLower.includes("concern") && colLower.includes("area"));
-                });
-                
-                if (possibleMatches.length > 0) {
-                  console.log(`IMPORT - Found possible match for '${excelField}': ${possibleMatches[0]}`);
-                  columnMap[excelField] = possibleMatches[0];
-                }
-              } else {
-                columnMap[excelField] = excelField; // Use original if found
-              }
-            }
-          } else {
-            // All columns found as expected
-            Object.keys(VIR_MAPPING).forEach(key => columnMap[key] = key);
-          }
-          
-          console.log("IMPORT - Final column mapping:", columnMap);
-          
-          // Filter out rows that don't have any observations (usually header rows)
-          const defectsData = jsonData.filter(row => {
-            const obsColumn = columnMap["Inspector's Observations / Remarks"];
-            const hasObservations = obsColumn && row[obsColumn] && 
-              typeof row[obsColumn] === 'string' && row[obsColumn].trim() !== '';
-            
-            if (hasObservations) {
-              console.log("IMPORT - Found row with valid observation:", 
-                row[obsColumn].substring(0, 30) + (row[obsColumn].length > 30 ? "..." : ""));
-            }
-            
-            return hasObservations;
-          });
-          
-          console.log("IMPORT - Number of defects found after filtering:", defectsData.length);
-          console.log("IMPORT - First defect data:", defectsData[0]);
-          
-          if (defectsData.length === 0) {
-            // Try a more aggressive approach for finding data rows
-            console.log("IMPORT - No defects found with standard approach, trying alternative method");
-            
-            // Examine rows to find any that have text in multiple columns
-            const alternativeDefects = jsonData.filter(row => {
-              // Count non-empty fields
-              let nonEmptyFields = 0;
-              for (const [key, value] of Object.entries(row)) {
-                if (value && typeof value === 'string' && value.trim() !== '') {
-                  nonEmptyFields++;
-                }
-              }
-              // If at least 3 fields have content, this might be a defect row
-              return nonEmptyFields >= 3;
-            });
-            
-            console.log("IMPORT - Alternative approach found", alternativeDefects.length, "possible defects");
-            console.log("IMPORT - First possible defect:", alternativeDefects[0]);
-            
-            if (alternativeDefects.length > 0) {
-              // We found some potential data
-              console.log("IMPORT - Using alternative data rows");
-              
-              // Try to identify key columns based on cell content
-              const tempColumnMap = {};
-              // Examine all column names
-              const allColumns = new Set();
-              alternativeDefects.forEach(row => {
-                Object.keys(row).forEach(key => allColumns.add(key));
-              });
-              
-              console.log("IMPORT - All available columns:", [...allColumns]);
-              
-              // Look for content patterns in each column
-              [...allColumns].forEach(colName => {
-                const sampleValues = alternativeDefects.slice(0, 3)
-                  .map(row => row[colName])
-                  .filter(val => val && typeof val === 'string')
-                  .map(val => val.substring(0, 30));
-                
-                if (sampleValues.length > 0) {
-                  console.log(`IMPORT - Column '${colName}' sample values:`, sampleValues);
-                }
-                
-                // Try to match columns based on content
-                if (tempColumnMap["Inspector's Observations / Remarks"] === undefined) {
-                  // Observations often contain longer text
-                  const isLongText = alternativeDefects.some(row => {
-                    const val = row[colName];
-                    return val && typeof val === 'string' && val.length > 20;
-                  });
-                  if (isLongText) {
-                    tempColumnMap["Inspector's Observations / Remarks"] = colName;
-                    console.log(`IMPORT - Mapped 'Inspector's Observations / Remarks' to '${colName}'`);
-                  }
-                }
-              });
-              
-              // Fallback mappings if needed
-              if (Object.keys(tempColumnMap).length > 0) {
-                Object.assign(columnMap, tempColumnMap);
+            // Try to find the defect table by looking for a row with "Sl No" in column A
+            let tableRowIndex = null;
+            for (let r = 1; r <= 50; r++) { // Check first 50 rows
+              const cell = `A${r}`;
+              if (worksheet[cell] && worksheet[cell].v === 'Sl No') {
+                tableRowIndex = r;
+                console.log(`IMPORT - Found defect table starting at row ${r}`);
+                break;
               }
             }
             
-            // Try again with updated column mappings
-            const secondAttemptDefects = jsonData.filter(row => {
-              const obsColumn = columnMap["Inspector's Observations / Remarks"];
-              return obsColumn && row[obsColumn] && 
-                typeof row[obsColumn] === 'string' && row[obsColumn].trim() !== '';
-            });
-            
-            if (secondAttemptDefects.length > 0) {
-              console.log("IMPORT - Second attempt found", secondAttemptDefects.length, "defects");
-              return secondAttemptDefects;
+            if (tableRowIndex) {
+              // Adjust all start cells based on found row
+              for (const key in VIR_MAPPING) {
+                const startCol = VIR_MAPPING[key].startCell.charAt(0);
+                VIR_MAPPING[key].startCell = `${startCol}${tableRowIndex + 1}`; // +1 to skip header
+              }
+              console.log("IMPORT - Adjusted starting cells:", Object.fromEntries(
+                Object.entries(VIR_MAPPING).map(([k, v]) => [k, v.startCell])
+              ));
+            } else {
+              throw new Error("Could not find defect table in the Excel file");
             }
-            
-            throw new Error("No valid defect data found in Excel");
           }
           
-          // Map Excel data to database structure
-          const defectsToImport = defectsData.map(row => {
-            // Create base defect object
+          // Process rows starting from each column's start position
+          for (let rowOffset = 0; rowOffset < maxRows; rowOffset++) {
+            // Create an empty defect for this row
             const defect = {
               vessel_id: detectedVessel.id,
               vessel_name: detectedVessel.name,
@@ -459,13 +302,24 @@ const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => 
               'raised_by': 'VIR'
             };
             
-            // Map fields from Excel to database using the column map
-            Object.entries(VIR_MAPPING).forEach(([excelField, dbField]) => {
-              const sourceColumn = columnMap[excelField];
-              if (sourceColumn && row[sourceColumn] !== undefined) {
-                let value = row[sourceColumn];
+            // Track if this row has any data
+            let hasData = false;
+            
+            // Extract each field from its column
+            for (const [key, mapping] of Object.entries(VIR_MAPPING)) {
+              const { dbField, startCell } = mapping;
+              
+              // Calculate the cell for this row
+              const startCellRef = XLSX.utils.decode_cell(startCell);
+              const currentCell = XLSX.utils.encode_cell({
+                c: startCellRef.c,
+                r: startCellRef.r + rowOffset
+              });
+              
+              if (worksheet[currentCell]) {
+                let value = worksheet[currentCell].v;
                 
-                // Special handling for dates
+                // Special handling for fields
                 if (dbField === 'target_date' || dbField === 'Date Completed') {
                   if (value) {
                     try {
@@ -500,14 +354,29 @@ const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => 
                 }
                 
                 defect[dbField] = value;
+                hasData = true;
               }
-            });
+            }
             
-            return defect;
-          });
+            // Only add the defect if it has the key description field
+            if (hasData && defect.Description && defect.Description.trim() !== '') {
+              console.log(`IMPORT - Found defect at row offset ${rowOffset}:`, 
+                defect.Description.substring(0, 30) + (defect.Description.length > 30 ? "..." : ""));
+              defectsToImport.push(defect);
+            } else if (rowOffset > 0 && !hasData) {
+              // We've hit an empty row after finding some data, assume end of table
+              console.log(`IMPORT - Found empty row at offset ${rowOffset}, ending search`);
+              break;
+            }
+          }
           
-          console.log("IMPORT - Mapped defects sample:", defectsToImport[0]);
-          console.log("IMPORT - Total defects to import:", defectsToImport.length);
+          console.log("IMPORT - Total defects found:", defectsToImport.length);
+          
+          if (defectsToImport.length === 0) {
+            throw new Error("No valid defect data found in Excel");
+          }
+          
+          console.log("IMPORT - First defect:", defectsToImport[0]);
           
           // Insert into database
           const { data: importedDefects, error: importError } = await supabase
