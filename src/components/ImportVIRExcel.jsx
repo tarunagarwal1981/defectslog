@@ -220,7 +220,9 @@ const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => 
           if (defectsData.length === 0) {
             throw new Error("No valid defect data found in Excel");
           }
-          
+          console.log("Excel sheets:", workbook.SheetNames);
+          console.log("Data from first sheet:", jsonData);
+          console.log("All column names:", Object.keys(jsonData[0] || {}));
           // Map Excel data to database structure
           const defectsToImport = defectsData.map(row => {
             // Create base defect object
