@@ -21,6 +21,57 @@ const VIR_MAPPING = {
   'slNo': { dbField: 'SNo', startCell: 'A36' }
 };
 
+// Helper function to parse and format dates correctly for Supabase
+const formatDate = (dateValue) => {
+  if (!dateValue) return null;
+  
+  try {
+    // If it's a number (Excel serial date)
+    if (typeof dateValue === 'number') {
+      const excelEpoch = new Date(1899, 11, 30);
+      const dateObj = new Date(excelEpoch.getTime() + dateValue * 86400000);
+      return dateObj.toISOString().split('T')[0]; // Returns YYYY-MM-DD
+    } 
+    
+    // If it's a string in DD/MM/YYYY format
+    if (typeof dateValue === 'string') {
+      // Check if it's in DD/MM/YYYY format
+      if (dateValue.includes('/')) {
+        const parts = dateValue.split('/');
+        if (parts.length === 3) {
+          // Make sure we have the right parts (day, month, year)
+          const day = parseInt(parts[0], 10);
+          const month = parseInt(parts[1], 10) - 1; // JS months are 0-based
+          const year = parseInt(parts[2], 10);
+          
+          // Validate the date components
+          if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+            const dateObj = new Date(year, month, day);
+            
+            // Make sure the date is valid
+            if (dateObj.getDate() === day && dateObj.getMonth() === month && dateObj.getFullYear() === year) {
+              return dateObj.toISOString().split('T')[0]; // Returns YYYY-MM-DD
+            }
+          }
+        }
+      }
+      
+      // If not in DD/MM/YYYY, try standard date parsing
+      const dateObj = new Date(dateValue);
+      if (!isNaN(dateObj.getTime())) {
+        return dateObj.toISOString().split('T')[0]; // Returns YYYY-MM-DD
+      }
+    }
+    
+    // If we couldn't parse the date, return null
+    console.warn(`Failed to parse date: ${dateValue}`);
+    return null;
+  } catch (error) {
+    console.warn(`Error parsing date: ${dateValue}`, error);
+    return null;
+  }
+};
+
 const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => {
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -267,7 +318,10 @@ const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => 
             let tableRowIndex = null;
             for (let r = 1; r <= 50; r++) { // Check first 50 rows
               const cell = `A${r}`;
-              if (worksheet[cell] && worksheet[cell].v === 'Sl No') {
+              if (worksheet[cell] && (
+                worksheet[cell].v === 'Sl No' || 
+                (typeof worksheet[cell].v === 'string' && worksheet[cell].v.includes('Sl No'))
+              )) {
                 tableRowIndex = r;
                 console.log(`IMPORT - Found defect table starting at row ${r}`);
                 break;
@@ -285,6 +339,26 @@ const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => 
               ));
             } else {
               throw new Error("Could not find defect table in the Excel file");
+            }
+          }
+          
+          // Debug: Log the cell values for the first few rows of each column
+          for (const [key, mapping] of Object.entries(VIR_MAPPING)) {
+            const { startCell } = mapping;
+            const startCellRef = XLSX.utils.decode_cell(startCell);
+            
+            console.log(`IMPORT - Checking values for ${key} starting at ${startCell}:`);
+            for (let rowOffset = 0; rowOffset < 5; rowOffset++) {
+              const currentCell = XLSX.utils.encode_cell({
+                c: startCellRef.c,
+                r: startCellRef.r + rowOffset
+              });
+              
+              if (worksheet[currentCell]) {
+                console.log(`  Row ${rowOffset}: ${worksheet[currentCell].v}`);
+              } else {
+                console.log(`  Row ${rowOffset}: Empty`);
+              }
             }
           }
           
@@ -319,26 +393,16 @@ const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => 
               if (worksheet[currentCell]) {
                 let value = worksheet[currentCell].v;
                 
-                // Special handling for fields
+                // Special handling for dates
                 if (dbField === 'target_date' || dbField === 'Date Completed') {
                   if (value) {
-                    try {
-                      // Try to parse Excel date (could be number or string)
-                      if (typeof value === 'number') {
-                        const excelEpoch = new Date(1899, 11, 30);
-                        const dateObj = new Date(excelEpoch.getTime() + value * 86400000);
-                        value = dateObj.toISOString().split('T')[0];
-                      } else if (typeof value === 'string') {
-                        // Try to parse date string
-                        const dateObj = new Date(value);
-                        if (!isNaN(dateObj.getTime())) {
-                          value = dateObj.toISOString().split('T')[0];
-                        }
-                      }
-                    } catch (error) {
-                      console.warn(`Error parsing date: ${value}`, error);
-                      value = '';
-                    }
+                    // Get the original value before formatting for debugging
+                    console.log(`IMPORT - Raw date value for ${dbField}:`, value, typeof value);
+                    
+                    const formattedDate = formatDate(value);
+                    console.log(`IMPORT - Formatted date for ${dbField}:`, formattedDate);
+                    
+                    value = formattedDate;
                   }
                 }
                 
@@ -362,6 +426,10 @@ const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => 
             if (hasData && defect.Description && defect.Description.trim() !== '') {
               console.log(`IMPORT - Found defect at row offset ${rowOffset}:`, 
                 defect.Description.substring(0, 30) + (defect.Description.length > 30 ? "..." : ""));
+              
+              // Log the complete defect object for debugging
+              console.log(`IMPORT - Complete defect data:`, defect);
+              
               defectsToImport.push(defect);
             } else if (rowOffset > 0 && !hasData) {
               // We've hit an empty row after finding some data, assume end of table
@@ -376,28 +444,48 @@ const ImportVIRDialog = ({ isOpen, onClose, vesselNames, onImportComplete }) => 
             throw new Error("No valid defect data found in Excel");
           }
           
-          console.log("IMPORT - First defect:", defectsToImport[0]);
-          
           // Insert into database
-          const { data: importedDefects, error: importError } = await supabase
-            .from('defects register')
-            .insert(defectsToImport)
-            .select();
-          
-          if (importError) throw importError;
-          
-          console.log("IMPORT - Successfully imported defects:", importedDefects?.length);
-          
-          toast({
-            title: "Success",
-            description: `Successfully imported ${defectsToImport.length} defects for ${detectedVessel.name}`,
-          });
-          
-          if (onImportComplete) {
-            onImportComplete(importedDefects);
+          try {
+            const { data: importedDefects, error: importError } = await supabase
+              .from('defects register')
+              .insert(defectsToImport)
+              .select();
+            
+            if (importError) {
+              console.error("IMPORT - Supabase error details:", importError);
+              throw importError;
+            }
+            
+            console.log("IMPORT - Successfully imported defects:", importedDefects?.length);
+            
+            toast({
+              title: "Success",
+              description: `Successfully imported ${defectsToImport.length} defects for ${detectedVessel.name}`,
+            });
+            
+            if (onImportComplete) {
+              onImportComplete(importedDefects);
+            }
+            
+            handleClose();
+          } catch (dbError) {
+            console.error("IMPORT - Database error:", dbError);
+            
+            // Try to provide more specific error messages
+            let errorMessage = "Failed to import defects";
+            if (dbError.message && dbError.message.includes("date/time")) {
+              errorMessage = "Invalid date format in the file. Please check the date fields.";
+            } else if (dbError.message) {
+              errorMessage = dbError.message;
+            }
+            
+            toast({
+              title: "Import Failed",
+              description: errorMessage,
+              variant: "destructive",
+            });
+            setLoading(false);
           }
-          
-          handleClose();
           
         } catch (error) {
           console.error("Error processing Excel:", error);
